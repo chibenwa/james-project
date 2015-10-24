@@ -390,6 +390,13 @@
                 <artifactId>protocols-managesieve</artifactId>
                 <version>${protocols.version}</version>
             </dependency>
+            <dependency>
+                <groupId>org.apache.james.protocols</groupId>
+                <artifactId>protocols-managesieve</artifactId>
+                <version>${protocols.version}</version>
+                <type>test-jar</type>
+                <scope>test</scope>
+            </dependency>
 
             <dependency>
                 <groupId>org.apache.james</groupId>
