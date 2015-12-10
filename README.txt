@@ -204,3 +204,5 @@ $ docker run -v $PWD:/origin -t james/merge SHA1 RESULTING_BRANCH
 Where :
 - SHA1: is the given git SHA1 of the james-project repository to merge.
 - RESULTING_BRANCH: is the branch created when merging.
+
+Join the chat at https://gitter.im/chibenwa/james-project
