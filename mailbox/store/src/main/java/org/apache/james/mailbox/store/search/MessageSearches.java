@@ -36,6 +36,7 @@ import java.util.TreeSet;
 
 import javax.mail.Flags;
 
+import com.google.common.collect.Lists;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.exception.UnsupportedSearchException;
 import org.apache.james.mailbox.model.MessageResult.Header;
@@ -207,9 +208,8 @@ public class MessageSearches implements Iterable<Long> {
         return result;
     }
 
-    protected boolean isInMessage(String value, final InputStream input, boolean header, Logger log)
-            throws IOException, MimeException {
-        final MessageSearcher searcher = new MessageSearcher(value, true, header);
+    protected boolean isInMessage(String value, final InputStream input, boolean header, Logger log) throws IOException, MimeException {
+        final MessageSearcher searcher = new MessageSearcher(Lists.<CharSequence>newArrayList(value), true, header);
         if (log != null) {
             searcher.setLogger(log);
         }
