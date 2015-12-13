@@ -19,21 +19,22 @@
 
 package org.apache.james.mailbox.store.search;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.Reader;
-import java.io.StringReader;
-import java.nio.CharBuffer;
-import java.nio.charset.IllegalCharsetNameException;
-import java.nio.charset.UnsupportedCharsetException;
-
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 import org.apache.james.mime4j.MimeException;
 import org.apache.james.mime4j.stream.EntityState;
 import org.apache.james.mime4j.stream.MimeConfig;
 import org.apache.james.mime4j.stream.MimeTokenStream;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.io.StringReader;
+import java.nio.CharBuffer;
+import java.util.List;
 
 /**
  * Searches an email for content. This class should be safe for use by
@@ -42,135 +43,112 @@ import org.slf4j.LoggerFactory;
 public class MessageSearcher {
 
     private Logger logger;
-
-    private CharSequence searchContent = null;
-
+    private List<CharSequence> searchContents;
+    private List<String> contentTypes;
     private boolean isCaseInsensitive = false;
-
     private boolean includeHeaders = false;
 
-    public MessageSearcher() {
-    }
-
-    public MessageSearcher(CharSequence searchContent,
-            boolean isCaseInsensitive, boolean includeHeaders) {
-        super();
-        this.searchContent = searchContent;
+    public MessageSearcher(List<CharSequence> searchContents, boolean isCaseInsensitive, boolean includeHeaders, List<String> contentTypes) {
+        this.contentTypes = ImmutableList.copyOf(contentTypes);
+        this.searchContents = ImmutableList.copyOf(searchContents);
         this.isCaseInsensitive = isCaseInsensitive;
         this.includeHeaders = includeHeaders;
     }
 
-    /**
-     * Is the search to include headers?
-     * 
-     * @return true if header values are included, false otherwise
-     */
-    public boolean isIncludeHeaders() {
-        return includeHeaders;
+    public MessageSearcher(List<CharSequence> searchContents, boolean isCaseInsensitive, boolean includeHeaders) {
+        this(searchContents, isCaseInsensitive, includeHeaders, Lists.<String>newArrayList());
     }
 
-    /**
-     * Sets whether the search should include headers.
-     * 
-     * @param includesHeaders
-     *            <code>true</code> if header values are included, <code>false</code> otherwise
-     */
-    public synchronized void setIncludeHeaders(boolean includesHeaders) {
-        this.includeHeaders = includesHeaders;
-    }
 
     /**
-     * Is this search case insensitive?
-     * 
-     * @return true if the search should be case insensitive, false otherwise
-     */
-    public boolean isCaseInsensitive() {
-        return isCaseInsensitive;
-    }
-
-    /**
-     * Sets whether the search should be case insensitive.
-     * 
-     * @param isCaseInsensitive
-     *            true for case insensitive searches, false otherwise
-     */
-    public synchronized void setCaseInsensitive(boolean isCaseInsensitive) {
-        this.isCaseInsensitive = isCaseInsensitive;
-    }
-
-    /**
-     * Gets the content to be searched for.
-     * 
-     * @return search content, initially null
-     */
-    public synchronized CharSequence getSearchContent() {
-        return searchContent;
-    }
-
-    /**
-     * Sets the content sought.
-     * 
-     * @param searchContent
-     *            content sought
-     */
-    public synchronized void setSearchContent(CharSequence searchContent) {
-        this.searchContent = searchContent;
-    }
-
-    /**
-     * Is {@link #getSearchContent()} found in the given input?
-     * 
+     * Is searchContents found in the given input?
+     *
      * @param input
      *            <code>InputStream</code> containing an email
+     * @return true if the content exists and the stream contains the content,
+     *         false otherwise. It takes the mime structure into account.
+     * @throws IOException
+     * @throws MimeException
+     */
+    public boolean isFoundIn(final InputStream input) throws IOException, MimeException {
+        final boolean includeHeaders;
+        final List<CharSequence> searchContents;
+        final boolean isCaseInsensitive;
+        final List<String> contentTypes;
+        synchronized (this) {
+            includeHeaders = this.includeHeaders;
+            searchContents = this.searchContents;
+            isCaseInsensitive = this.isCaseInsensitive;
+            contentTypes = this.contentTypes;
+        }
+        for (CharSequence charSequence : searchContents) {
+            if (charSequence != null) {
+                final CharBuffer buffer = createBuffer(charSequence, isCaseInsensitive);
+                if (! parseOnContentTypes(input, isCaseInsensitive, includeHeaders, buffer, contentTypes)) {
+                    System.out.println("Did not found <" + charSequence + ">");
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Is the search contents found in the given input?
+     *
+     * @param input <code>InputStream</code> containing an email
      * @return true if the content exists and the stream contains the content,
      *         false otherwise
      * @throws IOException
      * @throws MimeException
      */
-    public boolean isFoundIn(final InputStream input) throws IOException,
-            MimeException {
-        final boolean includeHeaders;
-        final CharSequence searchContent;
+    public boolean isFoundInIgnoringMime(final InputStream input) throws IOException, MimeException {
+        final List<CharSequence> searchContents;
         final boolean isCaseInsensitive;
         synchronized (this) {
-            includeHeaders = this.includeHeaders;
-            searchContent = this.searchContent;
+            searchContents = this.searchContents;
             isCaseInsensitive = this.isCaseInsensitive;
         }
-        final boolean result;
-        if (searchContent == null || "".equals(searchContent)) {
-            final Logger logger = getLogger();
-            logger.debug("Nothing to search for. ");
-            result = false;
-        } else {
-            final CharBuffer buffer = createBuffer(searchContent,
-                    isCaseInsensitive);
-            result = parse(input, isCaseInsensitive, includeHeaders, buffer);
+        for (CharSequence charSequence : searchContents) {
+            if (charSequence != null && ! charSequence.equals("")) {
+                final CharBuffer buffer = createBuffer(charSequence, isCaseInsensitive);
+                if (! isFoundIn(new InputStreamReader(input), buffer, isCaseInsensitive)) {
+                    return false;
+                }
+            }
         }
-        return result;
+        return true;
     }
 
-    private boolean parse(final InputStream input,
-            final boolean isCaseInsensitive, final boolean includeHeaders,
-            final CharBuffer buffer) throws IOException, MimeException {
+    private boolean parseOnContentTypes(final InputStream input, final boolean isCaseInsensitive, final boolean includeHeaders,
+                                        final CharBuffer buffer, final List<String> contentTypes) throws IOException, MimeException {
         try {
-            boolean result = false;
             MimeConfig config = MimeConfig.custom().setMaxLineLen(-1).setMaxHeaderLen(-1).build();
 
-            MimeTokenStream parser = new MimeTokenStream(config);            parser.parse(input);
-            while (!result && parser.next() != EntityState.T_END_OF_STREAM) {
+            MimeTokenStream parser = new MimeTokenStream(config);
+            parser.parse(input);
+            while (parser.next() != EntityState.T_END_OF_STREAM) {
                 final EntityState state = parser.getState();
                 switch (state) {
                     case T_BODY:
+                        if (contentTypes.isEmpty() || contentTypes.contains(parser.getBodyDescriptor().getMimeType())) {
+                            if (checkBody(isCaseInsensitive, buffer, parser)) {
+                                return true;
+                            }
+                        }
                     case T_PREAMBLE:
                     case T_EPILOGUE:
-                        result = checkBody(isCaseInsensitive, buffer, result,
-                                parser);
+                        if (includeHeaders) {
+                            if (checkBody(isCaseInsensitive, buffer, parser)) {
+                                return true;
+                            }
+                        }
                         break;
                     case T_FIELD:
                         if (includeHeaders) {
-                            result = checkHeader(isCaseInsensitive, buffer,
-                                    result, parser);
+                            if (checkHeader(isCaseInsensitive, buffer, parser)) {
+                                return true;
+                            }
                         }
                         break;
                 case T_END_BODYPART:
@@ -186,40 +164,26 @@ public class MessageSearcher {
                     break;
                 }
             }
-            return result;
-        } catch (IllegalCharsetNameException e) {
-            handle(e);
-        } catch (UnsupportedCharsetException e) {
-            handle(e);
-        } catch (IllegalStateException e) {
+        } catch (Exception e) {
             handle(e);
         }
         return false;
     }
 
-    private boolean checkHeader(final boolean isCaseInsensitive,
-            final CharBuffer buffer, boolean result, MimeTokenStream parser)
-            throws IOException {
+    private boolean checkHeader(final boolean isCaseInsensitive, final CharBuffer buffer, MimeTokenStream parser) throws IOException {
+        System.out.println("Looking headers");
         final String value = parser.getField().getBody();
         final StringReader reader = new StringReader(value);
-        if (isFoundIn(reader, buffer, isCaseInsensitive)) {
-            result = true;
-        }
-        return result;
+        return isFoundIn(reader, buffer, isCaseInsensitive);
     }
 
-    private boolean checkBody(final boolean isCaseInsensitive,
-            final CharBuffer buffer, boolean result, MimeTokenStream parser)
-            throws IOException {
+    private boolean checkBody(final boolean isCaseInsensitive, final CharBuffer buffer, MimeTokenStream parser) throws IOException {
+        System.out.println("Looking body");
         final Reader reader = parser.getReader();
-        if (isFoundIn(reader, buffer, isCaseInsensitive)) {
-            result = true;
-        }
-        return result;
+        return isFoundIn(reader, buffer, isCaseInsensitive);
     }
 
-    private CharBuffer createBuffer(final CharSequence searchContent,
-            final boolean isCaseInsensitive) {
+    private CharBuffer createBuffer(final CharSequence searchContent, final boolean isCaseInsensitive) {
         final CharBuffer buffer;
         if (isCaseInsensitive) {
             final int length = searchContent.length();
@@ -242,37 +206,38 @@ public class MessageSearcher {
         logger.debug("Failed to read body.", e);
     }
 
-    private boolean isFoundIn(final Reader reader, final CharBuffer buffer,
-            final boolean isCaseInsensitive) throws IOException {
-        boolean result = false;
+    public boolean isFoundIn(final Reader reader, final CharBuffer buffer, final boolean isCaseInsensitive) throws IOException {
         int read;
-        while (!result && (read = reader.read()) != -1) {
-            final char next;
-            if (isCaseInsensitive) {
-                next = Character.toUpperCase((char) read);
-            } else {
-                next = (char) read;
+        while ((read = reader.read()) != -1) {
+            if (matches(buffer, computeNextChar(isCaseInsensitive, (char) read))) {
+                return true;
             }
-            result = matches(buffer, next);
         }
-        return result;
+        return false;
+    }
+
+    private char computeNextChar(boolean isCaseInsensitive, char read) {
+        if (isCaseInsensitive) {
+            return Character.toUpperCase(read);
+        } else {
+            return read;
+        }
     }
 
     private boolean matches(final CharBuffer buffer, final char next) {
-        boolean result = false;
         if (buffer.hasRemaining()) {
             final boolean partialMatch = (buffer.position() > 0);
             final char matching = buffer.get();
             if (next != matching) {
                 buffer.rewind();
                 if (partialMatch) {
-                    result = matches(buffer, next);
+                    return matches(buffer, next);
                 }
             }
         } else {
-            result = true;
+            return true;
         }
-        return result;
+        return false;
     }
 
     public final Logger getLogger() {
