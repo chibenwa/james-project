@@ -43,6 +43,7 @@ import org.apache.james.mailbox.model.MailboxMetaData;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.model.MailboxQuery;
 import org.apache.james.rrt.lib.Mappings;
+import org.apache.james.sieverepository.api.SieveRepository;
 import org.apache.james.user.api.UsersRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,12 +59,14 @@ public class GuiceServerProbe implements ExtendedServerProbe {
     private MailboxManager mailboxManager;
     private DomainList domainList;
     private UsersRepository usersRepository;
+    private SieveRepository sieveRepository;
 
     @Inject
-    private GuiceServerProbe(MailboxManager mailboxManager, DomainList domainList, UsersRepository usersRepository) {
+    private GuiceServerProbe(MailboxManager mailboxManager, DomainList domainList, UsersRepository usersRepository, SieveRepository sieveRepository) {
         this.mailboxManager = mailboxManager;
         this.domainList = domainList;
         this.usersRepository = usersRepository;
+        this.sieveRepository = sieveRepository;
     }
 
     @Override
@@ -289,4 +292,33 @@ public class GuiceServerProbe implements ExtendedServerProbe {
         throw new NotImplementedException();
     }
 
+    @Override
+    public long getSieveQuota() throws Exception {
+        return sieveRepository.getQuota();
+    }
+
+    @Override
+    public void setSieveQuota(long quota) throws Exception {
+        sieveRepository.setQuota(quota);
+    }
+
+    @Override
+    public void removeSieveQuota() throws Exception {
+        sieveRepository.removeQuota();
+    }
+
+    @Override
+    public long getSieveQuota(String user) throws Exception {
+        return sieveRepository.getQuota(user);
+    }
+
+    @Override
+    public void setSieveQuota(String user, long quota) throws Exception {
+        sieveRepository.setQuota(user, quota);
+    }
+
+    @Override
+    public void removeSieveQuota(String user) throws Exception {
+        sieveRepository.removeQuota(user);
+    }
 }

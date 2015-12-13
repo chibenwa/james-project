@@ -28,6 +28,7 @@ import java.util.Collection;
 import java.util.Map;
 
 import org.apache.james.rrt.lib.Mappings;
+import org.apache.james.sieverepository.api.exception.SieveRepositoryException;
 
 public interface ServerProbe extends Closeable {
     /**
@@ -250,4 +251,16 @@ public interface ServerProbe extends Closeable {
     void reIndexMailbox(String namespace, String user, String name) throws Exception;
 
     void reIndexAll() throws Exception;
+
+    long getSieveQuota() throws Exception;
+
+    void setSieveQuota(long quota) throws Exception;
+
+    void removeSieveQuota() throws Exception;
+
+    long getSieveQuota(String user) throws Exception;
+
+    void setSieveQuota(String user, long quota) throws Exception;
+
+    void removeSieveQuota(String user) throws Exception;
 }
