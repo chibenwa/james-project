@@ -17,18 +17,28 @@
  * under the License.                                           *
  ****************************************************************/
 
-package org.apache.james.cli.exceptions;
+package org.apache.james.cli.commands;
 
-import org.apache.james.cli.type.CmdType;
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.Parameters;
+import org.apache.james.cli.exceptions.JamesCliException;
+import org.apache.james.cli.probe.ServerProbe;
 
-public class InvalidArgumentNumberException extends JamesCliException {
+import java.util.List;
 
-    public InvalidArgumentNumberException(CmdType cmdType, int providedArgumentCount) {
-        super(String.format("%s should be used with %d arguments but only %d were provided%n%s%n",
-            cmdType.getCommand(),
-            cmdType.getArgumentCount(),
-            providedArgumentCount,
-            cmdType.getUsage()));
+@Parameters(commandDescription = "Retrieve the quotaroot identifier attached to a mailbox.")
+public class QuotaRootCommand implements JamesCommand {
+
+    @Parameter(description = "<namespace> <user> <name>",
+        arity = 3)
+    private List<String> mailbox;
+
+    public void validate() throws JamesCliException {
+
     }
 
+    @Override
+    public void execute(ServerProbe serverProbe) throws Exception {
+        System.out.println("Quota Root : " + serverProbe.getQuotaRoot(mailbox.get(0), mailbox.get(1), mailbox.get(2)));
+    }
 }
