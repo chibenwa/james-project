@@ -19,10 +19,18 @@
 
 package org.apache.james.sieve.cassandra;
 
+import static com.datastax.driver.core.querybuilder.QueryBuilder.delete;
+import static com.datastax.driver.core.querybuilder.QueryBuilder.eq;
+import static com.datastax.driver.core.querybuilder.QueryBuilder.incr;
+import static com.datastax.driver.core.querybuilder.QueryBuilder.insertInto;
+import static com.datastax.driver.core.querybuilder.QueryBuilder.select;
+import static com.datastax.driver.core.querybuilder.QueryBuilder.set;
+import static com.datastax.driver.core.querybuilder.QueryBuilder.update;
+
+import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
 import org.apache.commons.io.IOUtils;
 
-import org.apache.james.sieve.cassandra.tables.CassandraSieveActiveTable;
 import org.apache.james.sieve.cassandra.tables.CassandraSieveClusterQuotaTable;
 import org.apache.james.sieve.cassandra.tables.CassandraSieveQuotaTable;
 import org.apache.james.sieve.cassandra.tables.CassandraSieveSpaceTable;
@@ -43,14 +51,6 @@ import java.io.InputStream;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
-
-import static com.datastax.driver.core.querybuilder.QueryBuilder.delete;
-import static com.datastax.driver.core.querybuilder.QueryBuilder.eq;
-import static com.datastax.driver.core.querybuilder.QueryBuilder.incr;
-import static com.datastax.driver.core.querybuilder.QueryBuilder.insertInto;
-import static com.datastax.driver.core.querybuilder.QueryBuilder.select;
-import static com.datastax.driver.core.querybuilder.QueryBuilder.set;
-import static com.datastax.driver.core.querybuilder.QueryBuilder.update;
 
 
 public class CassandraSieveRepository implements SieveRepository {
@@ -132,16 +132,14 @@ public class CassandraSieveRepository implements SieveRepository {
 
     @Override
     public List<ScriptSummary> listScripts(String user) {
-        final Optional<String> activeName = getActiveName(user);
-
         return session.execute(
-                select(CassandraSieveTable.SCRIPT_NAME, CassandraSieveTable.SCRIPT_CONTENT)
+                select(CassandraSieveTable.SCRIPT_NAME, CassandraSieveTable.IS_ACTIVE)
                         .from(CassandraSieveTable.TABLE_NAME)
                         .where(eq(CassandraSieveTable.USER_NAME, user))
         ).all().stream().map(
                 rs -> new ScriptSummary(
                         rs.getString(CassandraSieveTable.SCRIPT_NAME),
-                        activeName.isPresent() && rs.getString(CassandraSieveTable.SCRIPT_NAME).equals(activeName.get())
+                        rs.getBool(CassandraSieveTable.IS_ACTIVE)
                 )
         ).collect(Collectors.toList());
     }
@@ -151,31 +149,40 @@ public class CassandraSieveRepository implements SieveRepository {
         return IOUtils.toInputStream(
                 Optional.ofNullable(
                         session.execute(
-                                select(CassandraSieveActiveTable.SCRIPT_CONTENT)
-                                        .from(CassandraSieveActiveTable.TABLE_NAME)
-                                        .where(eq(CassandraSieveActiveTable.USER_NAME, user))
+                                select(CassandraSieveTable.SCRIPT_CONTENT)
+                                        .from(CassandraSieveTable.TABLE_NAME)
+                                        .where(eq(CassandraSieveTable.USER_NAME, user))
+                                        .and(eq(CassandraSieveTable.IS_ACTIVE, true))
                         ).one()
                 ).orElseThrow(ScriptNotFoundException::new)
-                        .getString(CassandraSieveActiveTable.SCRIPT_CONTENT)
+                        .getString(CassandraSieveTable.SCRIPT_CONTENT)
         );
     }
 
     @Override
     public void setActive(String user, String name) throws ScriptNotFoundException {
-        if (name.equals("")) { // switching off active script
-            session.execute(
-                    delete()
-                            .from(CassandraSieveActiveTable.TABLE_NAME)
-                            .where(eq(CassandraSieveActiveTable.USER_NAME, user))
-            );
-        } else {
-            String scriptContent = scriptContentIfExists(user, name);
+        if (!name.equals("") && !scriptExists(user, name)) {
+            throw new ScriptNotFoundException();
+        }
 
+        Optional<String> oldActive = getActiveName(user);
+        if (oldActive.isPresent()) {
+            if (name.equals(oldActive.get())) {
+                return;
+            }
             session.execute(
-                    update(CassandraSieveActiveTable.TABLE_NAME)
-                            .with(set(CassandraSieveActiveTable.SCRIPT_NAME, name))
-                            .and(set(CassandraSieveActiveTable.SCRIPT_CONTENT, scriptContent))
-                            .where(eq(CassandraSieveActiveTable.USER_NAME, user))
+                    update(CassandraSieveTable.TABLE_NAME)
+                            .with(set(CassandraSieveTable.IS_ACTIVE, false))
+                            .where(eq(CassandraSieveTable.USER_NAME, user))
+                            .and(eq(CassandraSieveTable.SCRIPT_NAME, oldActive.get()))
+            );
+        }
+        if (!name.equals("")) { // not switching off active script
+            session.execute(
+                    update(CassandraSieveTable.TABLE_NAME)
+                            .with(set(CassandraSieveTable.IS_ACTIVE, true))
+                            .where(eq(CassandraSieveTable.USER_NAME, user))
+                            .and(eq(CassandraSieveTable.SCRIPT_NAME, name))
             );
         }
     }
@@ -220,26 +227,27 @@ public class CassandraSieveRepository implements SieveRepository {
             throw new DuplicateException();
         }
 
-        String script_content = scriptContentIfExists(user, oldName);
+         Row oldScript = Optional.ofNullable(
+                session.execute(
+                        select(CassandraSieveTable.SCRIPT_CONTENT, CassandraSieveTable.IS_ACTIVE)
+                                .from(CassandraSieveTable.TABLE_NAME)
+                                .where(eq(CassandraSieveTable.USER_NAME, user))
+                                .and(eq(CassandraSieveTable.SCRIPT_NAME, oldName))
+                ).one()
+        ).orElseThrow(ScriptNotFoundException::new);
 
         session.execute(
                 insertInto(CassandraSieveTable.TABLE_NAME)
                         .value(CassandraSieveTable.USER_NAME, user)
                         .value(CassandraSieveTable.SCRIPT_NAME, newName)
-                        .value(CassandraSieveTable.SCRIPT_CONTENT, script_content)
+                        .value(CassandraSieveTable.SCRIPT_CONTENT, oldScript.getString(CassandraSieveTable.SCRIPT_CONTENT))
+                        .value(CassandraSieveTable.IS_ACTIVE, oldScript.getBool(CassandraSieveTable.IS_ACTIVE))
         );
 
         session.execute(
                 delete().from(CassandraSieveTable.TABLE_NAME)
                         .where(eq(CassandraSieveTable.USER_NAME, user))
                         .and(eq(CassandraSieveTable.SCRIPT_NAME, oldName))
-        );
-
-        session.execute(
-                update(CassandraSieveActiveTable.TABLE_NAME)
-                        .with(set(CassandraSieveActiveTable.SCRIPT_NAME, newName))
-                        .where(eq(CassandraSieveActiveTable.USER_NAME, user))
-                        .ifExists()
         );
     }
 
@@ -340,23 +348,12 @@ public class CassandraSieveRepository implements SieveRepository {
     private Optional<String> getActiveName(String user) {
         return Optional.ofNullable(
                 session.execute(
-                        select(CassandraSieveActiveTable.SCRIPT_NAME)
-                                .from(CassandraSieveActiveTable.TABLE_NAME)
-                                .where(eq(CassandraSieveActiveTable.USER_NAME, user))
-                ).one()
-        ).map(row -> row.getString(CassandraSieveActiveTable.SCRIPT_NAME));
-    }
-
-    private String scriptContentIfExists(String user, String name) throws ScriptNotFoundException {
-        return Optional.ofNullable(
-                session.execute(
-                        select(CassandraSieveTable.SCRIPT_CONTENT)
+                        select(CassandraSieveTable.SCRIPT_NAME)
                                 .from(CassandraSieveTable.TABLE_NAME)
                                 .where(eq(CassandraSieveTable.USER_NAME, user))
-                                .and(eq(CassandraSieveTable.SCRIPT_NAME, name))
+                                .and(eq(CassandraSieveTable.IS_ACTIVE, true))
                 ).one()
-        ).orElseThrow(ScriptNotFoundException::new)
-                .getString(CassandraSieveTable.SCRIPT_CONTENT);
+        ).map(row -> row.getString(CassandraSieveTable.SCRIPT_NAME));
     }
 
     private boolean scriptExists(String user, String name) {

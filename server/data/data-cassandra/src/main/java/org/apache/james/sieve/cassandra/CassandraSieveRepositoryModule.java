@@ -26,6 +26,7 @@ import org.apache.james.backends.cassandra.components.CassandraModule;
 import org.apache.james.backends.cassandra.components.CassandraTable;
 import org.apache.james.backends.cassandra.components.CassandraType;
 import org.apache.james.sieve.cassandra.tables.*;
+import org.apache.james.user.cassandra.tables.CassandraUserTable;
 
 import java.util.List;
 
@@ -45,13 +46,7 @@ public class CassandraSieveRepositoryModule implements CassandraModule {
                                 .addPartitionKey(CassandraSieveTable.USER_NAME, text())
                                 .addClusteringColumn(CassandraSieveTable.SCRIPT_NAME, text())
                                 .addColumn(CassandraSieveTable.SCRIPT_CONTENT, text())
-                ),
-                new CassandraTable(CassandraSieveActiveTable.TABLE_NAME,
-                        SchemaBuilder.createTable(CassandraSieveActiveTable.TABLE_NAME)
-                                .ifNotExists()
-                                .addPartitionKey(CassandraSieveActiveTable.USER_NAME, text())
-                                .addColumn(CassandraSieveActiveTable.SCRIPT_NAME, text())
-                                .addColumn(CassandraSieveActiveTable.SCRIPT_CONTENT, text())
+                                .addColumn(CassandraSieveTable.IS_ACTIVE, cboolean())
                 ),
                 new CassandraTable(CassandraSieveSpaceTable.TABLE_NAME,
                         SchemaBuilder.createTable(CassandraSieveSpaceTable.TABLE_NAME)
@@ -72,7 +67,14 @@ public class CassandraSieveRepositoryModule implements CassandraModule {
                                 .addColumn(CassandraSieveClusterQuotaTable.VALUE, bigint())
                 )
         );
-        index = ImmutableList.of();
+        index = ImmutableList.of(
+                new CassandraIndex(
+                        SchemaBuilder.createIndex(CassandraIndex.INDEX_PREFIX + CassandraSieveTable.TABLE_NAME + CassandraSieveTable.IS_ACTIVE)
+                                .ifNotExists()
+                                .onTable(CassandraSieveTable.TABLE_NAME)
+                                .andColumn(CassandraSieveTable.IS_ACTIVE)
+                )
+        );
         types = ImmutableList.of();
     }
 

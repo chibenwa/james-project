@@ -25,4 +25,5 @@ public interface CassandraSieveTable {
     String USER_NAME = "user_name";
     String SCRIPT_NAME = "script_name";
     String SCRIPT_CONTENT = "script_content";
+    String IS_ACTIVE = "is_active";
 }
