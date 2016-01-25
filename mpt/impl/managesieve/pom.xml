@@ -11,12 +11,21 @@
     <modelVersion>4.0.0</modelVersion>
 
     <name>Apache James MPT ManageSieve</name>
+    <dependencies>
+        <dependency>
+            <groupId>com.google.inject</groupId>
+            <artifactId>guice</artifactId>
+            <version>4.0</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
 
     <artifactId>apache-james-mpt-managesieve</artifactId>
     <packaging>pom</packaging>
     <modules>
         <module>core</module>
         <module>file</module>
+        <module>cassandra</module>
     </modules>
 
 
