@@ -19,6 +19,7 @@
 
 package org.apache.james.sieve.cassandra;
 
+import static com.datastax.driver.core.querybuilder.QueryBuilder.bindMarker;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.delete;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.eq;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.incr;
@@ -27,6 +28,7 @@ import static com.datastax.driver.core.querybuilder.QueryBuilder.select;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.set;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.update;
 
+import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
 import org.apache.commons.io.IOUtils;
@@ -44,7 +46,6 @@ import org.apache.james.sieverepository.api.exception.QuotaNotFoundException;
 import org.apache.james.sieverepository.api.exception.ScriptNotFoundException;
 import org.apache.james.sieverepository.api.exception.StorageException;
 
-import javax.annotation.Resource;
 import javax.inject.Inject;
 import java.io.IOException;
 import java.io.InputStream;
@@ -55,11 +56,113 @@ import java.util.stream.Collectors;
 
 public class CassandraSieveRepository implements SieveRepository {
     private Session session;
+    private final PreparedStatement insertScriptStatement;
+    private final PreparedStatement selectActiveScriptStatement;
+    private final PreparedStatement selectActiveScriptNameStatement;
+    private final PreparedStatement selectClusterQuotaStatement;
+    private final PreparedStatement selectScriptsStatement;
+    private final PreparedStatement selectScriptStatement;
+    private final PreparedStatement selectSpaceUsedByUserStatement;
+    private final PreparedStatement selectUserQuotaStatement;
+    private final PreparedStatement updateClusterQuotaStatement;
+    private final PreparedStatement updateUserQuotaStatement;
+    private final PreparedStatement updateScriptActivationStatement;
+    private final PreparedStatement updateScriptContentStatement;
+    private final PreparedStatement updateSpaceUsedStatement;
+    private final PreparedStatement deleteClusterQuotaStatement;
+    private final PreparedStatement deleteScriptStatement;
+    private final PreparedStatement deleteUserQuotaStatement;
 
     @Inject
-    @Resource
-    public void setSession(Session session) {
+    public CassandraSieveRepository(Session session) {
         this.session = session;
+        insertScriptStatement = session.prepare(
+                insertInto(CassandraSieveTable.TABLE_NAME)
+                        .value(CassandraSieveTable.USER_NAME, bindMarker(CassandraSieveTable.USER_NAME))
+                        .value(CassandraSieveTable.SCRIPT_NAME, bindMarker(CassandraSieveTable.SCRIPT_NAME))
+                        .value(CassandraSieveTable.SCRIPT_CONTENT, bindMarker(CassandraSieveTable.SCRIPT_CONTENT))
+                        .value(CassandraSieveTable.IS_ACTIVE, bindMarker(CassandraSieveTable.IS_ACTIVE))
+        );
+        selectActiveScriptStatement = session.prepare(
+                select(CassandraSieveTable.SCRIPT_CONTENT)
+                        .from(CassandraSieveTable.TABLE_NAME)
+                        .where(eq(CassandraSieveTable.USER_NAME, bindMarker(CassandraSieveTable.USER_NAME)))
+                        .and(eq(CassandraSieveTable.IS_ACTIVE, true))
+        );
+        selectActiveScriptNameStatement = session.prepare(
+                select(CassandraSieveTable.SCRIPT_NAME)
+                        .from(CassandraSieveTable.TABLE_NAME)
+                        .where(eq(CassandraSieveTable.USER_NAME, bindMarker(CassandraSieveTable.USER_NAME)))
+                        .and(eq(CassandraSieveTable.IS_ACTIVE, true))
+        );
+        selectClusterQuotaStatement = session.prepare(
+                select(CassandraSieveClusterQuotaTable.VALUE)
+                        .from(CassandraSieveClusterQuotaTable.TABLE_NAME)
+                        .where(eq(CassandraSieveClusterQuotaTable.NAME, bindMarker(CassandraSieveClusterQuotaTable.NAME)))
+        );
+        selectScriptsStatement = session.prepare(
+                select(CassandraSieveTable.SCRIPT_NAME, CassandraSieveTable.IS_ACTIVE)
+                        .from(CassandraSieveTable.TABLE_NAME)
+                        .where(eq(CassandraSieveTable.USER_NAME, bindMarker(CassandraSieveTable.USER_NAME)))
+        );
+        selectScriptStatement = session.prepare(
+                select(CassandraSieveTable.SCRIPT_CONTENT, CassandraSieveTable.IS_ACTIVE)
+                        .from(CassandraSieveTable.TABLE_NAME)
+                        .where(eq(CassandraSieveTable.USER_NAME, bindMarker(CassandraSieveTable.USER_NAME)))
+                        .and(eq(CassandraSieveTable.SCRIPT_NAME, bindMarker(CassandraSieveTable.SCRIPT_NAME)))
+        );
+        selectSpaceUsedByUserStatement = session.prepare(
+                select(CassandraSieveSpaceTable.SPACE_USED)
+                        .from(CassandraSieveSpaceTable.TABLE_NAME)
+                        .where(eq(CassandraSieveSpaceTable.USER_NAME, bindMarker(CassandraSieveSpaceTable.USER_NAME)))
+        );
+        selectUserQuotaStatement = session.prepare(
+                select(CassandraSieveQuotaTable.QUOTA)
+                        .from(CassandraSieveQuotaTable.TABLE_NAME)
+                        .where(eq(CassandraSieveQuotaTable.USER_NAME, bindMarker(CassandraSieveQuotaTable.USER_NAME)))
+        );
+        updateClusterQuotaStatement = session.prepare(
+                update(CassandraSieveClusterQuotaTable.TABLE_NAME)
+                        .with(set(CassandraSieveClusterQuotaTable.VALUE, bindMarker(CassandraSieveClusterQuotaTable.VALUE)))
+                        .where(eq(CassandraSieveClusterQuotaTable.NAME, bindMarker(CassandraSieveClusterQuotaTable.NAME)))
+        );
+        updateScriptActivationStatement = session.prepare(
+                update(CassandraSieveTable.TABLE_NAME)
+                        .with(set(CassandraSieveTable.IS_ACTIVE, bindMarker(CassandraSieveTable.IS_ACTIVE)))
+                        .where(eq(CassandraSieveTable.USER_NAME, bindMarker(CassandraSieveTable.USER_NAME)))
+                        .and(eq(CassandraSieveTable.SCRIPT_NAME, bindMarker(CassandraSieveTable.SCRIPT_NAME)))
+        );
+        updateScriptContentStatement = session.prepare(
+                update(CassandraSieveTable.TABLE_NAME)
+                        .with(set(CassandraSieveTable.SCRIPT_CONTENT, bindMarker(CassandraSieveTable.SCRIPT_CONTENT)))
+                        .where(eq(CassandraSieveTable.USER_NAME, bindMarker(CassandraSieveTable.USER_NAME)))
+                        .and(eq(CassandraSieveTable.SCRIPT_NAME, bindMarker(CassandraSieveTable.SCRIPT_NAME)))
+        );
+        updateSpaceUsedStatement = session.prepare(
+                update(CassandraSieveSpaceTable.TABLE_NAME)
+                        .with(incr(CassandraSieveSpaceTable.SPACE_USED, bindMarker(CassandraSieveSpaceTable.SPACE_USED)))
+                        .where(eq(CassandraSieveSpaceTable.USER_NAME, bindMarker(CassandraSieveSpaceTable.USER_NAME)))
+        );
+        updateUserQuotaStatement = session.prepare(
+                update(CassandraSieveQuotaTable.TABLE_NAME)
+                        .with(set(CassandraSieveQuotaTable.QUOTA, bindMarker(CassandraSieveQuotaTable.QUOTA)))
+                        .where(eq(CassandraSieveQuotaTable.USER_NAME, bindMarker(CassandraSieveQuotaTable.USER_NAME)))
+        );
+        deleteScriptStatement = session.prepare(
+                delete()
+                        .from(CassandraSieveTable.TABLE_NAME)
+                        .where(eq(CassandraSieveTable.USER_NAME, bindMarker(CassandraSieveTable.USER_NAME)))
+                        .and(eq(CassandraSieveTable.SCRIPT_NAME, bindMarker(CassandraSieveTable.SCRIPT_NAME)))
+        );
+        deleteClusterQuotaStatement = session.prepare(
+                delete()
+                        .from(CassandraSieveClusterQuotaTable.TABLE_NAME)
+                        .where(eq(CassandraSieveClusterQuotaTable.NAME, bindMarker(CassandraSieveClusterQuotaTable.NAME)))
+        );
+        deleteUserQuotaStatement = session.prepare(
+                delete().from(CassandraSieveQuotaTable.TABLE_NAME)
+                        .where(eq(CassandraSieveQuotaTable.USER_NAME, bindMarker(CassandraSieveQuotaTable.USER_NAME)))
+        );
     }
 
     @Override
@@ -84,9 +187,8 @@ public class CassandraSieveRepository implements SieveRepository {
     private long spaceUsedBy(String user) {
         return Optional.ofNullable(
                 session.execute(
-                        select(CassandraSieveSpaceTable.SPACE_USED)
-                                .from(CassandraSieveSpaceTable.TABLE_NAME)
-                                .where(eq(CassandraSieveSpaceTable.USER_NAME, user))
+                        selectSpaceUsedByUserStatement.bind()
+                                .setString(CassandraSieveSpaceTable.USER_NAME, user)
                 ).one()
         ).map(row -> row.getLong(CassandraSieveSpaceTable.SPACE_USED))
                 .orElse(0L);
@@ -115,17 +217,17 @@ public class CassandraSieveRepository implements SieveRepository {
         }
 
         session.execute(
-                update(CassandraSieveTable.TABLE_NAME)
-                        .with(set(CassandraSieveTable.SCRIPT_CONTENT, content))
-                        .where(eq(CassandraSieveTable.USER_NAME, user))
-                        .and(eq(CassandraSieveTable.SCRIPT_NAME, name))
+                updateScriptContentStatement.bind()
+                        .setString(CassandraSieveTable.SCRIPT_CONTENT, content)
+                        .setString(CassandraSieveTable.USER_NAME, user)
+                        .setString(CassandraSieveTable.SCRIPT_NAME, name)
         );
 
         if (spaceUsed != 0) {
             session.execute(
-                    update(CassandraSieveSpaceTable.TABLE_NAME)
-                            .with(incr(CassandraSieveSpaceTable.SPACE_USED, spaceUsed))
-                            .where(eq(CassandraSieveSpaceTable.USER_NAME, user))
+                    updateSpaceUsedStatement.bind()
+                            .setLong(CassandraSieveSpaceTable.SPACE_USED, spaceUsed)
+                            .setString(CassandraSieveSpaceTable.USER_NAME, user)
             );
         }
     }
@@ -133,9 +235,8 @@ public class CassandraSieveRepository implements SieveRepository {
     @Override
     public List<ScriptSummary> listScripts(String user) {
         return session.execute(
-                select(CassandraSieveTable.SCRIPT_NAME, CassandraSieveTable.IS_ACTIVE)
-                        .from(CassandraSieveTable.TABLE_NAME)
-                        .where(eq(CassandraSieveTable.USER_NAME, user))
+                selectScriptsStatement.bind()
+                        .setString(CassandraSieveTable.USER_NAME, user)
         ).all().stream().map(
                 rs -> new ScriptSummary(
                         rs.getString(CassandraSieveTable.SCRIPT_NAME),
@@ -149,10 +250,8 @@ public class CassandraSieveRepository implements SieveRepository {
         return IOUtils.toInputStream(
                 Optional.ofNullable(
                         session.execute(
-                                select(CassandraSieveTable.SCRIPT_CONTENT)
-                                        .from(CassandraSieveTable.TABLE_NAME)
-                                        .where(eq(CassandraSieveTable.USER_NAME, user))
-                                        .and(eq(CassandraSieveTable.IS_ACTIVE, true))
+                                selectActiveScriptStatement.bind()
+                                        .setString(CassandraSieveTable.USER_NAME, user)
                         ).one()
                 ).orElseThrow(ScriptNotFoundException::new)
                         .getString(CassandraSieveTable.SCRIPT_CONTENT)
@@ -167,22 +266,19 @@ public class CassandraSieveRepository implements SieveRepository {
 
         Optional<String> oldActive = getActiveName(user);
         if (oldActive.isPresent()) {
-            if (name.equals(oldActive.get())) {
-                return;
-            }
             session.execute(
-                    update(CassandraSieveTable.TABLE_NAME)
-                            .with(set(CassandraSieveTable.IS_ACTIVE, false))
-                            .where(eq(CassandraSieveTable.USER_NAME, user))
-                            .and(eq(CassandraSieveTable.SCRIPT_NAME, oldActive.get()))
+                    updateScriptActivationStatement.bind()
+                            .setString(CassandraSieveTable.USER_NAME, user)
+                            .setString(CassandraSieveTable.SCRIPT_NAME, oldActive.get())
+                            .setBool(CassandraSieveTable.IS_ACTIVE, false)
             );
         }
         if (!name.equals("")) { // not switching off active script
             session.execute(
-                    update(CassandraSieveTable.TABLE_NAME)
-                            .with(set(CassandraSieveTable.IS_ACTIVE, true))
-                            .where(eq(CassandraSieveTable.USER_NAME, user))
-                            .and(eq(CassandraSieveTable.SCRIPT_NAME, name))
+                    updateScriptActivationStatement.bind()
+                            .setString(CassandraSieveTable.USER_NAME, user)
+                            .setString(CassandraSieveTable.SCRIPT_NAME, name)
+                            .setBool(CassandraSieveTable.IS_ACTIVE, true)
             );
         }
     }
@@ -192,10 +288,9 @@ public class CassandraSieveRepository implements SieveRepository {
         return  IOUtils.toInputStream(
                 Optional.ofNullable(
                         session.execute(
-                                select(CassandraSieveTable.SCRIPT_CONTENT)
-                                        .from(CassandraSieveTable.TABLE_NAME)
-                                        .where(eq(CassandraSieveTable.USER_NAME, user))
-                                        .and(eq(CassandraSieveTable.SCRIPT_NAME, name))
+                                selectScriptStatement.bind()
+                                        .setString(CassandraSieveTable.USER_NAME, user)
+                                        .setString(CassandraSieveTable.SCRIPT_NAME, name)
                         ).one()
                 ).orElseThrow(ScriptNotFoundException::new)
                         .getString(CassandraSieveTable.SCRIPT_CONTENT)
@@ -214,10 +309,9 @@ public class CassandraSieveRepository implements SieveRepository {
         }
 
         session.execute(
-                delete()
-                        .from(CassandraSieveTable.TABLE_NAME)
-                        .where(eq(CassandraSieveTable.USER_NAME, user))
-                        .and(eq(CassandraSieveTable.SCRIPT_NAME, name))
+                deleteScriptStatement.bind()
+                        .setString(CassandraSieveTable.USER_NAME, user)
+                        .setString(CassandraSieveTable.SCRIPT_NAME, name)
         );
     }
 
@@ -227,27 +321,26 @@ public class CassandraSieveRepository implements SieveRepository {
             throw new DuplicateException();
         }
 
-         Row oldScript = Optional.ofNullable(
+        Row oldScript = Optional.ofNullable(
                 session.execute(
-                        select(CassandraSieveTable.SCRIPT_CONTENT, CassandraSieveTable.IS_ACTIVE)
-                                .from(CassandraSieveTable.TABLE_NAME)
-                                .where(eq(CassandraSieveTable.USER_NAME, user))
-                                .and(eq(CassandraSieveTable.SCRIPT_NAME, oldName))
+                        selectScriptStatement.bind()
+                                .setString(CassandraSieveTable.USER_NAME, user)
+                                .setString(CassandraSieveTable.SCRIPT_NAME, oldName)
                 ).one()
         ).orElseThrow(ScriptNotFoundException::new);
 
         session.execute(
-                insertInto(CassandraSieveTable.TABLE_NAME)
-                        .value(CassandraSieveTable.USER_NAME, user)
-                        .value(CassandraSieveTable.SCRIPT_NAME, newName)
-                        .value(CassandraSieveTable.SCRIPT_CONTENT, oldScript.getString(CassandraSieveTable.SCRIPT_CONTENT))
-                        .value(CassandraSieveTable.IS_ACTIVE, oldScript.getBool(CassandraSieveTable.IS_ACTIVE))
+                insertScriptStatement.bind()
+                        .setString(CassandraSieveTable.USER_NAME, user)
+                        .setString(CassandraSieveTable.SCRIPT_NAME, newName)
+                        .setString(CassandraSieveTable.SCRIPT_CONTENT, oldScript.getString(CassandraSieveTable.SCRIPT_CONTENT))
+                        .setBool(CassandraSieveTable.IS_ACTIVE, oldScript.getBool(CassandraSieveTable.IS_ACTIVE))
         );
 
         session.execute(
-                delete().from(CassandraSieveTable.TABLE_NAME)
-                        .where(eq(CassandraSieveTable.USER_NAME, user))
-                        .and(eq(CassandraSieveTable.SCRIPT_NAME, oldName))
+                deleteScriptStatement.bind()
+                        .setString(CassandraSieveTable.USER_NAME, user)
+                        .setString(CassandraSieveTable.SCRIPT_NAME, oldName)
         );
     }
 
@@ -255,9 +348,8 @@ public class CassandraSieveRepository implements SieveRepository {
     public boolean hasQuota() {
         return Optional.ofNullable(
                 session.execute(
-                        select(CassandraSieveClusterQuotaTable.NAME)
-                                .from(CassandraSieveClusterQuotaTable.TABLE_NAME)
-                                .where(eq(CassandraSieveClusterQuotaTable.NAME, CassandraSieveClusterQuotaTable.DEFAULT_NAME))
+                        selectClusterQuotaStatement.bind()
+                                .setString(CassandraSieveClusterQuotaTable.NAME, CassandraSieveClusterQuotaTable.DEFAULT_NAME)
                 ).one()
         ).isPresent();
     }
@@ -266,9 +358,8 @@ public class CassandraSieveRepository implements SieveRepository {
     public long getQuota() throws QuotaNotFoundException {
         return Optional.ofNullable(
                 session.execute(
-                        select(CassandraSieveClusterQuotaTable.VALUE)
-                                .from(CassandraSieveClusterQuotaTable.TABLE_NAME)
-                                .where(eq(CassandraSieveClusterQuotaTable.NAME, CassandraSieveClusterQuotaTable.DEFAULT_NAME))
+                        selectClusterQuotaStatement.bind()
+                                .setString(CassandraSieveClusterQuotaTable.NAME, CassandraSieveClusterQuotaTable.DEFAULT_NAME)
                 ).one()
         ).orElseThrow(QuotaNotFoundException::new)
                 .getLong(CassandraSieveClusterQuotaTable.VALUE);
@@ -277,9 +368,9 @@ public class CassandraSieveRepository implements SieveRepository {
     @Override
     public void setQuota(long quota) {
         session.execute(
-                update(CassandraSieveClusterQuotaTable.TABLE_NAME)
-                        .with(set(CassandraSieveClusterQuotaTable.VALUE,quota))
-                        .where(eq(CassandraSieveClusterQuotaTable.NAME, CassandraSieveClusterQuotaTable.DEFAULT_NAME))
+                updateClusterQuotaStatement.bind()
+                        .setLong(CassandraSieveClusterQuotaTable.VALUE, quota)
+                        .setString(CassandraSieveClusterQuotaTable.NAME, CassandraSieveClusterQuotaTable.DEFAULT_NAME)
         );
     }
 
@@ -288,11 +379,9 @@ public class CassandraSieveRepository implements SieveRepository {
         if (!hasQuota()) {
             throw new QuotaNotFoundException();
         }
-
         session.execute(
-                delete()
-                        .from(CassandraSieveClusterQuotaTable.TABLE_NAME)
-                        .where(eq(CassandraSieveClusterQuotaTable.NAME, CassandraSieveClusterQuotaTable.DEFAULT_NAME))
+                deleteClusterQuotaStatement.bind()
+                        .setString(CassandraSieveClusterQuotaTable.NAME, CassandraSieveClusterQuotaTable.DEFAULT_NAME)
         );
     }
 
@@ -306,9 +395,8 @@ public class CassandraSieveRepository implements SieveRepository {
     public long getQuota(String user) throws QuotaNotFoundException {
         return Optional.ofNullable(
                 session.execute(
-                        select(CassandraSieveQuotaTable.QUOTA)
-                                .from(CassandraSieveQuotaTable.TABLE_NAME)
-                                .where(eq(CassandraSieveQuotaTable.USER_NAME, user))
+                        selectUserQuotaStatement.bind()
+                                .setString(CassandraSieveQuotaTable.USER_NAME, user)
                 ).one()
         ).orElseThrow(QuotaNotFoundException::new)
                 .getLong(CassandraSieveQuotaTable.QUOTA);
@@ -317,9 +405,9 @@ public class CassandraSieveRepository implements SieveRepository {
     @Override
     public void setQuota(String user, long quota) {
         session.execute(
-                update(CassandraSieveQuotaTable.TABLE_NAME)
-                        .with(set(CassandraSieveQuotaTable.QUOTA,quota))
-                        .where(eq(CassandraSieveQuotaTable.USER_NAME, user))
+                updateUserQuotaStatement.bind()
+                        .setLong(CassandraSieveQuotaTable.QUOTA, quota)
+                        .setString(CassandraSieveQuotaTable.USER_NAME, user)
         );
     }
 
@@ -328,19 +416,17 @@ public class CassandraSieveRepository implements SieveRepository {
         if (!hasOwnQuota(user)) {
             throw new QuotaNotFoundException();
         }
-
         session.execute(
-                delete().from(CassandraSieveQuotaTable.TABLE_NAME)
-                        .where(eq(CassandraSieveQuotaTable.USER_NAME, user))
+                deleteUserQuotaStatement.bind()
+                        .setString(CassandraSieveQuotaTable.USER_NAME, user)
         );
     }
 
     private boolean hasOwnQuota(String user) {
         return Optional.ofNullable(
                 session.execute(
-                        select(CassandraSieveQuotaTable.QUOTA)
-                                .from(CassandraSieveQuotaTable.TABLE_NAME)
-                                .where(eq(CassandraSieveQuotaTable.USER_NAME, user))
+                        selectUserQuotaStatement.bind()
+                                .setString(CassandraSieveQuotaTable.USER_NAME, user)
                 ).one()
         ).isPresent();
     }
@@ -348,10 +434,8 @@ public class CassandraSieveRepository implements SieveRepository {
     private Optional<String> getActiveName(String user) {
         return Optional.ofNullable(
                 session.execute(
-                        select(CassandraSieveTable.SCRIPT_NAME)
-                                .from(CassandraSieveTable.TABLE_NAME)
-                                .where(eq(CassandraSieveTable.USER_NAME, user))
-                                .and(eq(CassandraSieveTable.IS_ACTIVE, true))
+                        selectActiveScriptNameStatement.bind()
+                                .setString(CassandraSieveTable.USER_NAME, user)
                 ).one()
         ).map(row -> row.getString(CassandraSieveTable.SCRIPT_NAME));
     }
@@ -359,10 +443,9 @@ public class CassandraSieveRepository implements SieveRepository {
     private boolean scriptExists(String user, String name) {
         return Optional.ofNullable(
                 session.execute(
-                        select(CassandraSieveTable.SCRIPT_CONTENT)
-                                .from(CassandraSieveTable.TABLE_NAME)
-                                .where(eq(CassandraSieveTable.USER_NAME, user))
-                                .and(eq(CassandraSieveTable.SCRIPT_NAME, name))
+                        selectScriptStatement.bind()
+                                .setString(CassandraSieveTable.USER_NAME, user)
+                                .setString(CassandraSieveTable.SCRIPT_NAME, name)
                 ).one()
         ).isPresent();
     }

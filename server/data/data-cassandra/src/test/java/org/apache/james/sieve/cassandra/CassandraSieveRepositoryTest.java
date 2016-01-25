@@ -24,7 +24,6 @@ import org.apache.james.sieverepository.api.SieveRepository;
 import org.apache.james.sieverepository.lib.AbstractSieveRepositoryTest;
 
 public class CassandraSieveRepositoryTest extends AbstractSieveRepositoryTest {
-
     private CassandraCluster cassandra;
 
     public CassandraSieveRepositoryTest() {
@@ -33,9 +32,7 @@ public class CassandraSieveRepositoryTest extends AbstractSieveRepositoryTest {
 
     @Override
     protected SieveRepository createSieveRepository() throws Exception {
-        CassandraSieveRepository cassandraSieveRepository = new CassandraSieveRepository();
-        cassandraSieveRepository.setSession(cassandra.getConf());
-        return cassandraSieveRepository;
+        return new CassandraSieveRepository(cassandra.getConf());
     }
 
     @Override
