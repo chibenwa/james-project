@@ -55,7 +55,7 @@ import java.util.stream.Collectors;
 
 
 public class CassandraSieveRepository implements SieveRepository {
-    private Session session;
+    private final Session session;
     private final PreparedStatement insertScriptStatement;
     private final PreparedStatement selectActiveScriptStatement;
     private final PreparedStatement selectActiveScriptNameStatement;
@@ -238,9 +238,9 @@ public class CassandraSieveRepository implements SieveRepository {
                 selectScriptsStatement.bind()
                         .setString(CassandraSieveTable.USER_NAME, user)
         ).all().stream().map(
-                rs -> new ScriptSummary(
-                        rs.getString(CassandraSieveTable.SCRIPT_NAME),
-                        rs.getBool(CassandraSieveTable.IS_ACTIVE)
+                row -> new ScriptSummary(
+                        row.getString(CassandraSieveTable.SCRIPT_NAME),
+                        row.getBool(CassandraSieveTable.IS_ACTIVE)
                 )
         ).collect(Collectors.toList());
     }
