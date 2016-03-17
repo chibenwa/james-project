@@ -37,11 +37,15 @@ import javax.management.remote.JMXServiceURL;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.apache.james.filesystem.api.FileSystem;
 import org.apache.james.util.RestrictingRMISocketFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableMap;
 
 public class JMXServer {
+
+    private static final Logger TIMELINE_LOGGER = LoggerFactory.getLogger("timeline");
 
     private final FileSystem fileSystem;
     private final Set<String> registeredKeys;
@@ -58,6 +62,7 @@ public class JMXServer {
     }
 
     public void start() {
+        TIMELINE_LOGGER.info("30 JMX startup started");
         synchronized (lock) {
             if (isStarted) {
                 return;
@@ -65,10 +70,12 @@ public class JMXServer {
             isStarted = true;
             doStart();
         }
+        TIMELINE_LOGGER.info("30 JMX startup done");
     }
 
     @PreDestroy
     public void stop() {
+        TIMELINE_LOGGER.info("31 JMX stop started");
         synchronized (lock) {
             if (!isStarted) {
                 return;
@@ -76,6 +83,7 @@ public class JMXServer {
             isStarted = false;
             doStop();
         }
+        TIMELINE_LOGGER.info("31 JMX stop done");
     }
 
     public void register(String key, Object remote) throws Exception {

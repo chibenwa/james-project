@@ -36,6 +36,7 @@ import com.google.inject.multibindings.Multibinder;
 public class CassandraRecipientRewriteTableModule extends AbstractModule {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RecipientRewriteTable.class);
+    private static final Logger TIMELINE_LOGGER = LoggerFactory.getLogger("timeline");
 
     @Override
     public void configure() {
@@ -60,8 +61,10 @@ public class CassandraRecipientRewriteTableModule extends AbstractModule {
 
         @Override
         public void initModule() throws Exception {
+            TIMELINE_LOGGER.info("20 RRT configuration started");
             recipientRewriteTable.setLog(LOGGER);
             recipientRewriteTable.configure(configurationProvider.getConfiguration("recipientrewritetable"));
+            TIMELINE_LOGGER.info("20 RRT configuration started");
         }
     }
 

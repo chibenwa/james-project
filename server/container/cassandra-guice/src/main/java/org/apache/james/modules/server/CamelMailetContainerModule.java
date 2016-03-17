@@ -20,6 +20,7 @@
 package org.apache.james.modules.server;
 
 import org.apache.camel.impl.DefaultCamelContext;
+import org.apache.commons.configuration.ConfigurationException;
 import org.apache.james.dnsservice.api.DNSService;
 import org.apache.james.domainlist.api.DomainList;
 import org.apache.james.mailetcontainer.api.MailProcessor;
@@ -49,6 +50,7 @@ public class CamelMailetContainerModule extends AbstractModule {
     private static final Logger CAMEL_LOGGER = LoggerFactory.getLogger(CamelCompositeProcessor.class);
     private static final Logger SPOOLER_LOGGER = LoggerFactory.getLogger(JamesMailSpooler.class);
     private static final Logger MAILET_LOGGER = LoggerFactory.getLogger(JamesMailetContext.class);
+    private static final Logger TIMELINE_LOGGER = LoggerFactory.getLogger("timeline");
 
     @Override
     protected void configure() {
@@ -95,16 +97,34 @@ public class CamelMailetContainerModule extends AbstractModule {
 
         @Override
         public void initModule() throws Exception {
+            initCamelCompositeProcessor();
+            initJamesMailSpooler();
+            initMailContext();
+        }
+
+        private void initMailContext() throws ConfigurationException {
+            TIMELINE_LOGGER.info("27 mailetContext initialization started");
+            mailetContext.setLog(MAILET_LOGGER);
+            mailetContext.configure(configurationProvider.getConfiguration("mailetcontainer").configurationAt("context"));
+            mailetContext.setMailProcessor(camelCompositeProcessor);
+            TIMELINE_LOGGER.info("27 mailetContext initialization done");
+        }
+
+        private void initJamesMailSpooler() throws ConfigurationException {
+            TIMELINE_LOGGER.info("28 jamesMailSpooler initialization started");
+            jamesMailSpooler.setLog(SPOOLER_LOGGER);
+            jamesMailSpooler.configure(configurationProvider.getConfiguration("mailetcontainer").configurationAt("spooler"));
+            jamesMailSpooler.init();
+            TIMELINE_LOGGER.info("28 jamesMailSpooler initialization done");
+        }
+
+        private void initCamelCompositeProcessor() throws Exception {
+            TIMELINE_LOGGER.info("29 camelCompositeProcessor initialization started");
             camelCompositeProcessor.setLog(CAMEL_LOGGER);
             camelCompositeProcessor.setCamelContext(new DefaultCamelContext());
             camelCompositeProcessor.configure(configurationProvider.getConfiguration("mailetcontainer").configurationAt("processors"));
             camelCompositeProcessor.init();
-            jamesMailSpooler.setLog(SPOOLER_LOGGER);
-            jamesMailSpooler.configure(configurationProvider.getConfiguration("mailetcontainer").configurationAt("spooler"));
-            jamesMailSpooler.init();
-            mailetContext.setLog(MAILET_LOGGER);
-            mailetContext.configure(configurationProvider.getConfiguration("mailetcontainer").configurationAt("context"));
-            mailetContext.setMailProcessor(camelCompositeProcessor);
+            TIMELINE_LOGGER.info("29 camelCompositeProcessor initialization done");
         }
     }
 

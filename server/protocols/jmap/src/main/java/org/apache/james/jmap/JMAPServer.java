@@ -31,12 +31,15 @@ import org.apache.james.http.jetty.Configuration;
 import org.apache.james.http.jetty.Configuration.Builder;
 import org.apache.james.http.jetty.JettyHttpServer;
 import org.apache.james.lifecycle.api.Configurable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Throwables;
 
-
 @Singleton
 public class JMAPServer implements Configurable {
+
+    private static final Logger TIMELINE_LOGGER = LoggerFactory.getLogger("timeline");
 
     private final JettyHttpServer server;
 
@@ -44,7 +47,7 @@ public class JMAPServer implements Configurable {
     private JMAPServer(JMAPConfiguration jmapConfiguration,
                        AuthenticationServlet authenticationServlet, JMAPServlet jmapServlet,
                        AuthenticationFilter authenticationFilter, FirstUserConnectionFilter firstUserConnectionFilter) {
-
+        TIMELINE_LOGGER.info("9 JMAP_Server servlet creation started");
         server = JettyHttpServer.create(
                 configurationBuilderFor(jmapConfiguration)
                         .serve("/authentication")
@@ -59,6 +62,7 @@ public class JMAPServer implements Configurable {
                             .and(firstUserConnectionFilter)
                             .only()
                         .build());
+        TIMELINE_LOGGER.info("9 JMAP_Server servlet creation done");
     }
 
     private Builder configurationBuilderFor(JMAPConfiguration jmapConfiguration) {
@@ -74,7 +78,9 @@ public class JMAPServer implements Configurable {
     @Override
     public void configure(HierarchicalConfiguration config) throws ConfigurationException {
         try {
+            TIMELINE_LOGGER.info("10 JMAP_Server startup started");
             server.start();
+            TIMELINE_LOGGER.info("10 JMAP_Server startup done");
         } catch (Exception e) {
             Throwables.propagate(e);
         }
@@ -82,11 +88,13 @@ public class JMAPServer implements Configurable {
 
     @PreDestroy
     public void stop() {
+        TIMELINE_LOGGER.info("11 JMAP_Server stop started");
         try {
             server.stop();
         } catch (Exception e) {
             Throwables.propagate(e);
         }
+        TIMELINE_LOGGER.info("11 JMAP_Server stop done");
     }
 
     public int getPort() {

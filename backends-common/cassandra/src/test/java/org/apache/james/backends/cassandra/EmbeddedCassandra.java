@@ -24,22 +24,27 @@ import java.util.concurrent.TimeUnit;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.thrift.transport.TTransportException;
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Throwables;
 
 public class EmbeddedCassandra {
 
+    private static final Logger TIMELINE_LOGGER = LoggerFactory.getLogger("timeline");
 
     public static EmbeddedCassandra createStartServer() {
         return new EmbeddedCassandra();
     }
 
     private EmbeddedCassandra() {
+        TIMELINE_LOGGER.info("1 Cassandra starting Embedded server");
         try {
             EmbeddedCassandraServerHelper.startEmbeddedCassandra(TimeUnit.SECONDS.toMillis(20));
         } catch (ConfigurationException | TTransportException | IOException | InterruptedException e) {
             Throwables.propagate(e);
         }
+        TIMELINE_LOGGER.info("1 Cassandra starting Embedded server done");
     }
     
 }

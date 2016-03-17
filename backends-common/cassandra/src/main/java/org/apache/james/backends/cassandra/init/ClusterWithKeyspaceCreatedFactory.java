@@ -19,17 +19,24 @@
 
 package org.apache.james.backends.cassandra.init;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Session;
 
 public class ClusterWithKeyspaceCreatedFactory {
 
+    private static final Logger TIMELINE_LOGGER = LoggerFactory.getLogger("timeline");
+
     private final static int DEFAULT_REPLICATION_FACTOR = 1;
 
     public static Cluster clusterWithInitializedKeyspace(Cluster cluster, String keyspace, int replicationFactor) {
+        TIMELINE_LOGGER.info("4 Cassandra Create keyspace started");
         if (isKeyspacePresent(cluster, keyspace)) {
             createKeyspace(cluster, keyspace, replicationFactor);
         }
+        TIMELINE_LOGGER.info("4 Cassandra Create keyspace done");
         return cluster;
     }
 

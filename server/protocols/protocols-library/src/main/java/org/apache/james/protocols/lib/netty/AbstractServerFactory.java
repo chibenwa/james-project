@@ -29,11 +29,14 @@ import org.apache.commons.configuration.HierarchicalConfiguration;
 import org.apache.james.lifecycle.api.Configurable;
 import org.apache.james.lifecycle.api.LogEnabled;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Abstract base class for Factories that need to create {@link AbstractConfigurableAsyncServer}'s via configuration files
  */
 public abstract class AbstractServerFactory implements Configurable, LogEnabled {
+
+    private static final Logger TIMELINE_LOGGER = LoggerFactory.getLogger("timeline");
 
     private Logger log;
     private List<AbstractConfigurableAsyncServer> servers;
@@ -61,10 +64,12 @@ public abstract class AbstractServerFactory implements Configurable, LogEnabled 
 
     @PostConstruct
     public void init() throws Exception {
+        TIMELINE_LOGGER.info(getClass().getSimpleName() + "2 " + getClass().getSimpleName() + " initialization started");
         servers = createServers(log, config);
         for (AbstractConfigurableAsyncServer server: servers) {
             server.init();
         }
+        TIMELINE_LOGGER.info(getClass().getSimpleName() + "2 " + getClass().getSimpleName() + " initialization done");
     }
     
     /**
@@ -77,9 +82,11 @@ public abstract class AbstractServerFactory implements Configurable, LogEnabled 
     
     @PreDestroy
     public void destroy() {
+        TIMELINE_LOGGER.info(getClass().getSimpleName() + "1 " + getClass().getSimpleName() + " destruction started");
         for (AbstractConfigurableAsyncServer server: servers) {
             server.destroy();
         }
+        TIMELINE_LOGGER.info(getClass().getSimpleName() + "1 " + getClass().getSimpleName() + " destruction done");
     }
  
 }

@@ -22,12 +22,17 @@ package org.apache.james.backends.cassandra.init;
 import java.util.List;
 import java.util.Optional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.QueryOptions;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 
 public class ClusterFactory {
+
+    private static final Logger TIMELINE_LOGGER = LoggerFactory.getLogger("timeline");
 
     public static class CassandraServer {
         private final String ip;
@@ -42,8 +47,10 @@ public class ClusterFactory {
     private final static String DEFAULT_CLUSTER_IP = "localhost";
     private final static int DEFAULT_CLUSTER_PORT = 9042;
 
-    public static Cluster createClusterForClusterWithPassWord(List<CassandraServer> servers, String userName, String password, 
+    public static Cluster createClusterForClusterWithPassWord(List<CassandraServer> servers, String userName, String password,
             Optional<Integer> refreshSchemaIntervalMillis) {
+
+        TIMELINE_LOGGER.info("2 Cassandra connecting to cluster started");
 
         Cluster.Builder clusterBuilder = Cluster.builder();
         servers.forEach(
@@ -55,7 +62,9 @@ public class ClusterFactory {
         if (refreshSchemaIntervalMillis.isPresent()) {
             clusterBuilder.withQueryOptions(new QueryOptions().setRefreshSchemaIntervalMillis(refreshSchemaIntervalMillis.get()));
         }
-        return clusterBuilder.build();
+        Cluster cluster = clusterBuilder.build();
+        TIMELINE_LOGGER.info("2 Cassandra connecting to cluster done");
+        return cluster;
     }
 
     public static Cluster createClusterForClusterWithoutPassWord(List<CassandraServer> servers) {

@@ -32,6 +32,8 @@ import org.apache.activemq.plugin.StatisticsBrokerPlugin;
 import org.apache.activemq.store.amq.AMQPersistenceAdapter;
 import org.apache.james.filesystem.api.FileSystem;
 import org.apache.james.queue.activemq.FileSystemBlobTransferPolicy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Throwables;
 import com.google.inject.Inject;
@@ -39,6 +41,8 @@ import com.google.inject.Singleton;
 
 @Singleton
 public class EmbeddedActiveMQ {
+
+    private static final Logger TIMELINE_LOGGER = LoggerFactory.getLogger("timeline");
 
     private final ActiveMQConnectionFactory activeMQConnectionFactory;
     private BrokerService brokerService;
@@ -49,7 +53,9 @@ public class EmbeddedActiveMQ {
         } catch (Exception e) {
             throw Throwables.propagate(e);
         }
+        TIMELINE_LOGGER.info("22 EmbeddedActiveMQ connecting to broker started");
         activeMQConnectionFactory = createActiveMQConnectionFactory(createBlobTransferPolicy(fileSystem));
+        TIMELINE_LOGGER.info("22 EmbeddedActiveMQ connecting to broker done");
     }
 
     public ConnectionFactory getConnectionFactory() {
@@ -58,7 +64,9 @@ public class EmbeddedActiveMQ {
 
     @PreDestroy
     public void stop() throws Exception {
+        TIMELINE_LOGGER.info("23 EmbeddedActiveMQ stop started");
         brokerService.stop();
+        TIMELINE_LOGGER.info("23 EmbeddedActiveMQ done started");
     }
 
     private ActiveMQConnectionFactory createActiveMQConnectionFactory(BlobTransferPolicy blobTransferPolicy) {
@@ -83,6 +91,7 @@ public class EmbeddedActiveMQ {
     }
 
     private void launchEmbeddedBroker() throws Exception {
+        TIMELINE_LOGGER.info("24 EmbeddedActiveMQ launching broker started");
         brokerService = new BrokerService();
         brokerService.setBrokerName("james");
         brokerService.setUseJmx(false);
@@ -102,6 +111,6 @@ public class EmbeddedActiveMQ {
         String[] transportConnectorsURIs = {"tcp://localhost:0"};
         brokerService.setTransportConnectorURIs(transportConnectorsURIs);
         brokerService.start();
-        System.out.println("Started : " + brokerService.isStarted());
+        TIMELINE_LOGGER.info("24 EmbeddedActiveMQ launching broker done");
     }
 }

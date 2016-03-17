@@ -40,6 +40,8 @@ import org.apache.james.mailbox.store.mail.MessageMapperFactory;
 import org.apache.james.mailbox.store.mail.ModSeqProvider;
 import org.apache.james.mailbox.store.mail.UidProvider;
 import org.apache.james.mailbox.store.mail.model.MailboxId;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
@@ -50,6 +52,7 @@ import com.google.inject.name.Named;
 public class CassandraMailboxModule extends AbstractModule {
 
     public static final String MAILBOXMANAGER_NAME = "mailboxmanager";
+    private static final Logger TIMELINE_LOGGER = LoggerFactory.getLogger("timeline");
 
     @Override
     protected void configure() {
@@ -77,7 +80,9 @@ public class CassandraMailboxModule extends AbstractModule {
 
     @Provides @Named(MAILBOXMANAGER_NAME) @Singleton
     public MailboxManager provideMailboxManager(CassandraMailboxManager cassandraMailboxManager) throws MailboxException {
+        TIMELINE_LOGGER.info("18 MailboxManager initialization started");
         cassandraMailboxManager.init();
+        TIMELINE_LOGGER.info("18 MailboxManager initialization done");
         return cassandraMailboxManager;
     }
 }

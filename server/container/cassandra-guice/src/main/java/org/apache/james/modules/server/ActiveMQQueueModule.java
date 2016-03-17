@@ -37,6 +37,7 @@ import com.google.inject.TypeLiteral;
 public class ActiveMQQueueModule extends AbstractModule {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ActiveMQQueueModule.class);
+    private static final Logger TIMELINE_LOGGER = LoggerFactory.getLogger("timeline");
 
     @Override
     protected void configure() {
@@ -52,9 +53,11 @@ public class ActiveMQQueueModule extends AbstractModule {
     @Provides
     @Singleton
     public MailQueueFactory createActiveMailQueueFactory(ActiveMQMailQueueFactory activeMQMailQueueFactory) {
+        TIMELINE_LOGGER.info("21 MailQueueFactory creation started");
         activeMQMailQueueFactory.setUseJMX(true);
         activeMQMailQueueFactory.setLog(LOGGER);
         activeMQMailQueueFactory.init();
+        TIMELINE_LOGGER.info("21 MailQueueFactory creation done");
         return activeMQMailQueueFactory;
     }
 }

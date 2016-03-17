@@ -35,12 +35,16 @@ import org.apache.james.mailbox.elasticsearch.events.ElasticSearchListeningMessa
 import org.apache.james.mailbox.store.extractor.TextExtractor;
 import org.apache.james.mailbox.store.search.MessageSearchIndex;
 import org.apache.james.mailbox.tika.extractor.TikaTextExtractor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.TypeLiteral;
 
 public class ElasticSearchMailboxModule extends AbstractModule {
+
+    private static final Logger TIMELINE_LOGGER = LoggerFactory.getLogger("timeline");
 
     @Override
     protected void configure() {
@@ -52,13 +56,32 @@ public class ElasticSearchMailboxModule extends AbstractModule {
     @Singleton
     protected ClientProvider provideClientProvider(FileSystem fileSystem) throws ConfigurationException, FileNotFoundException {
         PropertiesConfiguration propertiesReader = new PropertiesConfiguration(fileSystem.getFile(FileSystem.FILE_PROTOCOL_AND_CONF + "elasticsearch.properties"));
+        ClientProvider clientProvider = createClientProvider(propertiesReader);
+        createIndex(propertiesReader, clientProvider);
+        applyMapping(clientProvider);
+        return clientProvider;
+    }
+
+    private ClientProvider createClientProvider(PropertiesConfiguration propertiesReader) {
+        TIMELINE_LOGGER.info("15 ElasticSearch ClientProvider instantiation started");
         ClientProvider clientProvider = new ClientProviderImpl(propertiesReader.getString("elasticsearch.masterHost"),
             propertiesReader.getInt("elasticsearch.port"));
+        TIMELINE_LOGGER.info("15 ElasticSearch ClientProvider instantiation done");
+        return clientProvider;
+    }
+
+    private void createIndex(PropertiesConfiguration propertiesReader, ClientProvider clientProvider) {
+        TIMELINE_LOGGER.info("16 ElasticSearch index creation started");
         IndexCreationFactory.createIndex(clientProvider,
             propertiesReader.getInt("elasticsearch.nb.shards"),
             propertiesReader.getInt("elasticsearch.nb.replica"));
+        TIMELINE_LOGGER.info("16 ElasticSearch index creation done");
+    }
+
+    private void applyMapping(ClientProvider clientProvider) {
+        TIMELINE_LOGGER.info("17 ElasticSearch ClientProvider mapping started");
         NodeMappingFactory.applyMapping(clientProvider);
-        return clientProvider;
+        TIMELINE_LOGGER.info("17 ElasticSearch ClientProvider mapping done");
     }
 
 }

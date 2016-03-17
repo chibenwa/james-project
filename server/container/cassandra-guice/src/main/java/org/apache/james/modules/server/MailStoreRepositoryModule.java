@@ -27,6 +27,7 @@ import org.apache.james.utils.ConfigurationPerformer;
 import org.apache.james.utils.ConfigurationProvider;
 import org.apache.james.utils.InMemoryMailRepositoryStore;
 import org.apache.james.utils.MailRepositoryProvider;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.inject.AbstractModule;
@@ -35,6 +36,8 @@ import com.google.inject.Singleton;
 import com.google.inject.multibindings.Multibinder;
 
 public class MailStoreRepositoryModule extends AbstractModule {
+
+    private static final Logger TIMELINE_LOGGER = LoggerFactory.getLogger("timeline");
 
     @Override
     protected void configure() {
@@ -83,8 +86,10 @@ public class MailStoreRepositoryModule extends AbstractModule {
 
         @Override
         public void initModule() throws Exception {
+            TIMELINE_LOGGER.info("26 MailRepositoryStore initialization started");
             javaMailRepositoryStore.configure(configurationProvider.getConfiguration("mailrepositorystore"));
             javaMailRepositoryStore.init();
+            TIMELINE_LOGGER.info("26 MailRepositoryStore initialization done");
         }
     }
 

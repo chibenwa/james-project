@@ -30,6 +30,8 @@ import org.apache.james.filesystem.api.FileSystem;
 import org.apache.james.jmap.methods.RequestHandler;
 import org.apache.james.utils.ConfigurationPerformer;
 import org.apache.james.utils.ConfigurationProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.github.fge.lambdas.Throwing;
 import com.google.inject.AbstractModule;
@@ -39,6 +41,8 @@ import com.google.inject.Singleton;
 import com.google.inject.multibindings.Multibinder;
 
 public class JMAPModule extends AbstractModule {
+
+    private static final Logger TIMELINE_LOGGER = LoggerFactory.getLogger("timeline");
     private static final int DEFAULT_JMAP_PORT = 80;
 
     @Override
@@ -81,6 +85,7 @@ public class JMAPModule extends AbstractModule {
 
         @Override
         public void initModule() throws Exception {
+            TIMELINE_LOGGER.info("14 JMAP mailetcontainer configuration check started");
             Optional<HierarchicalConfiguration> removeMimeHeaderMailet = configurationProvider.getConfiguration("mailetcontainer")
                 .configurationAt("processors")
                 .configurationsAt("processor")
@@ -94,6 +99,7 @@ public class JMAPModule extends AbstractModule {
             if (!removeMimeHeaderMailet.isPresent()) {
                 throw new ConfigurationException("Missing RemoveMimeHeader in mailets configuration (mailetcontainer -> processors -> transport). Should be configured to remove Bcc header");
             }
+            TIMELINE_LOGGER.info("14 JMAP mailetcontainer configuration check done");
         }
     }
 }

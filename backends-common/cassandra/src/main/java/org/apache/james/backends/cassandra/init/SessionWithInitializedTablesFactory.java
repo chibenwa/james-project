@@ -22,9 +22,13 @@ package org.apache.james.backends.cassandra.init;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Session;
 import org.apache.james.backends.cassandra.components.CassandraModule;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SessionWithInitializedTablesFactory {
-    private final static String DEFAULT_KEYSPACE_NAME = "apache_james";
+
+    private static final Logger TIMELINE_LOGGER = LoggerFactory.getLogger("timeline");
+    private static final String DEFAULT_KEYSPACE_NAME = "apache_james";
 
     private final CassandraModule module;
 
@@ -33,11 +37,13 @@ public class SessionWithInitializedTablesFactory {
     }
 
     public Session createSession(Cluster cluster, String keyspace) {
+        TIMELINE_LOGGER.info("3 Cassandra initializing session started");
         Session session = cluster.connect(keyspace);
         new CassandraTypesCreator(module, session)
             .initializeTypes();
         new CassandraTableManager(module, session)
             .ensureAllTables();
+        TIMELINE_LOGGER.info("3 Cassandra initializing session done");
         return session;
     }
 

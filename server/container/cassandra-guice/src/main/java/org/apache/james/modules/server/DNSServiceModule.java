@@ -33,6 +33,7 @@ import com.google.inject.multibindings.Multibinder;
 public class DNSServiceModule extends AbstractModule {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DNSServiceModule.class);
+    private static final Logger TIMELINE_LOGGER = LoggerFactory.getLogger("timeline");
 
     @Override
     protected void configure() {
@@ -54,9 +55,11 @@ public class DNSServiceModule extends AbstractModule {
         }
 
         public void initModule() throws Exception {
+            TIMELINE_LOGGER.info("25 DNS_Service initialization started");
             dnsService.setLog(LOGGER);
             dnsService.configure(configurationProvider.getConfiguration("dnsservice"));
             dnsService.init();
+            TIMELINE_LOGGER.info("25 DNS_Service initialization done");
         }
     }
 }

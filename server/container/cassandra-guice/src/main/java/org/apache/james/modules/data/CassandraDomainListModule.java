@@ -35,6 +35,7 @@ import com.google.inject.multibindings.Multibinder;
 public class CassandraDomainListModule extends AbstractModule {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DomainList.class);
+    private static final Logger TIMELINE_LOGGER = LoggerFactory.getLogger("timeline");
     
     @Override
     public void configure() {
@@ -58,8 +59,10 @@ public class CassandraDomainListModule extends AbstractModule {
 
         @Override
         public void initModule() throws Exception {
+            TIMELINE_LOGGER.info("19 domainList configuration started");
             cassandraDomainList.setLog(LOGGER);
             cassandraDomainList.configure(configurationProvider.getConfiguration("domainlist"));
+            TIMELINE_LOGGER.info("19 domainList configuration done");
         }
     }
 }
