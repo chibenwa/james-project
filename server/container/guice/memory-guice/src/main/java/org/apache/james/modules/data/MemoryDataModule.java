@@ -21,6 +21,10 @@ package org.apache.james.modules.data;
 
 import org.apache.james.domainlist.api.DomainList;
 import org.apache.james.domainlist.memory.MemoryDomainList;
+import org.apache.james.jmap.api.access.AccessTokenRepository;
+import org.apache.james.jmap.api.vacation.VacationRepository;
+import org.apache.james.jmap.memory.access.MemoryAccessTokenRepository;
+import org.apache.james.jmap.memory.vacation.MemoryVacationRepository;
 import org.apache.james.rrt.api.RecipientRewriteTable;
 import org.apache.james.rrt.memory.MemoryRecipientRewriteTable;
 import org.apache.james.sieverepository.api.SieveRepository;
@@ -55,6 +59,8 @@ public class MemoryDataModule extends AbstractModule {
 
         bind(SieveFileRepository.class).in(Scopes.SINGLETON);
         bind(SieveRepository.class).to(SieveFileRepository.class);
+
+        bind(VacationRepository.class).to(MemoryVacationRepository.class);
 
         Multibinder.newSetBinder(binder(), ConfigurationPerformer.class).addBinding().to(MemoryDataConfigurationPerformer.class);
     }
