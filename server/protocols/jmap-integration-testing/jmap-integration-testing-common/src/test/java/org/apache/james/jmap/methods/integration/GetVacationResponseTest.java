@@ -23,10 +23,16 @@ import static com.jayway.restassured.RestAssured.given;
 import static com.jayway.restassured.config.EncoderConfig.encoderConfig;
 import static com.jayway.restassured.config.RestAssuredConfig.newConfig;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.isEmptyOrNullString;
+
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.jmap.JmapAuthentication;
 import org.apache.james.jmap.api.access.AccessToken;
+import org.apache.james.jmap.api.vacation.AccountId;
+import org.apache.james.jmap.api.vacation.Vacation;
 import org.apache.james.mailbox.model.MailboxConstants;
 import org.junit.After;
 import org.junit.Before;
@@ -41,6 +47,7 @@ public abstract class GetVacationResponseTest {
     private static final String NAME = "[0][0]";
     private static final String ARGUMENTS = "[0][1]";
     private static final String USERS_DOMAIN = "domain.tld";
+    private String username;
 
     protected abstract GuiceJamesServer<?> createJmapServer();
 
@@ -56,7 +63,7 @@ public abstract class GetVacationResponseTest {
         RestAssured.port = jmapServer.getJmapPort();
         RestAssured.config = newConfig().encoderConfig(encoderConfig().defaultContentCharset(Charsets.UTF_8));
 
-        String username = "username@" + USERS_DOMAIN;
+        username = "username@" + USERS_DOMAIN;
         String password = "password";
         jmapServer.serverProbe().addDomain(USERS_DOMAIN);
         jmapServer.serverProbe().addUser(username, password);
@@ -72,12 +79,112 @@ public abstract class GetVacationResponseTest {
     }
 
     @Test
-    public void getVacationResponseIsNotImplementedYet() {
+    public void getVacationResponseShouldReturnDefaultValue() {
         given()
             .accept(ContentType.JSON)
             .contentType(ContentType.JSON)
             .header("Authorization", accessToken.serialize())
-            .body("[[\"getVacationResponse\", {\"accountId\": \"1\"}, \"#0\"]]")
+            .body("[[" +
+                "\"getVacationResponse\", " +
+                "{}, " +
+                "\"#0\"" +
+                "]]")
+        .when()
+            .post("/jmap")
+        .then()
+            .statusCode(200)
+            .body(NAME, equalTo("vacationResponse"))
+            .body(ARGUMENTS + ".accountId", equalTo(username))
+            .body(ARGUMENTS + ".list[0].id", equalTo("singleton"))
+            .body(ARGUMENTS + ".list[0].fromDate", isEmptyOrNullString())
+            .body(ARGUMENTS + ".list[0].toDate", isEmptyOrNullString())
+            .body(ARGUMENTS + ".list[0].isEnabled", equalTo(false))
+            .body(ARGUMENTS + ".list[0].textBody", equalTo(""));
+    }
+
+    @Test
+    public void getVacationResponseShouldReturnStoredValue() {
+        jmapServer.serverProbe().modifyVacation(AccountId.create(username),
+            Vacation.builder()
+                .enabled(true)
+                .fromDate(ZonedDateTime.of(2014, 9, 30, 14, 10, 0, 0, ZoneId.of("Z")))
+                .toDate(ZonedDateTime.of(2014, 10, 30, 14, 10, 0, 0, ZoneId.of("Z")))
+                .textBody("Test explaining my vacations")
+                .build());
+
+        given()
+            .accept(ContentType.JSON)
+            .contentType(ContentType.JSON)
+            .header("Authorization", accessToken.serialize())
+            .body("[[" +
+                "\"getVacationResponse\", " +
+                "{}, " +
+                "\"#0\"" +
+                "]]")
+        .when()
+            .post("/jmap")
+        .then()
+            .statusCode(200)
+            .body(NAME, equalTo("vacationResponse"))
+            .body(ARGUMENTS + ".accountId", equalTo(username))
+            .body(ARGUMENTS + ".list[0].id", equalTo("singleton"))
+            .body(ARGUMENTS + ".list[0].fromDate", equalTo("2014-09-30T14:10:00Z"))
+            .body(ARGUMENTS + ".list[0].toDate", equalTo("2014-10-30T14:10:00Z"))
+            .body(ARGUMENTS + ".list[0].isEnabled", equalTo(true))
+            .body(ARGUMENTS + ".list[0].textBody", equalTo("Test explaining my vacations"));
+    }
+
+    @Test
+    public void getVacationResponseShouldReturnStoredValueWithNonDefaultTimezone() {
+        jmapServer.serverProbe().modifyVacation(AccountId.create(username),
+            Vacation.builder()
+                .enabled(true)
+                .fromDate(ZonedDateTime.of(2014, 9, 30, 14, 10, 0, 0, ZoneId.of("GMT+2")))
+                .toDate(ZonedDateTime.of(2014, 10, 30, 14, 10, 0, 0, ZoneId.of("GMT+2")))
+                .textBody("Test explaining my vacations")
+                .build());
+
+        given()
+            .accept(ContentType.JSON)
+            .contentType(ContentType.JSON)
+            .header("Authorization", accessToken.serialize())
+            .body("[[" +
+                "\"getVacationResponse\", " +
+                "{}, " +
+                "\"#0\"" +
+                "]]")
+        .when()
+            .post("/jmap")
+        .then()
+            .statusCode(200)
+            .body(NAME, equalTo("vacationResponse"))
+            .body(ARGUMENTS + ".accountId", equalTo(username))
+            .body(ARGUMENTS + ".list[0].id", equalTo("singleton"))
+            .body(ARGUMENTS + ".list[0].fromDate", equalTo("2014-09-30T14:10:00+02:00"))
+            .body(ARGUMENTS + ".list[0].toDate", equalTo("2014-10-30T14:10:00+02:00"))
+            .body(ARGUMENTS + ".list[0].isEnabled", equalTo(true))
+            .body(ARGUMENTS + ".list[0].textBody", equalTo("Test explaining my vacations"));
+    }
+
+    @Test
+    public void accountIdIsNotSupported() {
+        jmapServer.serverProbe().modifyVacation(AccountId.create(username),
+            Vacation.builder()
+                .enabled(true)
+                .fromDate(ZonedDateTime.of(2014, 9, 30, 14, 10, 0, 0, ZoneId.of("GMT+2")))
+                .toDate(ZonedDateTime.of(2014, 10, 30, 14, 10, 0, 0, ZoneId.of("GMT+2")))
+                .textBody("Test explaining my vacations")
+                .build());
+
+        given()
+            .accept(ContentType.JSON)
+            .contentType(ContentType.JSON)
+            .header("Authorization", accessToken.serialize())
+            .body("[[" +
+                "\"getVacationResponse\", " +
+                "{\"accountId\":\"1\"}, " +
+                "\"#0\"" +
+                "]]")
         .when()
             .post("/jmap")
         .then()
