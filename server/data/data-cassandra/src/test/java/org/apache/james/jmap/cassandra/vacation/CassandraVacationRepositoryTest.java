@@ -17,15 +17,19 @@
  * under the License.                                           *
  ****************************************************************/
 
-package org.apache.james.jmap.memory.vacation;
+package org.apache.james.jmap.cassandra.vacation;
 
+import org.apache.james.backends.cassandra.CassandraCluster;
 import org.apache.james.jmap.api.vacation.AbstractVacationRepositoryTest;
 import org.apache.james.jmap.api.vacation.VacationRepository;
 
-public class MemoryVacationRepositoryTest extends AbstractVacationRepositoryTest {
+public class CassandraVacationRepositoryTest extends AbstractVacationRepositoryTest {
+
+    private CassandraCluster cassandra;
 
     @Override
     protected VacationRepository createVacationRepository() {
-        return new MemoryVacationRepository();
+        cassandra = CassandraCluster.create(new CassandraVacationModule());
+        return new CassandraVacationRepository(cassandra.getConf());
     }
 }

@@ -17,15 +17,17 @@
  * under the License.                                           *
  ****************************************************************/
 
-package org.apache.james.jmap.memory.vacation;
+package org.apache.james.jmap.cassandra.vacation.tables;
 
-import org.apache.james.jmap.api.vacation.AbstractVacationRepositoryTest;
-import org.apache.james.jmap.api.vacation.VacationRepository;
+public interface CassandraVacationTable {
 
-public class MemoryVacationRepositoryTest extends AbstractVacationRepositoryTest {
+    String TABLE_NAME = "vacation";
+    String ACCOUNT_ID = "account_id";
+    String FROM_DATE = "from_date";
+    String FROM_TIMEZONE = "from_timezone";
+    String TO_DATE = "to_date";
+    String TO_TIMEZONE = "to_timezone";
+    String IS_ENABLED = "is_enabled";
+    String TEXT = "text";
 
-    @Override
-    protected VacationRepository createVacationRepository() {
-        return new MemoryVacationRepository();
-    }
 }
