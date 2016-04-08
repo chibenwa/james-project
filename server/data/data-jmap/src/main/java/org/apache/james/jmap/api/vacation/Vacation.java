@@ -103,6 +103,13 @@ public class Vacation {
         return textBody;
     }
 
+    public boolean isActiveAtDate(ZonedDateTime zonedDateTime) {
+        Preconditions.checkNotNull(zonedDateTime);
+        return isEnabled
+            && fromDate.map(date -> date.isBefore(zonedDateTime) || date.equals(zonedDateTime)).orElse(true)
+            && toDate.map(date -> date.isAfter(zonedDateTime) || date.equals(zonedDateTime)).orElse(true);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
