@@ -31,8 +31,8 @@ public abstract class AbstractVacationRepositoryTest {
 
     public static final AccountId ACCOUNT_ID = AccountId.create("identifier");
     public static final ZonedDateTime ZONED_DATE_TIME = ZonedDateTime.of(2016, 4, 3, 2, 1, 0, 0, ZoneId.systemDefault());
-    public static final Vacation VACATION_ID_1 = Vacation.builder().enabled(true).build();
-    public static final Vacation VACATION_ID_2 = Vacation.builder().fromDate(ZONED_DATE_TIME).enabled(true).build();
+    public static final Vacation VACATION_1 = Vacation.builder().enabled(true).build();
+    public static final Vacation VACATION_2 = Vacation.builder().fromDate(ZONED_DATE_TIME).enabled(true).build();
 
     private VacationRepository vacationRepository;
 
@@ -50,17 +50,17 @@ public abstract class AbstractVacationRepositoryTest {
 
     @Test
     public void modifyVacationShouldWork() {
-        vacationRepository.modifyVacation(ACCOUNT_ID, VACATION_ID_1);
+        vacationRepository.modifyVacation(ACCOUNT_ID, VACATION_1);
 
-        assertThat(vacationRepository.retrieveVacation(ACCOUNT_ID)).isEqualTo(VACATION_ID_1);
+        assertThat(vacationRepository.retrieveVacation(ACCOUNT_ID)).isEqualTo(VACATION_1);
     }
 
     @Test
     public void modifyVacationShouldReplacePreviousValue() {
-        vacationRepository.modifyVacation(ACCOUNT_ID, VACATION_ID_1);
-        vacationRepository.modifyVacation(ACCOUNT_ID, VACATION_ID_2);
+        vacationRepository.modifyVacation(ACCOUNT_ID, VACATION_1);
+        vacationRepository.modifyVacation(ACCOUNT_ID, VACATION_2);
 
-        assertThat(vacationRepository.retrieveVacation(ACCOUNT_ID)).isEqualTo(VACATION_ID_2);
+        assertThat(vacationRepository.retrieveVacation(ACCOUNT_ID)).isEqualTo(VACATION_2);
     }
 
     @Test(expected = NullPointerException.class)
@@ -70,7 +70,7 @@ public abstract class AbstractVacationRepositoryTest {
 
     @Test(expected = NullPointerException.class)
     public void modifyVacationShouldThrowOnNullAccountId() {
-        vacationRepository.modifyVacation(null, VACATION_ID_1);
+        vacationRepository.modifyVacation(null, VACATION_1);
     }
 
     @Test(expected = NullPointerException.class)
