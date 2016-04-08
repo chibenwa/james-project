@@ -23,6 +23,7 @@ import static com.jayway.restassured.RestAssured.given;
 import static com.jayway.restassured.config.EncoderConfig.encoderConfig;
 import static com.jayway.restassured.config.RestAssuredConfig.newConfig;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.isEmptyOrNullString;
 
 import java.time.ZoneId;
@@ -47,7 +48,7 @@ public abstract class GetVacationResponseTest {
     private static final String NAME = "[0][0]";
     private static final String ARGUMENTS = "[0][1]";
     private static final String USERS_DOMAIN = "domain.tld";
-    private static final String USERNAME = "USERNAME@" + USERS_DOMAIN;
+    private static final String USERNAME = "username@" + USERS_DOMAIN;
 
     protected abstract GuiceJamesServer<?> createJmapServer();
 
@@ -94,6 +95,7 @@ public abstract class GetVacationResponseTest {
             .statusCode(200)
             .body(NAME, equalTo("vacationResponse"))
             .body(ARGUMENTS + ".accountId", equalTo(USERNAME))
+            .body(ARGUMENTS + ".list", hasSize(1))
             .body(ARGUMENTS + ".list[0].id", equalTo("singleton"))
             .body(ARGUMENTS + ".list[0].fromDate", isEmptyOrNullString())
             .body(ARGUMENTS + ".list[0].toDate", isEmptyOrNullString())
@@ -126,6 +128,7 @@ public abstract class GetVacationResponseTest {
             .statusCode(200)
             .body(NAME, equalTo("vacationResponse"))
             .body(ARGUMENTS + ".accountId", equalTo(USERNAME))
+            .body(ARGUMENTS + ".list", hasSize(1))
             .body(ARGUMENTS + ".list[0].id", equalTo("singleton"))
             .body(ARGUMENTS + ".list[0].fromDate", equalTo("2014-09-30T14:10:00Z"))
             .body(ARGUMENTS + ".list[0].toDate", equalTo("2014-10-30T14:10:00Z"))
@@ -158,6 +161,7 @@ public abstract class GetVacationResponseTest {
             .statusCode(200)
             .body(NAME, equalTo("vacationResponse"))
             .body(ARGUMENTS + ".accountId", equalTo(USERNAME))
+            .body(ARGUMENTS + ".list", hasSize(1))
             .body(ARGUMENTS + ".list[0].id", equalTo("singleton"))
             .body(ARGUMENTS + ".list[0].fromDate", equalTo("2014-09-30T14:10:00+02:00"))
             .body(ARGUMENTS + ".list[0].toDate", equalTo("2014-10-30T14:10:00+02:00"))
