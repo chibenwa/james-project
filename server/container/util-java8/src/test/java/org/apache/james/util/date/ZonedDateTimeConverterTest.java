@@ -58,7 +58,7 @@ public class ZonedDateTimeConverterTest {
     }
 
     @Test
-    public void toZoneDateTimeShouldWithNullValue() throws Exception {
+    public void toZoneDateTimeShouldReturnEmptyWithNullDate() throws Exception {
         assertThat(ZonedDateTimeConverter.toZonedDateTime(
             Optional.empty(),
             Optional.of(DEFAULT_ZONE)))
