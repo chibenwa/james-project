@@ -58,8 +58,11 @@ public class FileConfigurationProvider implements ConfigurationProvider {
         Preconditions.checkNotNull(component);
         List<String> configPathParts = Splitter.on(".").splitToList(component);
         Preconditions.checkArgument(!configPathParts.isEmpty());
-        HierarchicalConfiguration config = getConfig(retrieveConfigInputStream(configPathParts.get(0)));
-        return selectHierarchicalConfigPart(config, Iterables.skip(configPathParts, 1));
+        return getConfiguration(retrieveConfigInputStream(configPathParts.get(0)), Iterables.skip(configPathParts, 1));
+    }
+
+    public HierarchicalConfiguration getConfiguration(InputStream inputStream, Iterable<String> configsPathParts) throws ConfigurationException {
+        return selectHierarchicalConfigPart(getConfig(inputStream), configsPathParts);
     }
 
     private InputStream retrieveConfigInputStream(String configurationFileWithoutExtension) throws ConfigurationException {
