@@ -36,8 +36,7 @@ public class GetVacationRequestTest {
     @Test(expected = NotImplementedException.class)
     public void accountIdHandlingIsNotImplementedYet() {
         GetVacationRequest.builder()
-            .accountId("any")
-            .build();
+            .accountId("any");
     }
 
 }

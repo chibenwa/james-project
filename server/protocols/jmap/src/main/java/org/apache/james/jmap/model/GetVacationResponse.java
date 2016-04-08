@@ -55,11 +55,11 @@ public class GetVacationResponse implements Method.Response {
     }
 
     private final String accountId;
-    private final VacationResponse vacationResponse;
+    private final List<VacationResponse> list;
 
     private GetVacationResponse(String accountId, VacationResponse vacationResponse) {
         this.accountId = accountId;
-        this.vacationResponse = vacationResponse;
+        this.list = ImmutableList.of(vacationResponse);
     }
 
     public String getAccountId() {
@@ -67,7 +67,7 @@ public class GetVacationResponse implements Method.Response {
     }
 
     public List<VacationResponse> getList() {
-        return ImmutableList.of(vacationResponse);
+        return list;
     }
 
     @Override
@@ -79,11 +79,11 @@ public class GetVacationResponse implements Method.Response {
         GetVacationResponse that = (GetVacationResponse) o;
 
         return Objects.equals(this.accountId, that.accountId)
-            && Objects.equals(this.vacationResponse, that.vacationResponse);
+            && Objects.equals(this.list, that.list);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(accountId, vacationResponse);
+        return Objects.hash(accountId, list);
     }
 }
