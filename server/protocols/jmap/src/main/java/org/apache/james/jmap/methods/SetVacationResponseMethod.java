@@ -91,37 +91,32 @@ public class SetVacationResponseMethod implements Method {
     }
 
     private Stream<JmapResponse> process(ClientId clientId, AccountId accountId, VacationResponse vacationResponse) {
-        boolean isValid = isValid(vacationResponse);
-
-        if (isValid) {
+        if (isValid(vacationResponse)) {
             vacationRepository.modifyVacation(accountId, convertToVacation(vacationResponse));
+            return Stream.of(JmapResponse.builder()
+                .clientId(clientId)
+                .responseName(RESPONSE_NAME)
+                .response(SetVacationResponse.builder()
+                    .updatedId(Vacation.ID)
+                    .build())
+                .build());
+        } else {
+            return Stream.of(JmapResponse.builder()
+                .clientId(clientId)
+                .responseName(RESPONSE_NAME)
+                .response(SetVacationResponse.builder()
+                    .notUpdated(ImmutableMap.of(Vacation.ID,
+                        SetError.builder()
+                            .type(INVALID_ARGUMENTS)
+                            .description(ERROR_MESSAGE_BASE + vacationResponse.getId())
+                            .build()))
+                    .build())
+                .build());
         }
-
-        return Stream.of(JmapResponse.builder()
-            .clientId(clientId)
-            .responseName(RESPONSE_NAME)
-            .response(generateSetVacationResponse(isValid, vacationResponse))
-            .build());
     }
 
     private boolean isValid(VacationResponse vacationResponse) {
         return vacationResponse.getId().equals(Vacation.ID);
-    }
-
-    public SetVacationResponse generateSetVacationResponse(boolean isValid, VacationResponse vacationResponses) {
-        if (isValid) {
-            return SetVacationResponse.builder()
-                .updatedId(Vacation.ID)
-                .build();
-        } else {
-            return SetVacationResponse.builder()
-                .notUpdated(ImmutableMap.of(Vacation.ID,
-                    SetError.builder()
-                        .type(INVALID_ARGUMENTS)
-                        .description(ERROR_MESSAGE_BASE + vacationResponses.getId())
-                        .build()))
-                .build();
-        }
     }
 
     public Vacation convertToVacation(VacationResponse vacationResponse) {

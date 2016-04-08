@@ -48,7 +48,7 @@ public abstract class SetVacationResponseTest {
     private static final String NAME = "[0][0]";
     private static final String ARGUMENTS = "[0][1]";
     private static final String USERS_DOMAIN = "domain.tld";
-    private String username;
+    private static final String USERNAME = "username@" + USERS_DOMAIN;
 
     protected abstract GuiceJamesServer<?> createJmapServer();
 
@@ -64,13 +64,12 @@ public abstract class SetVacationResponseTest {
         RestAssured.port = jmapServer.getJmapPort();
         RestAssured.config = newConfig().encoderConfig(encoderConfig().defaultContentCharset(Charsets.UTF_8));
 
-        username = "username@" + USERS_DOMAIN;
         String password = "password";
         jmapServer.serverProbe().addDomain(USERS_DOMAIN);
-        jmapServer.serverProbe().addUser(username, password);
-        accessToken = JmapAuthentication.authenticateJamesUser(username, password);
+        jmapServer.serverProbe().addUser(USERNAME, password);
+        accessToken = JmapAuthentication.authenticateJamesUser(USERNAME, password);
 
-        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "outbox");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, USERNAME, "outbox");
         await();
     }
 
@@ -169,7 +168,7 @@ public abstract class SetVacationResponseTest {
             .body(NAME, equalTo("vacationResponseSet"))
             .body(ARGUMENTS + ".updated[0]", equalTo("singleton"));
 
-        Vacation vacation = jmapServer.serverProbe().retrieveVacation(AccountId.create(username));
+        Vacation vacation = jmapServer.serverProbe().retrieveVacation(AccountId.create(USERNAME));
         assertThat(vacation.getTextBody()).isEqualTo("Message explaining my wonderful vacations");
         assertThat(vacation.isEnabled()).isTrue();
         assertThat(vacation.getFromDate()).isEqualTo(Optional.of(ZonedDateTime.of(2014, 9, 30, 14, 10, 0, 0, ZoneId.of("GMT"))));
@@ -177,7 +176,7 @@ public abstract class SetVacationResponseTest {
     }
 
     @Test
-    public void nullTestBodyShouldBeRejected() {
+    public void nullTextBodyShouldBeRejected() {
         String bodyRequest = "[[" +
             "\"setVacationResponse\", " +
             "{" +
@@ -206,7 +205,7 @@ public abstract class SetVacationResponseTest {
     }
 
     @Test
-    public void noTestBodyShouldBeRejected() {
+    public void noTextBodyShouldBeRejected() {
         String bodyRequest = "[[" +
             "\"setVacationResponse\", " +
             "{" +

@@ -47,7 +47,7 @@ public abstract class GetVacationResponseTest {
     private static final String NAME = "[0][0]";
     private static final String ARGUMENTS = "[0][1]";
     private static final String USERS_DOMAIN = "domain.tld";
-    private String username;
+    private static final String USERNAME = "USERNAME@" + USERS_DOMAIN;
 
     protected abstract GuiceJamesServer<?> createJmapServer();
 
@@ -63,13 +63,12 @@ public abstract class GetVacationResponseTest {
         RestAssured.port = jmapServer.getJmapPort();
         RestAssured.config = newConfig().encoderConfig(encoderConfig().defaultContentCharset(Charsets.UTF_8));
 
-        username = "username@" + USERS_DOMAIN;
         String password = "password";
         jmapServer.serverProbe().addDomain(USERS_DOMAIN);
-        jmapServer.serverProbe().addUser(username, password);
-        accessToken = JmapAuthentication.authenticateJamesUser(username, password);
+        jmapServer.serverProbe().addUser(USERNAME, password);
+        accessToken = JmapAuthentication.authenticateJamesUser(USERNAME, password);
 
-        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "outbox");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, USERNAME, "outbox");
         await();
     }
 
@@ -94,7 +93,7 @@ public abstract class GetVacationResponseTest {
         .then()
             .statusCode(200)
             .body(NAME, equalTo("vacationResponse"))
-            .body(ARGUMENTS + ".accountId", equalTo(username))
+            .body(ARGUMENTS + ".accountId", equalTo(USERNAME))
             .body(ARGUMENTS + ".list[0].id", equalTo("singleton"))
             .body(ARGUMENTS + ".list[0].fromDate", isEmptyOrNullString())
             .body(ARGUMENTS + ".list[0].toDate", isEmptyOrNullString())
@@ -104,7 +103,7 @@ public abstract class GetVacationResponseTest {
 
     @Test
     public void getVacationResponseShouldReturnStoredValue() {
-        jmapServer.serverProbe().modifyVacation(AccountId.create(username),
+        jmapServer.serverProbe().modifyVacation(AccountId.create(USERNAME),
             Vacation.builder()
                 .enabled(true)
                 .fromDate(ZonedDateTime.of(2014, 9, 30, 14, 10, 0, 0, ZoneId.of("Z")))
@@ -126,7 +125,7 @@ public abstract class GetVacationResponseTest {
         .then()
             .statusCode(200)
             .body(NAME, equalTo("vacationResponse"))
-            .body(ARGUMENTS + ".accountId", equalTo(username))
+            .body(ARGUMENTS + ".accountId", equalTo(USERNAME))
             .body(ARGUMENTS + ".list[0].id", equalTo("singleton"))
             .body(ARGUMENTS + ".list[0].fromDate", equalTo("2014-09-30T14:10:00Z"))
             .body(ARGUMENTS + ".list[0].toDate", equalTo("2014-10-30T14:10:00Z"))
@@ -136,7 +135,7 @@ public abstract class GetVacationResponseTest {
 
     @Test
     public void getVacationResponseShouldReturnStoredValueWithNonDefaultTimezone() {
-        jmapServer.serverProbe().modifyVacation(AccountId.create(username),
+        jmapServer.serverProbe().modifyVacation(AccountId.create(USERNAME),
             Vacation.builder()
                 .enabled(true)
                 .fromDate(ZonedDateTime.of(2014, 9, 30, 14, 10, 0, 0, ZoneId.of("GMT+2")))
@@ -158,7 +157,7 @@ public abstract class GetVacationResponseTest {
         .then()
             .statusCode(200)
             .body(NAME, equalTo("vacationResponse"))
-            .body(ARGUMENTS + ".accountId", equalTo(username))
+            .body(ARGUMENTS + ".accountId", equalTo(USERNAME))
             .body(ARGUMENTS + ".list[0].id", equalTo("singleton"))
             .body(ARGUMENTS + ".list[0].fromDate", equalTo("2014-09-30T14:10:00+02:00"))
             .body(ARGUMENTS + ".list[0].toDate", equalTo("2014-10-30T14:10:00+02:00"))
@@ -168,7 +167,7 @@ public abstract class GetVacationResponseTest {
 
     @Test
     public void accountIdIsNotSupported() {
-        jmapServer.serverProbe().modifyVacation(AccountId.create(username),
+        jmapServer.serverProbe().modifyVacation(AccountId.create(USERNAME),
             Vacation.builder()
                 .enabled(true)
                 .fromDate(ZonedDateTime.of(2014, 9, 30, 14, 10, 0, 0, ZoneId.of("GMT+2")))
