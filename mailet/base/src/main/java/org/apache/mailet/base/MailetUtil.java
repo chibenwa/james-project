@@ -21,6 +21,19 @@
 
 package org.apache.mailet.base;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+
+import javax.mail.MessagingException;
+
+import org.apache.james.mime4j.MimeException;
+import org.apache.james.mime4j.parser.AbstractContentHandler;
+import org.apache.james.mime4j.parser.MimeStreamParser;
+import org.apache.james.mime4j.stream.BodyDescriptor;
+import org.apache.james.mime4j.stream.MimeConfig;
+import org.apache.mailet.Mail;
 import org.apache.mailet.MailetConfig;
 
 
@@ -109,4 +122,90 @@ public class MailetUtil {
         }
         return result;
     }
+
+    public static boolean canSendAutomaticResponse(Mail mail) throws MessagingException {
+        return !isMailingList(mail) &&
+            ! isAutoSubmitted(mail) &&
+            ! isMdnSentAutomatically(mail);
+    }
+
+    public static boolean isMailingList(Mail mail) throws MessagingException {
+        return mail.getSender().getLocalPart().startsWith("owner-")
+            || mail.getSender().getLocalPart().endsWith("-request")
+            || mail.getSender().getLocalPart().equalsIgnoreCase("MAILER-DAEMON")
+            || mail.getSender().getLocalPart().equalsIgnoreCase("LISTSERV")
+            || mail.getSender().getLocalPart().equalsIgnoreCase("majordomo")
+            || mail.getMessage()
+            .getMatchingHeaders(new String[]{"List-Help",
+                "List-Subscribe",
+                "List-Unsubscribe",
+                "List-Owner",
+                "List-Post",
+                "List-Id",
+                "List-Archive"})
+            .hasMoreElements();
+    }
+
+    public static boolean isAutoSubmitted(Mail mail) throws MessagingException {
+        String[] headers = mail.getMessage().getHeader("Auto-Submitted");
+        if (headers != null && headers.length >= 1) {
+            for (String header : headers) {
+                if (header.equalsIgnoreCase("auto-replied")) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public static boolean isMdnSentAutomatically(Mail mail) throws MessagingException {
+        final ResultCollector resultCollector = new ResultCollector(false);
+        MimeConfig config = MimeConfig.custom().setMaxLineLen(-1).setMaxHeaderLen(-1).build();
+        final MimeStreamParser parser = new MimeStreamParser(config);
+        parser.setContentHandler(createMdnContentHandler(resultCollector));
+        try {
+            parser.parse(mail.getMessage().getInputStream());
+        } catch (MimeException e) {
+            throw new MessagingException("Can not parse Mime", e);
+        } catch (IOException e) {
+            throw new MessagingException("Can not read content", e);
+        }
+        return resultCollector.getResult();
+    }
+
+    private static AbstractContentHandler createMdnContentHandler(final ResultCollector resultCollector) {
+        return new AbstractContentHandler() {
+            @Override
+            public void body(BodyDescriptor bodyDescriptor, InputStream inputStream) throws MimeException, IOException {
+                if (bodyDescriptor.getMimeType().equalsIgnoreCase("message/disposition-notification")) {
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+                    String line;
+                    while ((line = reader.readLine()) != null ) {
+                        if (line.startsWith("Disposition:")) {
+                            if (line.contains("MDN-sent-automatically") || line.contains("automatic-action")) {
+                                resultCollector.setResult(true);
+                            }
+                        }
+                    }
+                }
+            }
+        };
+    }
+
+    private static class ResultCollector {
+        private boolean result;
+
+        public ResultCollector(boolean result) {
+            this.result = result;
+        }
+
+        public boolean getResult() {
+            return result;
+        }
+
+        public void setResult(boolean result) {
+            this.result = result;
+        }
+    }
+
 }
