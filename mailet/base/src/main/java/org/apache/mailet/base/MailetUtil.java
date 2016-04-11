@@ -109,4 +109,5 @@ public class MailetUtil {
         }
         return result;
     }
+
 }

@@ -19,9 +19,10 @@
 
 package org.apache.mailet.base;
 
-import org.apache.mailet.base.test.FakeMailetConfig;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+
+import org.apache.mailet.base.test.FakeMailetConfig;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -79,4 +80,5 @@ public class MailetUtilTest {
         config.setProperty(A_PARAMETER, value);
         return MailetUtil.getInitParameter(config, A_PARAMETER, defaultValue);
     }
+
 }
