@@ -104,6 +104,25 @@ public class VacationMailetTest {
         assertThat(fakeMailContext.getSentMails()).containsExactly(expected);
     }
 
+    @Test
+    public void activateVacationShouldNotSendNotificationToMailingList() throws Exception {
+        FakeMail mail = createFakeMail();
+        mail.setSender(new MailAddress("owner-list@any.com"));
+        when(vacationRepository.retrieveVacation(AccountId.create(USERNAME)))
+            .thenReturn(CompletableFuture.completedFuture(
+                Vacation.builder()
+                    .enabled(true)
+                    .fromDate(Optional.of(DATE_TIME_1))
+                    .toDate(Optional.of(DATE_TIME_3))
+                    .textBody("Explaining my vacation")
+                    .build()));
+        when(zonedDateTimeProvider.get()).thenReturn(DATE_TIME_2);
+
+        testee.service(mail);
+
+        assertThat(fakeMailContext.getSentMails()).isEmpty();
+    }
+
     private FakeMail createFakeMail() throws MessagingException {
         FakeMail mail = new FakeMail();
         mail.setMessage(new MimeMessage(Session.getInstance(new Properties()) ,ClassLoader.getSystemResourceAsStream("spamMail.eml")));
