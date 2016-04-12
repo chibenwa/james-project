@@ -28,29 +28,30 @@ import com.google.common.base.Preconditions;
 public class Vacation {
 
     public static final String ID = "singleton";
+    public static final boolean DEFAULT_DISABLED = false;
 
     public static Builder builder() {
         return new Builder();
     }
 
     public static class Builder {
-        private boolean isEnabled;
+        private Optional<Boolean> isEnabled;
         private Optional<ZonedDateTime> fromDate = Optional.empty();
         private Optional<ZonedDateTime> toDate = Optional.empty();
         private String textBody = "";
 
         public Builder enabled(boolean enabled) {
-            isEnabled = enabled;
+            isEnabled = Optional.of(enabled);
             return this;
         }
 
-        public Builder fromDate(ZonedDateTime fromDate) {
-            this.fromDate = Optional.ofNullable(fromDate);
+        public Builder fromDate(Optional<ZonedDateTime> fromDate) {
+            this.fromDate = fromDate;
             return this;
         }
 
-        public Builder toDate(ZonedDateTime toDate) {
-            this.toDate = Optional.ofNullable(toDate);
+        public Builder toDate(Optional<ZonedDateTime> toDate) {
+            this.toDate = toDate;
             return this;
         }
 
@@ -63,13 +64,13 @@ public class Vacation {
             this.textBody = vacation.getTextBody();
             this.fromDate = vacation.getFromDate();
             this.toDate = vacation.getToDate();
-            this.isEnabled = vacation.isEnabled();
+            this.isEnabled = Optional.of(vacation.isEnabled());
             return this;
         }
 
         public Vacation build() {
             Preconditions.checkNotNull(textBody);
-            return new Vacation(isEnabled, fromDate, toDate, textBody);
+            return new Vacation(isEnabled.orElse(DEFAULT_DISABLED), fromDate, toDate, textBody);
         }
     }
 
