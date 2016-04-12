@@ -35,24 +35,16 @@ public class GetVacationRequest implements JmapRequest {
     @JsonPOJOBuilder(withPrefix = "")
     public static class Builder {
 
-        private String accountId;
-
         public Builder accountId(String accountId) {
             throw new NotImplementedException();
         }
 
         public GetVacationRequest build() {
-            return new GetVacationRequest(accountId);
+            return new GetVacationRequest();
         }
     }
 
-    private final String accountId;
+    private GetVacationRequest() {
 
-    private GetVacationRequest(String accountId) {
-        this.accountId = accountId;
-    }
-
-    public String getAccountId() {
-        return accountId;
     }
 }

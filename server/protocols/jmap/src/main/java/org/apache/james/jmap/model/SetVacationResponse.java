@@ -37,42 +37,39 @@ public class SetVacationResponse implements Method.Response {
 
     public static class Builder {
 
-        private String updatedId;
-        private Map<String, SetError> notUpdated;
+        private Optional<String> updatedId = Optional.empty();
+        private Optional<Map<String, SetError>> notUpdated = Optional.empty();
 
         public Builder updatedId(String updatedId) {
-            this.updatedId = updatedId;
+            this.updatedId = Optional.of(updatedId);
             return this;
         }
 
         public Builder notUpdated(Map<String, SetError> notUpdated) {
-            this.notUpdated = notUpdated;
+            this.notUpdated = Optional.of(notUpdated);
             return this;
         }
 
         public SetVacationResponse build() {
             return new SetVacationResponse(
-                Optional.ofNullable(updatedId)
-                    .map(ImmutableList::of)
-                    .orElse(ImmutableList.of()),
-                Optional.ofNullable(notUpdated)
-                    .orElse(ImmutableMap.of()));
+                updatedId.map(ImmutableList::of),
+                notUpdated.map(ImmutableMap::copyOf));
         }
     }
 
-    private final List<String> updated;
-    private final Map<String, SetError> notUpdated;
+    private final Optional<List<String>> updated;
+    private final Optional<Map<String, SetError>> notUpdated;
 
-    private SetVacationResponse(List<String> updated, Map<String, SetError> notUpdated) {
+    private SetVacationResponse(Optional<List<String>> updated, Optional<Map<String, SetError>> notUpdated) {
         this.updated = updated;
         this.notUpdated = notUpdated;
     }
 
-    public List<String> getUpdated() {
+    public Optional<List<String>> getUpdated() {
         return updated;
     }
 
-    public Map<String, SetError> getNotUpdated() {
+    public Optional<Map<String, SetError>> getNotUpdated() {
         return notUpdated;
     }
 

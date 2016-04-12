@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.Optional;
 
 import org.junit.Test;
 
@@ -38,16 +39,24 @@ public class VacationResponseTest {
         VacationResponse vacationResponse = VacationResponse.builder()
             .id(IDENTIFIER)
             .enabled(true)
-            .fromDate(FROM_DATE)
-            .toDate(TO_DATE)
+            .fromDate(Optional.of(FROM_DATE))
+            .toDate(Optional.of(TO_DATE))
             .textBody(MESSAGE)
             .build();
 
         assertThat(vacationResponse.getId()).isEqualTo(IDENTIFIER);
         assertThat(vacationResponse.isEnabled()).isEqualTo(true);
         assertThat(vacationResponse.getTextBody()).isEqualTo(MESSAGE);
-        assertThat(vacationResponse.getFromDate()).isEqualTo(FROM_DATE);
-        assertThat(vacationResponse.getToDate()).isEqualTo(TO_DATE);
+        assertThat(vacationResponse.getFromDate()).contains(FROM_DATE);
+        assertThat(vacationResponse.getToDate()).contains(TO_DATE);
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void vacationResponseBuilderRequiresABodyText() {
+        VacationResponse.builder()
+            .id(IDENTIFIER)
+            .enabled(true)
+            .build();
     }
 
 }

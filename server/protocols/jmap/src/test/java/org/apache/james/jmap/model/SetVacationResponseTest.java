@@ -41,8 +41,8 @@ public class SetVacationResponseTest {
             .notUpdated(ImmutableMap.of(NOT_UPDATED_VACATION_ID, setError))
             .build();
 
-        assertThat(setVacationResponse.getUpdated()).containsExactly(UPDATED_VACATION_ID);
-        assertThat(setVacationResponse.getNotUpdated()).containsExactly(new AbstractMap.SimpleEntry<>(NOT_UPDATED_VACATION_ID, setError));
+        assertThat(setVacationResponse.getUpdated().get()).containsExactly(UPDATED_VACATION_ID);
+        assertThat(setVacationResponse.getNotUpdated().get()).containsExactly(new AbstractMap.SimpleEntry<>(NOT_UPDATED_VACATION_ID, setError));
     }
 
 }

@@ -39,7 +39,6 @@ public class SetVacationRequest implements JmapRequest {
     @JsonPOJOBuilder(withPrefix = "")
     public static class Builder {
 
-        private String accountId;
         private ImmutableMap<String, VacationResponse> update;
 
         public Builder accountId(String accountId) {
@@ -52,20 +51,14 @@ public class SetVacationRequest implements JmapRequest {
         }
 
         public SetVacationRequest build() {
-            return new SetVacationRequest(accountId, Optional.ofNullable(update).orElse(ImmutableMap.of()));
+            return new SetVacationRequest(Optional.ofNullable(update).orElse(ImmutableMap.of()));
         }
     }
 
-    private final String accountId;
     private final Map<String, VacationResponse> update;
 
-    private SetVacationRequest(String accountId, Map<String, VacationResponse> update) {
-        this.accountId = accountId;
+    private SetVacationRequest(Map<String, VacationResponse> update) {
         this.update = update;
-    }
-
-    public String getAccountId() {
-        return accountId;
     }
 
     public Map<String, VacationResponse> getUpdate() {

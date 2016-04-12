@@ -21,6 +21,7 @@ package org.apache.james.jmap.model;
 
 import java.time.ZonedDateTime;
 import java.util.Objects;
+import java.util.Optional;
 
 import org.apache.james.jmap.api.vacation.Vacation;
 
@@ -40,8 +41,8 @@ public class VacationResponse {
     public static class Builder {
         private String id;
         private boolean isEnabled;
-        private ZonedDateTime fromDate;
-        private ZonedDateTime toDate;
+        private Optional<ZonedDateTime> fromDate = Optional.empty();
+        private Optional<ZonedDateTime> toDate = Optional.empty();
         private String textBody;
 
         public Builder id(String id) {
@@ -55,12 +56,12 @@ public class VacationResponse {
             return this;
         }
 
-        public Builder fromDate(ZonedDateTime fromDate) {
+        public Builder fromDate(Optional<ZonedDateTime> fromDate) {
             this.fromDate = fromDate;
             return this;
         }
 
-        public Builder toDate(ZonedDateTime toDate) {
+        public Builder toDate(Optional<ZonedDateTime> toDate) {
             this.toDate = toDate;
             return this;
         }
@@ -73,25 +74,25 @@ public class VacationResponse {
         public Builder fromVacation(Vacation vacation) {
             this.id = Vacation.ID;
             this.isEnabled = vacation.isEnabled();
-            this.fromDate = vacation.getFromDate().orElse(null);
-            this.toDate = vacation.getToDate().orElse(null);
+            this.fromDate = vacation.getFromDate();
+            this.toDate = vacation.getToDate();
             this.textBody = vacation.getTextBody();
             return this;
         }
 
         public VacationResponse build() {
-            Preconditions.checkNotNull(textBody, "textBody property of vacationResponse object should not be null");
+            Preconditions.checkState(textBody != null, "textBody property of vacationResponse object should not be null");
             return new VacationResponse(id, isEnabled, fromDate, toDate, textBody);
         }
     }
 
     private final String id;
     private final boolean isEnabled;
-    private final ZonedDateTime fromDate;
-    private final ZonedDateTime toDate;
+    private final Optional<ZonedDateTime> fromDate;
+    private final Optional<ZonedDateTime> toDate;
     private final String textBody;
 
-    private VacationResponse(String id, boolean isEnabled, ZonedDateTime fromDate, ZonedDateTime toDate, String textBody) {
+    private VacationResponse(String id, boolean isEnabled, Optional<ZonedDateTime> fromDate, Optional<ZonedDateTime> toDate, String textBody) {
         this.id = id;
         this.isEnabled = isEnabled;
         this.fromDate = fromDate;
@@ -108,11 +109,11 @@ public class VacationResponse {
         return isEnabled;
     }
 
-    public ZonedDateTime getFromDate() {
+    public Optional<ZonedDateTime> getFromDate() {
         return fromDate;
     }
 
-    public ZonedDateTime getToDate() {
+    public Optional<ZonedDateTime> getToDate() {
         return toDate;
     }
 

@@ -18,20 +18,10 @@
  ****************************************************************/
 package org.apache.james.jmap.model;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import org.apache.commons.lang.NotImplementedException;
 import org.junit.Test;
 
 public class GetVacationRequestTest {
-
-    @Test
-    public void getVacationRequestShouldWork() {
-        GetVacationRequest getVacationRequest = GetVacationRequest.builder()
-            .build();
-
-        assertThat(getVacationRequest.getAccountId()).isNull();
-    }
 
     @Test(expected = NotImplementedException.class)
     public void accountIdHandlingIsNotImplementedYet() {
