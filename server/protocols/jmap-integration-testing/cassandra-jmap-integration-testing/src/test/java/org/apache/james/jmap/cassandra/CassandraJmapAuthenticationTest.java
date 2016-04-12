@@ -46,7 +46,7 @@ public class CassandraJmapAuthenticationTest extends JMAPAuthenticationTest {
 
     @Override
     protected GuiceJamesServer<?> createJmapServer(FixedDateZonedDateTimeProvider zonedDateTimeProvider) {
-        return new GuiceJamesServer<>(new TypeLiteral<CassandraId>(){})
+        return new GuiceJamesServer<>(CassandraJamesServerMain.cassandraId)
                     .combineWith(CassandraJamesServerMain.cassandraServerModule)
                     .overrideWith(new CassandraJmapServerModule(temporaryFolder, embeddedElasticSearch, cassandra),
                             (binder) -> binder.bind(ZonedDateTimeProvider.class).toInstance(zonedDateTimeProvider));

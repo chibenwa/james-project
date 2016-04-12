@@ -36,7 +36,7 @@ public class MemoryGetMessagesMethodTest extends GetMessagesMethodTest {
 
     @Override
     protected GuiceJamesServer<?> createJmapServer() {
-        return new GuiceJamesServer<>(new TypeLiteral<InMemoryId>(){})
+        return new GuiceJamesServer<>(MemoryJamesServerMain.inMemoryId)
                     .combineWith(MemoryJamesServerMain.inMemoryServerModule)
                     .overrideWith(new MemoryJmapServerModule(temporaryFolder));
     }
