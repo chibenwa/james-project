@@ -23,8 +23,10 @@ import java.util.Map;
 import java.util.Optional;
 
 import org.apache.commons.lang.NotImplementedException;
+import org.apache.james.jmap.api.vacation.Vacation;
 import org.apache.james.jmap.methods.JmapRequest;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import com.google.common.collect.ImmutableMap;
@@ -63,5 +65,10 @@ public class SetVacationRequest implements JmapRequest {
 
     public Map<String, VacationResponse> getUpdate() {
         return update;
+    }
+
+    @JsonIgnore
+    public boolean isValid() {
+        return update.entrySet().size() == 1 && update.containsKey(Vacation.ID);
     }
 }

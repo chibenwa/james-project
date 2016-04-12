@@ -70,7 +70,7 @@ public class SetVacationResponseMethod implements Method {
         Preconditions.checkArgument(request instanceof SetVacationRequest);
         SetVacationRequest setVacationRequest = (SetVacationRequest) request;
 
-        if (!validateRequestStructure(setVacationRequest)) {
+        if (!setVacationRequest.isValid()) {
             return Stream.of(JmapResponse
                 .builder()
                 .clientId(clientId)
@@ -86,12 +86,10 @@ public class SetVacationResponseMethod implements Method {
             setVacationRequest.getUpdate().get(Vacation.ID));
     }
 
-    private boolean validateRequestStructure(SetVacationRequest setVacationRequest) {
-        return setVacationRequest.getUpdate().entrySet().size() == 1 && setVacationRequest.getUpdate().containsKey(Vacation.ID);
-    }
+
 
     private Stream<JmapResponse> process(ClientId clientId, AccountId accountId, VacationResponse vacationResponse) {
-        if (isValid(vacationResponse)) {
+        if (vacationResponse.isValid()) {
             vacationRepository.modifyVacation(accountId, convertToVacation(vacationResponse));
             return Stream.of(JmapResponse.builder()
                 .clientId(clientId)
@@ -113,10 +111,6 @@ public class SetVacationResponseMethod implements Method {
                     .build())
                 .build());
         }
-    }
-
-    private boolean isValid(VacationResponse vacationResponse) {
-        return vacationResponse.getId().equals(Vacation.ID);
     }
 
     public Vacation convertToVacation(VacationResponse vacationResponse) {
