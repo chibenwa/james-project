@@ -37,6 +37,7 @@ import org.apache.james.jmap.cassandra.vacation.tables.CassandraVacationTable;
 import org.apache.james.util.date.ZonedDateTimeConverter;
 
 import com.datastax.driver.core.PreparedStatement;
+import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
 
 public class CassandraVacationRepository implements VacationRepository {
@@ -83,13 +84,17 @@ public class CassandraVacationRepository implements VacationRepository {
                 .one())
             .map(row -> Vacation.builder()
                 .enabled(row.getBool(CassandraVacationTable.IS_ENABLED))
-                .fromDate(ZonedDateTimeConverter.toZonedDateTime(Optional.ofNullable(row.getDate(CassandraVacationTable.FROM_DATE)),
-                    Optional.ofNullable(row.getString(CassandraVacationTable.FROM_TIMEZONE)).map(ZoneId::of)).orElse(null))
-                .toDate(ZonedDateTimeConverter.toZonedDateTime(Optional.ofNullable(row.getDate(CassandraVacationTable.TO_DATE)),
-                    Optional.ofNullable(row.getString(CassandraVacationTable.TO_TIMEZONE)).map(ZoneId::of)).orElse(null))
+                .fromDate(retrieveDate(row, CassandraVacationTable.FROM_DATE, CassandraVacationTable.FROM_TIMEZONE))
+                .toDate(retrieveDate(row, CassandraVacationTable.TO_DATE, CassandraVacationTable.TO_TIMEZONE))
                 .textBody(row.getString(CassandraVacationTable.TEXT))
                 .build())
             .orElse(VacationRepository.DEFAULT_VACATION);
+    }
+
+    private Optional<ZonedDateTime> retrieveDate(Row row, String dateField, String timeZoneField) {
+        return ZonedDateTimeConverter.toZonedDateTime(
+            Optional.ofNullable(row.getDate(dateField)),
+            Optional.ofNullable(row.getString(timeZoneField)).map(ZoneId::of));
     }
 
     private String extractTimeZone(Optional<ZonedDateTime> zonedDateTime) {
