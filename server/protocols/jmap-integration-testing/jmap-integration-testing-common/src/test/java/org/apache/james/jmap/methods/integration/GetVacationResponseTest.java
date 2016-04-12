@@ -28,6 +28,7 @@ import static org.hamcrest.Matchers.isEmptyOrNullString;
 
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.Optional;
 
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.jmap.JmapAuthentication;
@@ -108,8 +109,8 @@ public abstract class GetVacationResponseTest {
         jmapServer.serverProbe().modifyVacation(AccountId.create(USERNAME),
             Vacation.builder()
                 .enabled(true)
-                .fromDate(ZonedDateTime.of(2014, 9, 30, 14, 10, 0, 0, ZoneId.of("Z")))
-                .toDate(ZonedDateTime.of(2014, 10, 30, 14, 10, 0, 0, ZoneId.of("Z")))
+                .fromDate(Optional.of(ZonedDateTime.of(2014, 9, 30, 14, 10, 0, 0, ZoneId.of("Z"))))
+                .toDate(Optional.of(ZonedDateTime.of(2014, 10, 30, 14, 10, 0, 0, ZoneId.of("Z"))))
                 .textBody("Test explaining my vacations")
                 .build());
 
@@ -141,8 +142,8 @@ public abstract class GetVacationResponseTest {
         jmapServer.serverProbe().modifyVacation(AccountId.create(USERNAME),
             Vacation.builder()
                 .enabled(true)
-                .fromDate(ZonedDateTime.of(2014, 9, 30, 14, 10, 0, 0, ZoneId.of("GMT+2")))
-                .toDate(ZonedDateTime.of(2014, 10, 30, 14, 10, 0, 0, ZoneId.of("GMT+2")))
+                .fromDate(Optional.of(ZonedDateTime.of(2014, 9, 30, 14, 10, 0, 0, ZoneId.of("GMT+2"))))
+                .toDate(Optional.of(ZonedDateTime.of(2014, 10, 30, 14, 10, 0, 0, ZoneId.of("GMT+2"))))
                 .textBody("Test explaining my vacations")
                 .build());
 
@@ -174,8 +175,8 @@ public abstract class GetVacationResponseTest {
         jmapServer.serverProbe().modifyVacation(AccountId.create(USERNAME),
             Vacation.builder()
                 .enabled(true)
-                .fromDate(ZonedDateTime.of(2014, 9, 30, 14, 10, 0, 0, ZoneId.of("GMT+2")))
-                .toDate(ZonedDateTime.of(2014, 10, 30, 14, 10, 0, 0, ZoneId.of("GMT+2")))
+                .fromDate(Optional.of(ZonedDateTime.of(2014, 9, 30, 14, 10, 0, 0, ZoneId.of("GMT+2"))))
+                .toDate(Optional.of(ZonedDateTime.of(2014, 10, 30, 14, 10, 0, 0, ZoneId.of("GMT+2"))))
                 .textBody("Test explaining my vacations")
                 .build());
 

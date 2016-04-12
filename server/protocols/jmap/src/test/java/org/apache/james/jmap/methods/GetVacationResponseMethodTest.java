@@ -23,8 +23,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import java.util.List;
-import java.util.Locale;
 import java.util.stream.Stream;
 
 import org.apache.james.jmap.api.vacation.AccountId;
@@ -46,11 +44,13 @@ public class GetVacationResponseMethodTest {
     private GetVacationResponseMethod testee;
     private VacationRepository vacationRepository;
     private MailboxSession mailboxSession;
+    private MailboxSession.User user;
 
     @Before
     public void setUp() {
         vacationRepository = mock(VacationRepository.class);
         mailboxSession = mock(MailboxSession.class);
+        user = mock(MailboxSession.User.class);
         testee = new GetVacationResponseMethod(vacationRepository);
     }
 
@@ -82,22 +82,8 @@ public class GetVacationResponseMethodTest {
             .textBody("I am in vacation")
             .build();
         when(vacationRepository.retrieveVacation(AccountId.create(USERNAME))).thenReturn(vacation);
-        when(mailboxSession.getUser()).thenReturn(new MailboxSession.User() {
-            @Override
-            public String getUserName() {
-                return USERNAME;
-            }
-
-            @Override
-            public String getPassword() {
-                return null;
-            }
-
-            @Override
-            public List<Locale> getLocalePreferences() {
-                return null;
-            }
-        });
+        when(mailboxSession.getUser()).thenReturn(user);
+        when(user.getUserName()).thenReturn(USERNAME);
 
         GetVacationRequest getVacationRequest = GetVacationRequest.builder().build();
 
