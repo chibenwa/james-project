@@ -24,9 +24,7 @@ public interface CassandraVacationTable {
     String TABLE_NAME = "vacation";
     String ACCOUNT_ID = "account_id";
     String FROM_DATE = "from_date";
-    String FROM_TIMEZONE = "from_timezone";
     String TO_DATE = "to_date";
-    String TO_TIMEZONE = "to_timezone";
     String IS_ENABLED = "is_enabled";
     String TEXT = "text";
 

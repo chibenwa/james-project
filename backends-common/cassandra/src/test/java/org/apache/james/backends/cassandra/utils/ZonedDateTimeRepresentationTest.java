@@ -17,24 +17,21 @@
  * under the License.                                           *
  ****************************************************************/
 
-package org.apache.james.util.date;
+package org.apache.james.backends.cassandra.utils;
 
-import java.time.ZoneId;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.time.ZonedDateTime;
-import java.util.Date;
-import java.util.Optional;
 
-import com.google.common.base.Preconditions;
+import org.junit.Test;
 
-public class ZonedDateTimeConverter {
+public class ZonedDateTimeRepresentationTest {
 
-    public static Optional<Date> toDate(Optional<ZonedDateTime> zonedDateTime) {
-        return zonedDateTime.map(time -> new Date(time.toInstant().toEpochMilli()));
-    }
+    private static final ZonedDateTime ZONED_DATE_TIME = ZonedDateTime.parse("2016-04-13T12:04:40.906+07:00[Asia/Vientiane]");
 
-    public static Optional<ZonedDateTime> toZonedDateTime(Optional<Date> date, Optional<ZoneId> zoneId) {
-        Preconditions.checkArgument(zoneId.isPresent() || !date.isPresent(), "ZoneId should be specified when date is specified");
-        return date.map(d -> ZonedDateTime.ofInstant(d.toInstant(), ZoneId.systemDefault()).withZoneSameInstant(zoneId.get()));
+    @Test
+    public void convertToZonedDateTimeShouldWork() {
+        assertThat(ZonedDateTimeRepresentation.fromZonedDateTime(ZONED_DATE_TIME).convertToZonedDateTime()).isEqualTo(ZONED_DATE_TIME);
     }
 
 }

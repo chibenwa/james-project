@@ -20,6 +20,8 @@
 package org.apache.james.jmap.cassandra.vacation;
 
 import org.apache.james.backends.cassandra.CassandraCluster;
+import org.apache.james.backends.cassandra.init.CassandraModuleComposite;
+import org.apache.james.backends.cassandra.init.CassandraZonedDateTimeModule;
 import org.apache.james.jmap.api.vacation.AbstractVacationRepositoryTest;
 import org.apache.james.jmap.api.vacation.VacationRepository;
 
@@ -29,7 +31,7 @@ public class CassandraVacationRepositoryTest extends AbstractVacationRepositoryT
 
     @Override
     protected VacationRepository createVacationRepository() {
-        cassandra = CassandraCluster.create(new CassandraVacationModule());
-        return new CassandraVacationRepository(cassandra.getConf());
+        cassandra = CassandraCluster.create(new CassandraModuleComposite(new CassandraVacationModule(), new CassandraZonedDateTimeModule()));
+        return new CassandraVacationRepository(cassandra.getConf(), cassandra.getTypesProvider());
     }
 }
