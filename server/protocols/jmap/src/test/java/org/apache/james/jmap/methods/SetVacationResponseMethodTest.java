@@ -27,6 +27,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 
 import org.apache.james.jmap.api.vacation.AccountId;
@@ -179,7 +180,14 @@ public class SetVacationResponseMethodTest {
                     .textBody(TEXT_BODY)
                     .build()))
             .build();
+        Vacation vacation = Vacation.builder()
+            .enabled(false)
+            .textBody(TEXT_BODY)
+            .build();
+        AccountId accountId = AccountId.create(USERNAME);
+
         when(mailboxSession.getUser()).thenReturn(USER);
+        when(vacationRepository.modifyVacation(accountId, vacation)).thenReturn(CompletableFuture.completedFuture(null));
 
         Stream<JmapResponse> result = testee.process(setVacationRequest, clientId, mailboxSession);
 
@@ -191,10 +199,8 @@ public class SetVacationResponseMethodTest {
                 .build())
             .build();
         assertThat(result).containsExactly(expected);
-        verify(vacationRepository).modifyVacation(AccountId.create(USERNAME), Vacation.builder()
-            .enabled(false)
-            .textBody(TEXT_BODY)
-            .build());
+
+        verify(vacationRepository).modifyVacation(accountId, vacation);
         verifyNoMoreInteractions(vacationRepository);
     }
 

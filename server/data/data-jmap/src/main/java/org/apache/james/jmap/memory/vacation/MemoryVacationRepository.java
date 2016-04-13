@@ -21,6 +21,7 @@ package org.apache.james.jmap.memory.vacation;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 import javax.inject.Singleton;
 
@@ -40,15 +41,16 @@ public class MemoryVacationRepository implements VacationRepository {
     }
 
     @Override
-    public Vacation retrieveVacation(AccountId accountId) {
+    public CompletableFuture<Vacation> retrieveVacation(AccountId accountId) {
         Preconditions.checkNotNull(accountId);
-        return vacationMap.getOrDefault(accountId, DEFAULT_VACATION);
+        return CompletableFuture.completedFuture(vacationMap.getOrDefault(accountId, DEFAULT_VACATION));
     }
 
     @Override
-    public void modifyVacation(AccountId accountId, Vacation vacation) {
+    public CompletableFuture<Void> modifyVacation(AccountId accountId, Vacation vacation) {
         Preconditions.checkNotNull(accountId);
         Preconditions.checkNotNull(vacation);
         vacationMap.put(accountId, vacation);
+        return CompletableFuture.completedFuture(null);
     }
 }

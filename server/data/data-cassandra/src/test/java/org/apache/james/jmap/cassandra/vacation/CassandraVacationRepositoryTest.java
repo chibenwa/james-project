@@ -32,6 +32,6 @@ public class CassandraVacationRepositoryTest extends AbstractVacationRepositoryT
     @Override
     protected VacationRepository createVacationRepository() {
         cassandra = CassandraCluster.create(new CassandraModuleComposite(new CassandraVacationModule(), new CassandraZonedDateTimeModule()));
-        return new CassandraVacationRepository(cassandra.getConf(), cassandra.getTypesProvider());
+        return new CassandraVacationRepository(new CassandraVacationDAO(cassandra.getConf(), cassandra.getTypesProvider()));
     }
 }

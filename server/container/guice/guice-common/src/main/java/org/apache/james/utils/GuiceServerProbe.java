@@ -358,6 +358,6 @@ public class GuiceServerProbe<Id extends MailboxId> implements ExtendedServerPro
 
     @Override
     public Vacation retrieveVacation(AccountId accountId) {
-        return vacationRepository.retrieveVacation(accountId);
+        return vacationRepository.retrieveVacation(accountId).join();
     }
 }

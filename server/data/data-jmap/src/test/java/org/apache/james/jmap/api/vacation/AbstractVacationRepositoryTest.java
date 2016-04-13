@@ -46,22 +46,22 @@ public abstract class AbstractVacationRepositoryTest {
 
     @Test
     public void retrieveVacationShouldReturnDefaultValueByDefault() {
-        assertThat(vacationRepository.retrieveVacation(ACCOUNT_ID)).isEqualTo(VacationRepository.DEFAULT_VACATION);
+        assertThat(vacationRepository.retrieveVacation(ACCOUNT_ID).join()).isEqualTo(VacationRepository.DEFAULT_VACATION);
     }
 
     @Test
     public void modifyVacationShouldWork() {
-        vacationRepository.modifyVacation(ACCOUNT_ID, VACATION_1);
+        vacationRepository.modifyVacation(ACCOUNT_ID, VACATION_1).join();
 
-        assertThat(vacationRepository.retrieveVacation(ACCOUNT_ID)).isEqualTo(VACATION_1);
+        assertThat(vacationRepository.retrieveVacation(ACCOUNT_ID).join()).isEqualTo(VACATION_1);
     }
 
     @Test
     public void modifyVacationShouldReplacePreviousValue() {
-        vacationRepository.modifyVacation(ACCOUNT_ID, VACATION_1);
-        vacationRepository.modifyVacation(ACCOUNT_ID, VACATION_2);
+        vacationRepository.modifyVacation(ACCOUNT_ID, VACATION_1).join();
+        vacationRepository.modifyVacation(ACCOUNT_ID, VACATION_2).join();
 
-        assertThat(vacationRepository.retrieveVacation(ACCOUNT_ID)).isEqualTo(VACATION_2);
+        assertThat(vacationRepository.retrieveVacation(ACCOUNT_ID).join()).isEqualTo(VACATION_2);
     }
 
     @Test(expected = NullPointerException.class)

@@ -90,7 +90,7 @@ public class SetVacationResponseMethod implements Method {
 
     private Stream<JmapResponse> process(ClientId clientId, AccountId accountId, VacationResponse vacationResponse) {
         if (vacationResponse.isValid()) {
-            vacationRepository.modifyVacation(accountId, convertToVacation(vacationResponse));
+            vacationRepository.modifyVacation(accountId, convertToVacation(vacationResponse)).join();
             return Stream.of(JmapResponse.builder()
                 .clientId(clientId)
                 .responseName(RESPONSE_NAME)

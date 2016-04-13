@@ -19,12 +19,14 @@
 
 package org.apache.james.jmap.api.vacation;
 
+import java.util.concurrent.CompletableFuture;
+
 public interface VacationRepository {
 
     Vacation DEFAULT_VACATION = Vacation.builder().enabled(false).build();
 
-    void modifyVacation(AccountId accountId, Vacation vacation);
+    CompletableFuture<Void> modifyVacation(AccountId accountId, Vacation vacation);
 
-    Vacation retrieveVacation(AccountId accountId);
+    CompletableFuture<Vacation> retrieveVacation(AccountId accountId);
 
 }

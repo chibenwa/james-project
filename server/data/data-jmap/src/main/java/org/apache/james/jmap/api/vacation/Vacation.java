@@ -120,4 +120,5 @@ public class Vacation {
     public int hashCode() {
         return Objects.hash(isEnabled, fromDate, toDate, textBody);
     }
+
 }
