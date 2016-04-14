@@ -18,16 +18,17 @@
  ****************************************************************/
 package org.apache.james.mpt.smtp;
 
-import org.apache.onami.test.OnamiSuite;
-import org.apache.onami.test.annotation.GuiceModules;
-import org.junit.runner.RunWith;
-import org.junit.runners.Suite;
+import org.apache.james.mpt.smtp.host.CassandraJamesSmtpHostSystem;
+import org.apache.james.mpt.smtp.jmap.JmapSmtpHostSystem;
 
-@RunWith(OnamiSuite.class)
-@Suite.SuiteClasses({
-    ForwardSmtpTest.class
-})
-@GuiceModules({ CassandraTestModule.class })
-public class SmtpTest {
+import com.google.inject.AbstractModule;
+
+public class CassandraTestModule extends AbstractModule {
+
+    @Override
+    protected void configure() {
+        bind(SmtpHostSystem.class).to(CassandraJamesSmtpHostSystem.class);
+        bind(JmapSmtpHostSystem.class).to(CassandraJamesSmtpHostSystem.class);
+    }
 
 }

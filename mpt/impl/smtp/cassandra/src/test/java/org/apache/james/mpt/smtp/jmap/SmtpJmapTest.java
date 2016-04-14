@@ -16,17 +16,19 @@
  * specific language governing permissions and limitations      *
  * under the License.                                           *
  ****************************************************************/
-package org.apache.james.mpt.smtp;
+package org.apache.james.mpt.smtp.jmap;
 
-import org.apache.james.mpt.smtp.host.CassandraJamesSmtpHostSystem;
+import org.apache.james.mpt.smtp.CassandraTestModule;
+import org.apache.onami.test.OnamiSuite;
+import org.apache.onami.test.annotation.GuiceModules;
+import org.junit.runner.RunWith;
+import org.junit.runners.Suite;
 
-import com.google.inject.AbstractModule;
-
-public class SmtpTestModule extends AbstractModule {
-
-    @Override
-    protected void configure() {
-        bind(SmtpHostSystem.class).to(CassandraJamesSmtpHostSystem.class);
-    }
+@RunWith(OnamiSuite.class)
+@Suite.SuiteClasses({
+    JMAPVacationTestSmtpTest.class
+})
+@GuiceModules({ CassandraTestModule.class })
+public class SmtpJmapTest {
 
 }

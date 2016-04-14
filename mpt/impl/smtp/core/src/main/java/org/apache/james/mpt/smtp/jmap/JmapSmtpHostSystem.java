@@ -16,18 +16,13 @@
  * specific language governing permissions and limitations      *
  * under the License.                                           *
  ****************************************************************/
-package org.apache.james.mpt.smtp;
 
-import org.apache.onami.test.OnamiSuite;
-import org.apache.onami.test.annotation.GuiceModules;
-import org.junit.runner.RunWith;
-import org.junit.runners.Suite;
+package org.apache.james.mpt.smtp.jmap;
 
-@RunWith(OnamiSuite.class)
-@Suite.SuiteClasses({
-    ForwardSmtpTest.class
-})
-@GuiceModules({ CassandraTestModule.class })
-public class SmtpTest {
+import org.apache.james.mpt.smtp.SmtpHostSystem;
+
+public interface JmapSmtpHostSystem extends SmtpHostSystem {
+
+    int getJmapPort();
 
 }
