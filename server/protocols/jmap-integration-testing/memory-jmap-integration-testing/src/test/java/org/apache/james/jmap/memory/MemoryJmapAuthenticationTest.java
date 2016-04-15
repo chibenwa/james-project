@@ -38,7 +38,7 @@ public class MemoryJmapAuthenticationTest extends JMAPAuthenticationTest {
 
     @Override
     protected GuiceJamesServer<?> createJmapServer(FixedDateZonedDateTimeProvider zonedDateTimeProvider) {
-        return new GuiceJamesServer<>(new TypeLiteral<InMemoryId>(){})
+        return new GuiceJamesServer<>(MemoryJamesServerMain.inMemoryId)
                 .combineWith(MemoryJamesServerMain.inMemoryServerModule)
                 .overrideWith(new MemoryJmapServerModule(temporaryFolder),
                              (binder) -> binder.bind(ZonedDateTimeProvider.class).toInstance(zonedDateTimeProvider));

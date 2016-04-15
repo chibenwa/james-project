@@ -27,7 +27,7 @@ import org.junit.runners.Suite;
 @Suite.SuiteClasses({
     ForwardSmtpTest.class
 })
-@GuiceModules({ SmtpTestModule.class })
+@GuiceModules({ CassandraTestModule.class })
 public class SmtpTest {
 
 }

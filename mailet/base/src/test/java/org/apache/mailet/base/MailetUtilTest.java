@@ -19,9 +19,23 @@
 
 package org.apache.mailet.base;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import org.apache.mailet.MailAddress;
+import org.apache.mailet.base.test.FakeMail;
 import org.apache.mailet.base.test.FakeMailetConfig;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+
+import java.util.Properties;
+
+import javax.activation.DataHandler;
+import javax.mail.Session;
+import javax.mail.internet.MimeBodyPart;
+import javax.mail.internet.MimeMessage;
+import javax.mail.internet.MimeMultipart;
+import javax.mail.util.ByteArrayDataSource;
+
 import org.junit.Before;
 import org.junit.Test;
 
@@ -79,4 +93,216 @@ public class MailetUtilTest {
         config.setProperty(A_PARAMETER, value);
         return MailetUtil.getInitParameter(config, A_PARAMETER, defaultValue);
     }
+
+    @Test
+    public void ownerIsAMailingListPrefix() throws Exception {
+        FakeMail fakeMail = new FakeMail();
+        fakeMail.setSender(new MailAddress("owner-list@any.com"));
+
+        assertThat(MailetUtil.isMailingList(fakeMail)).isTrue();
+    }
+
+    @Test
+    public void requestIsAMailingListPrefix() throws Exception {
+        FakeMail fakeMail = new FakeMail();
+        fakeMail.setSender(new MailAddress("list-request@any.com"));
+
+        assertThat(MailetUtil.isMailingList(fakeMail)).isTrue();
+    }
+
+    @Test
+    public void mailerDaemonIsReserved() throws Exception {
+        FakeMail fakeMail = new FakeMail();
+        fakeMail.setSender(new MailAddress("MAILER-DAEMON@any.com"));
+
+        assertThat(MailetUtil.isMailingList(fakeMail)).isTrue();
+    }
+
+    @Test
+    public void listservIsReserved() throws Exception {
+        FakeMail fakeMail = new FakeMail();
+        fakeMail.setSender(new MailAddress("LISTSERV@any.com"));
+
+        assertThat(MailetUtil.isMailingList(fakeMail)).isTrue();
+    }
+
+    @Test
+    public void majordomoIsReserved() throws Exception {
+        FakeMail fakeMail = new FakeMail();
+        fakeMail.setSender(new MailAddress("majordomo@any.com"));
+
+        assertThat(MailetUtil.isMailingList(fakeMail)).isTrue();
+    }
+
+    @Test
+    public void listIdShouldBeDetected() throws Exception {
+        FakeMail fakeMail = new FakeMail();
+        fakeMail.setSender(new MailAddress("any@any.com"));
+        MimeMessage message = new MimeMessage(Session.getDefaultInstance(new Properties()));
+        message.setHeader("List-Id", "any");
+        fakeMail.setMessage(message);
+
+        assertThat(MailetUtil.isMailingList(fakeMail)).isTrue();
+    }
+
+    @Test
+    public void listHelpShouldBeDetected() throws Exception {
+        FakeMail fakeMail = new FakeMail();
+        fakeMail.setSender(new MailAddress("any@any.com"));
+        MimeMessage message = new MimeMessage(Session.getDefaultInstance(new Properties()));
+        message.setHeader("List-Help", "any");
+        fakeMail.setMessage(message);
+
+        assertThat(MailetUtil.isMailingList(fakeMail)).isTrue();
+    }
+
+    @Test
+    public void listSubscribeShouldBeDetected() throws Exception {
+        FakeMail fakeMail = new FakeMail();
+        fakeMail.setSender(new MailAddress("any@any.com"));
+        MimeMessage message = new MimeMessage(Session.getDefaultInstance(new Properties()));
+        message.setHeader("List-Subscribe", "any");
+        fakeMail.setMessage(message);
+
+        assertThat(MailetUtil.isMailingList(fakeMail)).isTrue();
+    }
+
+    @Test
+    public void listUnsubscribeShouldBeDetected() throws Exception {
+        FakeMail fakeMail = new FakeMail();
+        fakeMail.setSender(new MailAddress("any@any.com"));
+        MimeMessage message = new MimeMessage(Session.getDefaultInstance(new Properties()));
+        message.setHeader("List-Unsubscribe", "any");
+        fakeMail.setMessage(message);
+
+        assertThat(MailetUtil.isMailingList(fakeMail)).isTrue();
+    }
+
+    @Test
+    public void listPostShouldBeDetected() throws Exception {
+        FakeMail fakeMail = new FakeMail();
+        fakeMail.setSender(new MailAddress("any@any.com"));
+        MimeMessage message = new MimeMessage(Session.getDefaultInstance(new Properties()));
+        message.setHeader("List-Post", "any");
+        fakeMail.setMessage(message);
+
+        assertThat(MailetUtil.isMailingList(fakeMail)).isTrue();
+    }
+
+    @Test
+    public void listOwnerShouldBeDetected() throws Exception {
+        FakeMail fakeMail = new FakeMail();
+        fakeMail.setSender(new MailAddress("any@any.com"));
+        MimeMessage message = new MimeMessage(Session.getDefaultInstance(new Properties()));
+        message.setHeader("List-Owner", "any");
+        fakeMail.setMessage(message);
+
+        assertThat(MailetUtil.isMailingList(fakeMail)).isTrue();
+    }
+
+    @Test
+    public void listArchiveShouldBeDetected() throws Exception {
+        FakeMail fakeMail = new FakeMail();
+        fakeMail.setSender(new MailAddress("any@any.com"));
+        MimeMessage message = new MimeMessage(Session.getDefaultInstance(new Properties()));
+        message.setHeader("List-Archive", "any");
+        fakeMail.setMessage(message);
+
+        assertThat(MailetUtil.isMailingList(fakeMail)).isTrue();
+    }
+
+    @Test
+    public void normalMailShouldNotBeIdentifiedAsMailingList() throws Exception {
+        FakeMail fakeMail = new FakeMail();
+        fakeMail.setSender(new MailAddress("any@any.com"));
+        fakeMail.setMessage(new MimeMessage(Session.getDefaultInstance(new Properties())));
+
+        assertThat(MailetUtil.isMailingList(fakeMail)).isFalse();
+    }
+
+    @Test
+    public void isAutoSubmittedShouldNotMatchNonAutoSubmittedMails() throws Exception {
+        FakeMail fakeMail = new FakeMail();
+        fakeMail.setMessage(new MimeMessage(Session.getDefaultInstance(new Properties())));
+
+        assertThat(MailetUtil.isAutoSubmitted(fakeMail)).isFalse();
+    }
+
+    @Test
+    public void isAutoSubmittedShouldWork() throws Exception {
+        FakeMail fakeMail = new FakeMail();
+        fakeMail.setSender(new MailAddress("any@any.com"));
+        MimeMessage message = new MimeMessage(Session.getDefaultInstance(new Properties()));
+        message.setHeader("Auto-Submitted", "auto-replied");
+        fakeMail.setMessage(message);
+
+        assertThat(MailetUtil.isAutoSubmitted(fakeMail)).isTrue();
+    }
+
+    @Test
+    public void isMdnSentAutomaticallyShouldWork() throws Exception {
+        FakeMail fakeMail = new FakeMail();
+        fakeMail.setSender(new MailAddress("any@any.com"));
+        MimeMessage message = new MimeMessage(Session.getDefaultInstance(new Properties()));
+        MimeMultipart multipart = new MimeMultipart();
+        MimeBodyPart scriptPart = new MimeBodyPart();
+        scriptPart.setDataHandler(
+            new DataHandler(
+                new ByteArrayDataSource(
+                    "Disposition: MDN-sent-automatically",
+                    "message/disposition-notification;")
+            ));
+        scriptPart.setHeader("Content-Type", "message/disposition-notification");
+        multipart.addBodyPart(scriptPart);
+        message.setContent(multipart);
+
+        fakeMail.setMessage(message);
+
+        assertThat(MailetUtil.isMdnSentAutomatically(fakeMail)).isTrue();
+    }
+
+    @Test
+    public void isMdnSentAutomaticallyShouldNotFilterManuallySentMdn() throws Exception {
+        FakeMail fakeMail = new FakeMail();
+        fakeMail.setSender(new MailAddress("any@any.com"));
+        MimeMessage message = new MimeMessage(Session.getDefaultInstance(new Properties()));
+        MimeMultipart multipart = new MimeMultipart();
+        MimeBodyPart scriptPart = new MimeBodyPart();
+        scriptPart.setDataHandler(
+            new DataHandler(
+                new ByteArrayDataSource(
+                    "Disposition: MDN-sent-manually",
+                    "message/disposition-notification; charset=UTF-8")
+            ));
+        scriptPart.setHeader("Content-Type", "message/disposition-notification");
+        multipart.addBodyPart(scriptPart);
+        message.setContent(multipart);
+
+        fakeMail.setMessage(message);
+
+        assertThat(MailetUtil.isMdnSentAutomatically(fakeMail)).isFalse();
+    }
+
+    @Test
+    public void isMdnSentAutomaticallyShouldManageItsMimeType() throws Exception {
+        FakeMail fakeMail = new FakeMail();
+        fakeMail.setSender(new MailAddress("any@any.com"));
+        MimeMessage message = new MimeMessage(Session.getDefaultInstance(new Properties()));
+        MimeMultipart multipart = new MimeMultipart();
+        MimeBodyPart scriptPart = new MimeBodyPart();
+        scriptPart.setDataHandler(
+            new DataHandler(
+                new ByteArrayDataSource(
+                    "Disposition: MDN-sent-automatically",
+                    "text/plain")
+            ));
+        scriptPart.setHeader("Content-Type", "text/plain");
+        multipart.addBodyPart(scriptPart);
+        message.setContent(multipart);
+
+        fakeMail.setMessage(message);
+
+        assertThat(MailetUtil.isMdnSentAutomatically(fakeMail)).isFalse();
+    }
+
 }

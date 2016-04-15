@@ -16,17 +16,17 @@
  * specific language governing permissions and limitations      *
  * under the License.                                           *
  ****************************************************************/
-package org.apache.james.mpt.smtp;
 
-import org.apache.james.mpt.smtp.host.CassandraJamesSmtpHostSystem;
+package org.apache.james.jmap.api.vacation;
 
-import com.google.inject.AbstractModule;
+import java.util.concurrent.CompletableFuture;
 
-public class SmtpTestModule extends AbstractModule {
+public interface VacationRepository {
 
-    @Override
-    protected void configure() {
-        bind(SmtpHostSystem.class).to(CassandraJamesSmtpHostSystem.class);
-    }
+    Vacation DEFAULT_VACATION = Vacation.builder().enabled(false).build();
+
+    CompletableFuture<Void> modifyVacation(AccountId accountId, Vacation vacation);
+
+    CompletableFuture<Vacation> retrieveVacation(AccountId accountId);
 
 }

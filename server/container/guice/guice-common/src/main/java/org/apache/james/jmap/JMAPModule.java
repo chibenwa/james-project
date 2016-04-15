@@ -20,7 +20,10 @@ package org.apache.james.jmap;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.HierarchicalConfiguration;
@@ -34,6 +37,7 @@ import org.apache.james.utils.ConfigurationPerformer;
 import org.apache.james.utils.ConfigurationProvider;
 
 import com.github.fge.lambdas.Throwing;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
@@ -92,18 +96,41 @@ public class JMAPModule<Id extends MailboxId> extends AbstractModule {
 
         @Override
         public void initModule() throws Exception {
-            Optional<HierarchicalConfiguration> removeMimeHeaderMailet = configurationProvider.getConfiguration("mailetcontainer")
+            HierarchicalConfiguration configuration = configurationProvider.getConfiguration("mailetcontainer");
+            performChecks(configuration);
+        }
+
+        @VisibleForTesting
+        void performChecks(HierarchicalConfiguration configuration) throws ConfigurationException {
+            List<HierarchicalConfiguration> transportMailets = configuration
                 .configurationAt("processors")
                 .configurationsAt("processor")
                 .stream()
                 .filter(processor -> processor.getString("[@state]").equals("transport"))
                 .flatMap(transport -> transport.configurationsAt("mailet").stream())
+                .collect(Collectors.toList());
+            ensureBccMailet(transportMailets);
+            ensureVacationMailet(transportMailets);
+        }
+
+        private void ensureBccMailet(List<HierarchicalConfiguration> transportMailets) throws ConfigurationException {
+            Optional<HierarchicalConfiguration> removeMimeHeaderMailet = transportMailets.stream()
                 .filter(mailet -> mailet.getString("[@class]").equals("RemoveMimeHeader"))
                 .filter(mailet -> mailet.getString("[@match]").equals("All"))
                 .filter(mailet -> mailet.getProperty("name").equals("bcc"))
                 .findAny();
             if (!removeMimeHeaderMailet.isPresent()) {
                 throw new ConfigurationException("Missing RemoveMimeHeader in mailets configuration (mailetcontainer -> processors -> transport). Should be configured to remove Bcc header");
+            }
+        }
+
+        private void ensureVacationMailet(List<HierarchicalConfiguration> transportMailets) throws ConfigurationException {
+            Optional<HierarchicalConfiguration> vacationMailet = transportMailets.stream()
+                .filter(mailet -> mailet.getString("[@class]").equals("org.apache.james.jmap.mailet.VacationMailet"))
+                .filter(mailet -> mailet.getString("[@match]").equals("RecipientIsLocal"))
+                .findAny();
+            if (!vacationMailet.isPresent()) {
+                throw new ConfigurationException("Missing org.apache.james.jmap.mailet.VacationMailet in mailets configuration (mailetcontainer -> processors -> transport)");
             }
         }
     }

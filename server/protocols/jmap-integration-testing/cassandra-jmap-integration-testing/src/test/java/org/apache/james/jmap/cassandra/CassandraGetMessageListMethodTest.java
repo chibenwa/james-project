@@ -45,7 +45,7 @@ public class CassandraGetMessageListMethodTest extends GetMessageListMethodTest 
     
     @Override
     protected GuiceJamesServer<?> createJmapServer() {
-        return new GuiceJamesServer<>(new TypeLiteral<CassandraId>(){})
+        return new GuiceJamesServer<>(CassandraJamesServerMain.cassandraId)
                 .combineWith(CassandraJamesServerMain.cassandraServerModule)
                 .overrideWith(new CassandraJmapServerModule(temporaryFolder, embeddedElasticSearch, cassandra));
     }

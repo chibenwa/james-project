@@ -45,7 +45,7 @@ public class CassandraGetMailboxesMethodTest extends GetMailboxesMethodTest {
 
     @Override
     protected GuiceJamesServer<CassandraId> createJmapServer() {
-        return new GuiceJamesServer<>(new TypeLiteral<CassandraId>(){})
+        return new GuiceJamesServer<>(CassandraJamesServerMain.cassandraId)
                     .combineWith(CassandraJamesServerMain.cassandraServerModule)
                     .overrideWith(new CassandraJmapServerModule(temporaryFolder, embeddedElasticSearch, cassandra));
     }
