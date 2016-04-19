@@ -30,10 +30,10 @@ import org.apache.james.jmap.crypto.SignatureHandler;
 import org.apache.james.jmap.crypto.SignedContinuationTokenManager;
 import org.apache.james.jmap.send.MailFactory;
 import org.apache.james.jmap.send.MailSpool;
-import org.apache.james.jmap.utils.DefaultZonedDateTimeProvider;
-import org.apache.james.jmap.utils.ZonedDateTimeProvider;
 import org.apache.mailet.base.AutomaticallySentMailDetector;
 import org.apache.mailet.base.AutomaticallySentMailDetectorImpl;
+import org.apache.james.util.date.DefaultZonedDateTimeProvider;
+import org.apache.james.util.date.ZonedDateTimeProvider;
 
 import com.google.common.collect.ImmutableList;
 import com.google.inject.AbstractModule;
