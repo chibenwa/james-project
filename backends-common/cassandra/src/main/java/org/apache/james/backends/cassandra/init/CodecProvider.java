@@ -17,25 +17,24 @@
  * under the License.                                           *
  ****************************************************************/
 
-package org.apache.james.jmap.cassandra.vacation;
+package org.apache.james.backends.cassandra.init;
 
-import org.apache.james.backends.cassandra.CassandraCluster;
-import org.apache.james.backends.cassandra.init.CassandraModuleComposite;
-import org.apache.james.backends.cassandra.init.CassandraZonedDateTimeModule;
 import org.apache.james.backends.cassandra.utils.ZonedDateTimeCodec;
-import org.apache.james.jmap.api.vacation.AbstractVacationRepositoryTest;
-import org.apache.james.jmap.api.vacation.VacationRepository;
 
-public class CassandraVacationRepositoryTest extends AbstractVacationRepositoryTest {
+import com.datastax.driver.core.Session;
 
-    private CassandraCluster cassandra;
+public class CodecProvider {
 
-    @Override
-    protected VacationRepository createVacationRepository() {
-        cassandra = CassandraCluster.create(new CassandraModuleComposite(new CassandraVacationModule(), new CassandraZonedDateTimeModule()));
-        return new CassandraVacationRepository(
-            new CassandraVacationDAO(cassandra.getConf(),
-                new ZonedDateTimeCodec(cassandra.getTypesProvider()
-                    .getDefinedUserType(CassandraZonedDateTimeModule.ZONED_DATE_TIME))));
+    private final Session session;
+
+    public CodecProvider(Session session, CassandraTypesProvider cassandraTypesProvider) {
+
+        ZonedDateTimeCodec zonedDateTimeCodec = new ZonedDateTimeCodec(cassandraTypesProvider.getDefinedUserType(CassandraZonedDateTimeModule.ZONED_DATE_TIME));
+        session.getCluster()
+            .getConfiguration()
+            .getCodecRegistry()
+            .register(zonedDateTimeCodec);
+
+        this.session = session;
     }
 }
