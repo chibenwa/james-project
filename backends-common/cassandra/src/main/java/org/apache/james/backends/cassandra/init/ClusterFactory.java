@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Optional;
 
 import com.datastax.driver.core.Cluster;
+import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.QueryOptions;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
@@ -55,7 +56,8 @@ public class ClusterFactory {
         if (refreshSchemaIntervalMillis.isPresent()) {
             clusterBuilder.withQueryOptions(new QueryOptions().setRefreshSchemaIntervalMillis(refreshSchemaIntervalMillis.get()));
         }
-        return clusterBuilder.build();
+        return clusterBuilder.withCodecRegistry(new CodecRegistry())
+            .build();
     }
 
     public static Cluster createClusterForClusterWithoutPassWord(List<CassandraServer> servers) {

@@ -27,10 +27,12 @@ import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.apache.james.backends.cassandra.components.CassandraModule;
 import org.apache.james.backends.cassandra.init.CassandraModuleComposite;
+import org.apache.james.backends.cassandra.init.CassandraTypesProvider;
 import org.apache.james.backends.cassandra.init.CassandraZonedDateTimeModule;
 import org.apache.james.backends.cassandra.init.ClusterFactory;
 import org.apache.james.backends.cassandra.init.ClusterWithKeyspaceCreatedFactory;
 import org.apache.james.backends.cassandra.init.SessionWithInitializedTablesFactory;
+import org.apache.james.backends.cassandra.utils.ZonedDateTimeCodec;
 import org.apache.james.filesystem.api.FileSystem;
 
 import com.datastax.driver.core.Cluster;
@@ -83,6 +85,17 @@ public class CassandraSessionModule extends AbstractModule {
                         configuration.getString("cassandra.keyspace"),
                         configuration.getInt("cassandra.replication.factor")))
                 .get();
+    }
+
+    @Provides
+    @Singleton
+    ZonedDateTimeCodec provideZonedDateTimeCodec(Session session, CassandraTypesProvider cassandraTypesProvider) {
+        ZonedDateTimeCodec zonedDateTimeCodec = new ZonedDateTimeCodec(cassandraTypesProvider.getDefinedUserType(CassandraZonedDateTimeModule.ZONED_DATE_TIME));
+        session.getCluster()
+            .getConfiguration()
+            .getCodecRegistry()
+            .register(zonedDateTimeCodec);
+        return zonedDateTimeCodec;
     }
 
     private static AsyncRetryExecutor getRetryer(AsyncRetryExecutor executor, PropertiesConfiguration configuration) {
