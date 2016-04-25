@@ -186,4 +186,55 @@ public class JMAPVacationTestSmtpTest extends AbstractSimpleScriptedTestProtocol
             .body("[0].subject", equalTo("Re: test"))
             .body("[0].text", equalTo(REASON));
     }
+
+    @Test
+    public void jmapVacationShouldGenerateTextFromHtml() throws Exception {
+        String bodyRequest = "[[" +
+            "\"setVacationResponse\", " +
+            "{" +
+                "\"update\":{" +
+                    "\"singleton\" : {" +
+                        "\"id\": \"singleton\"," +
+                        "\"isEnabled\": \"true\"," +
+                        "\"htmlBody\": \"<p>" + REASON + "</p>\"" +
+                    "}" +
+                "}" +
+            "}, \"#0\"" +
+            "]]";
+
+        RestAssured.port = hostSystem.getJmapPort();
+        RestAssured.baseURI = HTTP_LOCALHOST;
+
+        AccessToken accessToken = JmapAuthentication.authenticateJamesUser(USER_AT_DOMAIN, PASSWORD);
+
+        given()
+            .accept(ContentType.JSON)
+            .contentType(ContentType.JSON)
+            .header("Authorization", accessToken.serialize())
+            .body(bodyRequest)
+        .when()
+            .post("/jmap")
+        .then()
+            .statusCode(200);
+
+        scriptTest("helo", Locale.US);
+
+        Thread.sleep(1000);
+
+        RestAssured.port = restSMTPPort;
+        RestAssured.baseURI = restSMTPBasedUPI;
+
+        given()
+            .accept(ContentType.JSON)
+            .contentType(ContentType.JSON)
+        .when()
+            .get("/api/email")
+        .then()
+            .statusCode(200)
+            .body("[0].from", equalTo(USER_AT_DOMAIN))
+            .body("[0].to[0]", equalTo("matthieu@yopmail.com"))
+            .body("[0].subject", equalTo("Re: test"))
+            .body("[0].text", equalTo(REASON + "\n"))
+            .body("[0].html", equalTo("<p>" + REASON + "</p>"));
+    }
 }

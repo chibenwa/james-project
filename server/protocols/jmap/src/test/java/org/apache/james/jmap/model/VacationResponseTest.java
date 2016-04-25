@@ -30,6 +30,7 @@ public class VacationResponseTest {
 
     public static final String IDENTIFIER = "identifier";
     public static final String MESSAGE = "A message explaining I am in vacation";
+    public static final String HTML_MESSAGE = "<p>A message explaining I am in vacation</p>";
     public static final ZonedDateTime FROM_DATE = ZonedDateTime.parse("2016-04-15T11:56:32.224+07:00[Asia/Vientiane]");
     public static final ZonedDateTime TO_DATE = ZonedDateTime.parse("2016-04-16T11:56:32.224+07:00[Asia/Vientiane]");
     public static final String SUBJECT = "subject";
@@ -41,24 +42,67 @@ public class VacationResponseTest {
             .enabled(true)
             .fromDate(Optional.of(FROM_DATE))
             .toDate(Optional.of(TO_DATE))
-            .textBody(MESSAGE)
+            .textBody(Optional.of(MESSAGE))
+            .htmlBody(Optional.of(HTML_MESSAGE))
             .subject(Optional.of(SUBJECT))
             .build();
 
         assertThat(vacationResponse.getId()).isEqualTo(IDENTIFIER);
         assertThat(vacationResponse.isEnabled()).isEqualTo(true);
-        assertThat(vacationResponse.getTextBody()).isEqualTo(MESSAGE);
+        assertThat(vacationResponse.getTextBody()).contains(MESSAGE);
+        assertThat(vacationResponse.getHtmlBody()).contains(HTML_MESSAGE);
         assertThat(vacationResponse.getFromDate()).contains(FROM_DATE);
         assertThat(vacationResponse.getToDate()).contains(TO_DATE);
         assertThat(vacationResponse.getSubject()).contains(SUBJECT);
     }
 
     @Test(expected = IllegalStateException.class)
-    public void vacationResponseBuilderRequiresABodyText() {
+    public void vacationResponseBuilderRequiresABodyTextOrHtmlWhenEnabled() {
         VacationResponse.builder()
             .id(IDENTIFIER)
             .enabled(true)
             .build();
+    }
+
+    @Test
+    public void vacationResponseBuilderShouldNotRequiresABodyTextOrHtmlWhenDisabled() {
+        VacationResponse vacationResponse = VacationResponse.builder()
+            .id(IDENTIFIER)
+            .enabled(false)
+            .build();
+
+        assertThat(vacationResponse.getId()).isEqualTo(IDENTIFIER);
+        assertThat(vacationResponse.isEnabled()).isEqualTo(false);
+        assertThat(vacationResponse.getTextBody()).isEmpty();
+        assertThat(vacationResponse.getHtmlBody()).isEmpty();
+    }
+
+    @Test
+    public void bodyTextShouldBeEnoughWhenEnabled() {
+        VacationResponse vacationResponse = VacationResponse.builder()
+            .id(IDENTIFIER)
+            .enabled(true)
+            .textBody(Optional.of(MESSAGE))
+            .build();
+
+        assertThat(vacationResponse.getId()).isEqualTo(IDENTIFIER);
+        assertThat(vacationResponse.isEnabled()).isEqualTo(true);
+        assertThat(vacationResponse.getTextBody()).contains(MESSAGE);
+        assertThat(vacationResponse.getHtmlBody()).isEmpty();
+    }
+
+    @Test
+    public void htmlTextShouldBeEnoughWhenEnabled() {
+        VacationResponse vacationResponse = VacationResponse.builder()
+            .id(IDENTIFIER)
+            .enabled(true)
+            .htmlBody(Optional.of(MESSAGE))
+            .build();
+
+        assertThat(vacationResponse.getId()).isEqualTo(IDENTIFIER);
+        assertThat(vacationResponse.isEnabled()).isEqualTo(true);
+        assertThat(vacationResponse.getTextBody()).isEmpty();
+        assertThat(vacationResponse.getHtmlBody()).contains(MESSAGE);
     }
 
 }

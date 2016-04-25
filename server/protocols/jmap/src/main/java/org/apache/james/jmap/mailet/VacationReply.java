@@ -19,7 +19,9 @@
 
 package org.apache.james.jmap.mailet;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 import java.util.Optional;
 
@@ -31,10 +33,13 @@ import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
 import javax.mail.util.ByteArrayDataSource;
 
+import org.apache.james.jmap.api.vacation.Vacation;
+import org.apache.james.mailbox.store.extractor.TextExtractor;
 import org.apache.mailet.Mail;
 import org.apache.mailet.MailAddress;
 
 import com.google.common.base.Preconditions;
+import com.google.common.base.Throwables;
 import com.google.common.collect.Lists;
 
 public class VacationReply {
@@ -43,8 +48,7 @@ public class VacationReply {
 
         private final Mail originalMail;
         private MailAddress mailRecipient;
-        private String reason;
-        private Optional<String> subject = Optional.empty();
+        private Vacation vacation;
 
         public Builder(Mail originalMail) {
             Preconditions.checkNotNull(originalMail, "Origin mail shall not be null");
@@ -56,21 +60,18 @@ public class VacationReply {
             return this;
         }
 
-        public Builder reason(String reason) {
-            this.reason = reason;
+        public Builder vacation(Vacation vacation) {
+            this.vacation = vacation;
             return this;
         }
 
-        public Builder subject(Optional<String> subject) {
-            this.subject = subject;
-            return this;
-        }
-
-        public VacationReply build() throws MessagingException {
+        public VacationReply build(TextExtractor textExtractor) throws MessagingException {
             Preconditions.checkNotNull(mailRecipient, "Original recipient address should not be null");
+            Preconditions.checkState(vacation.getHtmlBody().isPresent() || vacation.getTextBody().isPresent());
 
             MimeMessage reply = (MimeMessage) originalMail.getMessage().reply(false);
-            reply.setContent(generateNotificationContent());
+            reply.setContent(generateNotificationContent(textExtractor));
+            Optional<String> subject = vacation.getSubject();
             if (subject.isPresent()) {
                 reply.setHeader("subject", subject.get());
             }
@@ -78,21 +79,53 @@ public class VacationReply {
             return new VacationReply(mailRecipient, Lists.newArrayList(originalMail.getSender()), reply);
         }
 
-        private Multipart generateNotificationContent() throws MessagingException {
+        private Multipart generateNotificationContent(TextExtractor textExtractor) throws MessagingException {
             try {
                 Multipart multipart = new MimeMultipart("mixed");
-                MimeBodyPart reasonPart = new MimeBodyPart();
-                reasonPart.setDataHandler(
-                    new DataHandler(
-                        new ByteArrayDataSource(
-                            reason,
-                            "text/plain; charset=UTF-8")));
-                reasonPart.setDisposition(MimeBodyPart.INLINE);
-                multipart.addBodyPart(reasonPart);
+                addPlainPart(multipart, vacation.getTextBody().orElseGet(() -> extractTextFromHTMLPart(textExtractor)));
+                addHtmlPart(multipart, vacation.getHtmlBody());
                 return multipart;
             } catch (IOException e) {
                 throw new MessagingException("Cannot read specified content", e);
+            } catch (RuntimeException runtimeException) {
+                if (runtimeException.getCause() instanceof MessagingException) {
+                    throw (MessagingException) runtimeException.getCause();
+                } else {
+                    throw Throwables.propagate(runtimeException);
+                }
             }
+        }
+
+        private String extractTextFromHTMLPart(TextExtractor textExtractor) throws RuntimeException {
+            InputStream htmlInputStream = new ByteArrayInputStream(vacation.getHtmlBody().get().getBytes());
+            try {
+                return textExtractor.extractContent(htmlInputStream, "text/html", "").getTextualContent();
+            } catch (Exception e) {
+                throw new RuntimeException(new MessagingException("Can not parse HTML body", e));
+            }
+        }
+
+        private Multipart addPlainPart(Multipart multipart, String text) throws MessagingException, IOException {
+                return addTextPart(multipart, text, "text/plain");
+        }
+
+        private Multipart addHtmlPart(Multipart multipart, Optional<String> htmlOptional) throws MessagingException, IOException {
+            if (htmlOptional.isPresent()) {
+                return addTextPart(multipart, htmlOptional.get(), "text/html");
+            }
+            return multipart;
+        }
+
+        private Multipart addTextPart(Multipart multipart, String text, String contentType) throws MessagingException, IOException {
+            MimeBodyPart textReasonPart = new MimeBodyPart();
+            textReasonPart.setDataHandler(
+                new DataHandler(
+                    new ByteArrayDataSource(
+                        text,
+                        contentType + "; charset=UTF-8")));
+            textReasonPart.setDisposition(MimeBodyPart.INLINE);
+            multipart.addBodyPart(textReasonPart);
+            return multipart;
         }
     }
 

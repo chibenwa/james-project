@@ -29,6 +29,7 @@ import org.apache.james.jmap.api.vacation.NotificationRegistry;
 import org.apache.james.jmap.api.vacation.RecipientId;
 import org.apache.james.jmap.api.vacation.Vacation;
 import org.apache.james.jmap.api.vacation.VacationRepository;
+import org.apache.james.mailbox.store.extractor.TextExtractor;
 import org.apache.james.util.date.ZonedDateTimeProvider;
 import org.apache.mailet.Mail;
 import org.apache.mailet.MailAddress;
@@ -62,9 +63,11 @@ public class VacationMailet extends GenericMailet {
     private final VacationRepository vacationRepository;
     private final ZonedDateTimeProvider zonedDateTimeProvider;
     private final NotificationRegistry notificationRegistry;
+    private final TextExtractor textExtractor;
 
     @Inject
-    public VacationMailet(VacationRepository vacationRepository, ZonedDateTimeProvider zonedDateTimeProvider, NotificationRegistry notificationRegistry) {
+    public VacationMailet(VacationRepository vacationRepository, ZonedDateTimeProvider zonedDateTimeProvider, NotificationRegistry notificationRegistry, TextExtractor textExtractor) {
+        this.textExtractor = textExtractor;
         this.vacationRepository = vacationRepository;
         this.zonedDateTimeProvider = zonedDateTimeProvider;
         this.notificationRegistry = notificationRegistry;
@@ -113,8 +116,8 @@ public class VacationMailet extends GenericMailet {
         try {
             VacationReply vacationReply = VacationReply.builder(processedMail)
                 .mailRecipient(recipient)
-                .reason(vacation.getTextBody())
-                .build();
+                .vacation(vacation)
+                .build(textExtractor);
             getMailetContext().sendMail(vacationReply.getSender(),
                 vacationReply.getRecipients(),
                 vacationReply.getMimeMessage());
