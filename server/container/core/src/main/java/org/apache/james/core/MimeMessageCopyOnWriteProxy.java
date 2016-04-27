@@ -120,12 +120,9 @@ public class MimeMessageCopyOnWriteProxy extends MimeMessage implements Disposab
 
         if (original instanceof MimeMessageCopyOnWriteProxy) {
             refCount = ((MimeMessageCopyOnWriteProxy) original).refCount;
+            refCount.incrementReferenceCount();
         } else {
             refCount = new MessageReferenceTracker(original);
-        }
-
-        if (!writeable) {
-            refCount.incrementReferenceCount();
         }
     }
 
