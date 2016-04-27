@@ -80,7 +80,7 @@ public class PostDequeueDecorator<Id extends MailboxId> extends MailQueueItemDec
                 Pair<MailboxMessage<Id>, MailboxPath> mailboxMessageAndMailboxPath = getMailboxMessageAndMailboxPath(messageId, mailboxSession);
                 moveFromOutboxToSent(mailboxMessageAndMailboxPath, mailboxSession);
             } catch (MailboxException e) {
-                throw new MailQueueException(e.getMessage(), e);
+                LOG.warn("Error while moving mail from outbox to inbox", e);
             }
         }
     }
