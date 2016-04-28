@@ -19,7 +19,13 @@
 
 package org.apache.james.modules.server;
 
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Consumer;
+
 import org.apache.camel.impl.DefaultCamelContext;
+import org.apache.commons.configuration.ConfigurationException;
 import org.apache.james.dnsservice.api.DNSService;
 import org.apache.james.domainlist.api.DomainList;
 import org.apache.james.mailetcontainer.api.MailProcessor;
@@ -28,7 +34,9 @@ import org.apache.james.mailetcontainer.api.MatcherLoader;
 import org.apache.james.mailetcontainer.api.jmx.MailSpoolerMBean;
 import org.apache.james.mailetcontainer.impl.JamesMailSpooler;
 import org.apache.james.mailetcontainer.impl.JamesMailetContext;
+import org.apache.james.mailetcontainer.impl.MatcherMailetPair;
 import org.apache.james.mailetcontainer.impl.camel.CamelCompositeProcessor;
+import org.apache.james.mailetcontainer.impl.camel.CamelMailetProcessor;
 import org.apache.james.queue.api.MailQueueFactory;
 import org.apache.james.user.api.UsersRepository;
 import org.apache.james.utils.ConfigurationPerformer;
@@ -82,16 +90,19 @@ public class CamelMailetContainerModule extends AbstractModule {
         private final CamelCompositeProcessor camelCompositeProcessor;
         private final JamesMailSpooler jamesMailSpooler;
         private final JamesMailetContext mailetContext;
+        private Set<TransportProcessorCheck> transportProcessorCheckSet;
 
         @Inject
         public MailetModuleConfigurationPerformer(ConfigurationProvider configurationProvider,
                                                 CamelCompositeProcessor camelCompositeProcessor,
                                                 JamesMailSpooler jamesMailSpooler,
-                                                JamesMailetContext mailetContext) {
+                                                JamesMailetContext mailetContext,
+                                                Set<TransportProcessorCheck> transportProcessorCheckSet) {
             this.configurationProvider = configurationProvider;
             this.camelCompositeProcessor = camelCompositeProcessor;
             this.jamesMailSpooler = jamesMailSpooler;
             this.mailetContext = mailetContext;
+            this.transportProcessorCheckSet = transportProcessorCheckSet;
         }
 
         @Override
@@ -100,6 +111,7 @@ public class CamelMailetContainerModule extends AbstractModule {
             camelCompositeProcessor.setCamelContext(new DefaultCamelContext());
             camelCompositeProcessor.configure(configurationProvider.getConfiguration("mailetcontainer").configurationAt("processors"));
             camelCompositeProcessor.init();
+            checkProcessors();
             jamesMailSpooler.setMailProcessor(camelCompositeProcessor);
             jamesMailSpooler.setLog(SPOOLER_LOGGER);
             jamesMailSpooler.configure(configurationProvider.getConfiguration("mailetcontainer").configurationAt("spooler"));
@@ -107,6 +119,24 @@ public class CamelMailetContainerModule extends AbstractModule {
             mailetContext.setLog(MAILET_LOGGER);
             mailetContext.configure(configurationProvider.getConfiguration("mailetcontainer").configurationAt("context"));
         }
+
+        private void checkProcessors() throws ConfigurationException {
+            MailProcessor mailProcessor = Optional.ofNullable(camelCompositeProcessor.getProcessor("transport"))
+                .orElseThrow(() -> new RuntimeException("JMAP needs a transport processor"));
+            if (mailProcessor instanceof CamelMailetProcessor) {
+                List<MatcherMailetPair> matcherMailetPairs = ((CamelMailetProcessor) mailProcessor).getPairs();
+                for (TransportProcessorCheck check : transportProcessorCheckSet) {
+                    check.check(matcherMailetPairs);
+                }
+            } else {
+                throw new RuntimeException("Can not perform checks as transport processor is not an instance of " + MailProcessor.class);
+            }
+        }
+    }
+
+    @FunctionalInterface
+    public interface TransportProcessorCheck {
+        void check(List<MatcherMailetPair> pairs) throws ConfigurationException;
     }
 
 }

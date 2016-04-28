@@ -20,20 +20,29 @@ package org.apache.james.jmap;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.HierarchicalConfiguration;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.apache.commons.io.FileUtils;
 import org.apache.james.filesystem.api.FileSystem;
+import org.apache.james.jmap.mailet.VacationMailet;
 import org.apache.james.jmap.methods.RequestHandler;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.store.mail.model.MailboxId;
+import org.apache.james.mailetcontainer.impl.MatcherMailetPair;
+import org.apache.james.modules.server.CamelMailetContainerModule;
+import org.apache.james.transport.mailets.RemoveMimeHeader;
+import org.apache.james.transport.matchers.All;
+import org.apache.james.transport.matchers.RecipientIsLocal;
 import org.apache.james.utils.ConfigurationPerformer;
 import org.apache.james.utils.ConfigurationProvider;
 
 import com.github.fge.lambdas.Throwing;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
@@ -56,8 +65,11 @@ public class JMAPModule<Id extends MailboxId> extends AbstractModule {
         install(new MethodsModule<Id>(type));
         bind(RequestHandler.class).in(Singleton.class);
         Multibinder<ConfigurationPerformer> preconditions = Multibinder.newSetBinder(binder(), ConfigurationPerformer.class);
-        preconditions.addBinding().to(MailetConfigurationPrecondition.class);
         preconditions.addBinding().to(MoveCapabilityPrecondition.class);
+
+        Multibinder<CamelMailetContainerModule.TransportProcessorCheck> transportProcessorChecks = Multibinder.newSetBinder(binder(), CamelMailetContainerModule.TransportProcessorCheck.class);
+        transportProcessorChecks.addBinding().to(VacationMailetCheck.class);
+        transportProcessorChecks.addBinding().to(BccMailetCheck.class);
     }
 
     @Provides
@@ -81,34 +93,6 @@ public class JMAPModule<Id extends MailboxId> extends AbstractModule {
     }
 
     @Singleton
-    public static class MailetConfigurationPrecondition implements ConfigurationPerformer {
-
-        private final ConfigurationProvider configurationProvider;
-
-        @Inject
-        public MailetConfigurationPrecondition(ConfigurationProvider configurationProvider) {
-            this.configurationProvider = configurationProvider;
-        }
-
-        @Override
-        public void initModule() throws Exception {
-            Optional<HierarchicalConfiguration> removeMimeHeaderMailet = configurationProvider.getConfiguration("mailetcontainer")
-                .configurationAt("processors")
-                .configurationsAt("processor")
-                .stream()
-                .filter(processor -> processor.getString("[@state]").equals("transport"))
-                .flatMap(transport -> transport.configurationsAt("mailet").stream())
-                .filter(mailet -> mailet.getString("[@class]").equals("RemoveMimeHeader"))
-                .filter(mailet -> mailet.getString("[@match]").equals("All"))
-                .filter(mailet -> mailet.getProperty("name").equals("bcc"))
-                .findAny();
-            if (!removeMimeHeaderMailet.isPresent()) {
-                throw new ConfigurationException("Missing RemoveMimeHeader in mailets configuration (mailetcontainer -> processors -> transport). Should be configured to remove Bcc header");
-            }
-        }
-    }
-
-    @Singleton
     public static class MoveCapabilityPrecondition implements ConfigurationPerformer {
 
         private final MailboxManager mailboxManager;
@@ -122,6 +106,31 @@ public class JMAPModule<Id extends MailboxId> extends AbstractModule {
         public void initModule() throws Exception {
             Preconditions.checkArgument(mailboxManager.getSupportedCapabilities().contains(MailboxManager.Capabilities.Move),
                     "MOVE support in MailboxManager is required by JMAP Module");
+        }
+    }
+
+    public static class VacationMailetCheck implements CamelMailetContainerModule.TransportProcessorCheck {
+        @Override
+        public void check(List<MatcherMailetPair> pairs) throws ConfigurationException {
+            Preconditions.checkNotNull(pairs);
+            pairs.stream()
+                .filter(pair -> pair.getMailet().getClass().equals(VacationMailet.class))
+                .filter(pair -> pair.getMatcher().getClass().equals(RecipientIsLocal.class))
+                .findAny()
+                .orElseThrow(() -> new ConfigurationException("Missing " + VacationMailet.class.getName() + " in mailets configuration (mailetcontainer -> processors -> transport)"));
+        }
+    }
+
+    public static class BccMailetCheck implements CamelMailetContainerModule.TransportProcessorCheck {
+        @Override
+        public void check(List<MatcherMailetPair> pairs) throws ConfigurationException {
+            Preconditions.checkNotNull(pairs);
+            pairs.stream()
+                .filter(pair -> pair.getMailet().getClass().equals(RemoveMimeHeader.class))
+                .filter(pair -> pair.getMatcher().getClass().equals(All.class))
+                .filter(pair -> pair.getMailet().getMailetConfig().getInitParameter("name").equals("bcc"))
+                .findAny()
+                .orElseThrow(() -> new ConfigurationException("Missing RemoveMimeHeader in mailets configuration (mailetcontainer -> processors -> transport). Should be configured to remove Bcc header"));
         }
     }
 }
