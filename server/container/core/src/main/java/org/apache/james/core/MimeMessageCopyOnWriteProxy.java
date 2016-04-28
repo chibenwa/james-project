@@ -19,26 +19,25 @@
 
 package org.apache.james.core;
 
-import javax.activation.DataHandler;
-import javax.mail.Address;
-import javax.mail.Flags;
-import javax.mail.Folder;
-import javax.mail.Message;
-import javax.mail.MessagingException;
-import javax.mail.Multipart;
-import javax.mail.Session;
-import javax.mail.Flags.Flag;
-import javax.mail.internet.MimeMessage;
-import javax.mail.search.SearchTerm;
-
-import org.apache.james.lifecycle.api.Disposable;
-import org.apache.james.lifecycle.api.LifecycleUtil;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Date;
 import java.util.Enumeration;
+
+import javax.activation.DataHandler;
+import javax.mail.Address;
+import javax.mail.Flags;
+import javax.mail.Flags.Flag;
+import javax.mail.Folder;
+import javax.mail.Message;
+import javax.mail.MessagingException;
+import javax.mail.Multipart;
+import javax.mail.Session;
+import javax.mail.internet.MimeMessage;
+import javax.mail.search.SearchTerm;
+
+import org.apache.james.lifecycle.api.Disposable;
 
 /**
  * This object wraps a "possibly shared" MimeMessage tracking copies and
@@ -46,98 +45,33 @@ import java.util.Enumeration;
  */
 public class MimeMessageCopyOnWriteProxy extends MimeMessage implements Disposable {
 
-    /**
-     * Used internally to track the reference count It is important that this is
-     * static otherwise it will keep a reference to the parent object.
-     */
-    protected static class MessageReferenceTracker {
-
-        /**
-         * reference counter
-         */
-        private int referenceCount = 1;
-
-        /**
-         * The mime message in memory
-         */
-        private MimeMessage wrapped = null;
-
-        public MessageReferenceTracker(MimeMessage ref) {
-            wrapped = ref;
-        }
-
-        protected synchronized void incrementReferenceCount() {
-            /*
-             * Used to track references while debugging try { throw new
-             * Exception("incrementReferenceCount: "+(wrapped != null ?
-             * System.identityHashCode(wrapped)+"" :
-             * "null")+" ["+referenceCount+"]"); } catch (Exception e) {
-             * e.printStackTrace(); }
-             */
-            referenceCount++;
-        }
-
-        protected synchronized void decrementReferenceCount() {
-            /*
-             * Used to track references while debugging try { throw new
-             * Exception("decrementReferenceCount: "+(wrapped != null ?
-             * System.identityHashCode(wrapped)+"" :
-             * "null")+" ["+referenceCount+"]"); } catch (Exception e) {
-             * e.printStackTrace(); }
-             */
-            referenceCount--;
-            if (referenceCount <= 0) {
-                LifecycleUtil.dispose(wrapped);
-                wrapped = null;
+    private static final ReferenceCount.CloningOperation<MimeMessage, MessagingException> CLONING_OPERATION =
+        new ReferenceCount.CloningOperation<MimeMessage, MessagingException>() {
+            @Override
+            public MimeMessage clone(MimeMessage clonee) throws MessagingException {
+                return new MimeMessageWrapper(clonee);
             }
-        }
+        };
 
-        protected synchronized int getReferenceCount() {
-            return referenceCount;
-        }
-
-        public synchronized MimeMessage getWrapped() {
-            return wrapped;
-        }
-
-    }
-
-    protected MessageReferenceTracker refCount;
+    protected ReferenceCount<MimeMessage, MessagingException> refCount;
 
     public MimeMessageCopyOnWriteProxy(MimeMessage original) {
-        this(original, false);
-    }
-
-    public MimeMessageCopyOnWriteProxy(MimeMessageSource original) throws MessagingException {
-        this(new MimeMessageWrapper(original), true);
-    }
-
-    /**
-     * Private constructor providing an external reference counter.
-     */
-    private MimeMessageCopyOnWriteProxy(MimeMessage original, boolean writeable) {
         super(Session.getDefaultInstance(System.getProperties(), null));
 
         if (original instanceof MimeMessageCopyOnWriteProxy) {
             refCount = ((MimeMessageCopyOnWriteProxy) original).refCount;
             refCount.incrementReferenceCount();
         } else {
-            refCount = new MessageReferenceTracker(original);
+            refCount = new ReferenceCount<MimeMessage, MessagingException>(original, CLONING_OPERATION);
         }
     }
 
-    /**
-     * Check the number of references over the MimeMessage and clone it if
-     * needed before returning the reference
-     * 
-     * @throws MessagingException
-     *             exception
-     */
+    public MimeMessageCopyOnWriteProxy(MimeMessageSource original) throws MessagingException {
+        this(new MimeMessageWrapper(original));
+    }
+
     protected synchronized MimeMessage getWrappedMessageForWriting() throws MessagingException {
-        if (refCount.getReferenceCount() > 1) {
-            refCount.decrementReferenceCount();
-            refCount = new MessageReferenceTracker(new MimeMessageWrapper(refCount.getWrapped()));
-        }
+        refCount = refCount.getNewReferenceForWriting();
         return refCount.getWrapped();
     }
 

@@ -159,8 +159,7 @@ public class MimeMessageCopyOnWriteProxyTest extends MimeMessageFromStreamTest {
 
     /**
      * If I create a new MimeMessageCopyOnWriteProxy from a MimeMessage and I
-     * change the new message, the original should be unaltered and the proxy
-     * should clone the message.
+     * change the new message, then the original message should be changed.
      */
     @Test
     public void testMessageCloning3() throws Exception {
@@ -178,8 +177,86 @@ public class MimeMessageCopyOnWriteProxyTest extends MimeMessageFromStreamTest {
         mail.getMessage().setText("new Body 3");
         System.gc();
         Thread.sleep(100);
-        assertFalse(isSameMimeMessage(m, mail.getMessage()));
+        assertTrue(isSameMimeMessage(m, mail.getMessage()));
         LifecycleUtil.dispose(mail);
+        LifecycleUtil.dispose(m);
+    }
+
+    @Test
+    public void aNewMessageShouldBeCreatedWhenMessageIsSharedAndModifiedByOneMail() throws Exception {
+        ArrayList<MailAddress> r = new ArrayList<MailAddress>();
+        r.add(new MailAddress("recipient@test.com"));
+        MimeMessage m = new MimeMessageCopyOnWriteProxy(new MimeMessage(Session.getDefaultInstance(new Properties(null))));
+        m.setText("CIPS");
+        MailImpl mail = new MailImpl("test", new MailAddress("test@test.com"), r, m);
+        MailImpl mail2 = new MailImpl("test", new MailAddress("test@test.com"), r, m);
+        assertTrue(isSameMimeMessage(m, mail.getMessage()));
+        assertTrue(isSameMimeMessage(m, mail2.getMessage()));
+        // change the message that should be not referenced by mail that has
+        // been disposed, so it should not clone it!
+        System.gc();
+        Thread.sleep(100);
+        mail.getMessage().setSubject("new Subject 2");
+        mail.getMessage().setText("new Body 3");
+        System.gc();
+        Thread.sleep(100);
+        assertFalse(isSameMimeMessage(m, mail.getMessage()));
+        assertTrue(isSameMimeMessage(m, mail2.getMessage()));
+        LifecycleUtil.dispose(mail2);
+        LifecycleUtil.dispose(mail);
+        LifecycleUtil.dispose(m);
+    }
+
+    @Test
+    public void aSharedMessageShouldNotBeDisposed() throws Exception {
+        ArrayList<MailAddress> r = new ArrayList<MailAddress>();
+        r.add(new MailAddress("recipient@test.com"));
+        MimeMessage m = new MimeMessageCopyOnWriteProxy(new MimeMessage(Session.getDefaultInstance(new Properties(null))));
+        m.setText("CIPS");
+        MailImpl mail = new MailImpl("test", new MailAddress("test@test.com"), r, m);
+        MailImpl mail2 = new MailImpl("test", new MailAddress("test@test.com"), r, m);
+        assertTrue(isSameMimeMessage(m, mail.getMessage()));
+        assertTrue(isSameMimeMessage(m, mail2.getMessage()));
+        // change the message that should be not referenced by mail that has
+        // been disposed, so it should not clone it!
+        System.gc();
+        Thread.sleep(100);
+        LifecycleUtil.dispose(mail2);
+        assertTrue(isSameMimeMessage(m, mail.getMessage()));
+        LifecycleUtil.dispose(mail);
+        LifecycleUtil.dispose(m);
+    }
+
+    @Test
+    public void aSharedMessageShouldBeDisposedCorrectlyWhenItHadBeenShared() throws Exception {
+        ArrayList<MailAddress> r = new ArrayList<MailAddress>();
+        r.add(new MailAddress("recipient@test.com"));
+        MimeMessage m = new MimeMessageCopyOnWriteProxy(new MimeMessage(Session.getDefaultInstance(new Properties(null))));
+        m.setText("CIPS");
+        MailImpl mail = new MailImpl("test", new MailAddress("test@test.com"), r, m);
+        MailImpl mail2 = new MailImpl("test", new MailAddress("test@test.com"), r, m);
+        assertTrue(isSameMimeMessage(m, mail.getMessage()));
+        assertTrue(isSameMimeMessage(m, mail2.getMessage()));
+        // change the message that should be not referenced by mail that has
+        // been disposed, so it should not clone it!
+        LifecycleUtil.dispose(mail2);
+        LifecycleUtil.dispose(mail);
+        assertNull(mail.getMessage());
+        LifecycleUtil.dispose(m);
+    }
+
+    @Test
+    public void aSharedMessageShouldBeDisposedCorrectlyWhenItHadNotBeenShared() throws Exception {
+        ArrayList<MailAddress> r = new ArrayList<MailAddress>();
+        r.add(new MailAddress("recipient@test.com"));
+        MimeMessage m = new MimeMessageCopyOnWriteProxy(new MimeMessage(Session.getDefaultInstance(new Properties(null))));
+        m.setText("CIPS");
+        MailImpl mail = new MailImpl("test", new MailAddress("test@test.com"), r, m);
+        assertTrue(isSameMimeMessage(m, mail.getMessage()));
+        // change the message that should be not referenced by mail that has
+        // been disposed, so it should not clone it!
+        LifecycleUtil.dispose(mail);
+        assertNull(mail.getMessage());
         LifecycleUtil.dispose(m);
     }
 
