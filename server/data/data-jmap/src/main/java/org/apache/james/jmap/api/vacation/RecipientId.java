@@ -17,29 +17,50 @@
  * under the License.                                           *
  ****************************************************************/
 
-package org.apache.james.modules.data;
+package org.apache.james.jmap.api.vacation;
 
-import org.apache.james.jmap.api.access.AccessTokenRepository;
-import org.apache.james.jmap.api.vacation.NotificationRegistry;
-import org.apache.james.jmap.api.vacation.VacationRepository;
-import org.apache.james.jmap.memory.access.MemoryAccessTokenRepository;
-import org.apache.james.jmap.memory.vacation.MemoryNotificationRegistry;
-import org.apache.james.jmap.memory.vacation.MemoryVacationRepository;
+import java.util.Objects;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Scopes;
+import javax.mail.internet.AddressException;
 
-public class MemoryDataJmapModule extends AbstractModule {
+import org.apache.mailet.MailAddress;
+
+import com.google.common.base.Preconditions;
+
+public class RecipientId {
+
+    public static RecipientId fromMailAddress(MailAddress mailAddress) {
+        Preconditions.checkNotNull(mailAddress, "RecipientId mailAddress should not be null");
+        return new RecipientId(mailAddress);
+    }
+
+    private final MailAddress mailAddress;
+
+    private RecipientId(MailAddress mailAddress) {
+        this.mailAddress = mailAddress;
+    }
+
+    public MailAddress getMailAddress() {
+        return mailAddress;
+    }
+
+    public String getAsString() {
+        return mailAddress.toString();
+    }
 
     @Override
-    protected void configure() {
-        bind(MemoryAccessTokenRepository.class).in(Scopes.SINGLETON);
-        bind(AccessTokenRepository.class).to(MemoryAccessTokenRepository.class);
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
 
-        bind(MemoryVacationRepository.class).in(Scopes.SINGLETON);
-        bind(VacationRepository.class).to(MemoryVacationRepository.class);
+        RecipientId accountId = (RecipientId) o;
 
-        bind(MemoryNotificationRegistry.class).in(Scopes.SINGLETON);
-        bind(NotificationRegistry.class).to(MemoryNotificationRegistry.class);
+        return Objects.equals(this.mailAddress, accountId.mailAddress);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(mailAddress);
     }
 }

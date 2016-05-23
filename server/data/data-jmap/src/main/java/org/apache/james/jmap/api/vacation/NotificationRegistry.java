@@ -17,29 +17,18 @@
  * under the License.                                           *
  ****************************************************************/
 
-package org.apache.james.modules.data;
+package org.apache.james.jmap.api.vacation;
 
-import org.apache.james.jmap.api.access.AccessTokenRepository;
-import org.apache.james.jmap.api.vacation.NotificationRegistry;
-import org.apache.james.jmap.api.vacation.VacationRepository;
-import org.apache.james.jmap.memory.access.MemoryAccessTokenRepository;
-import org.apache.james.jmap.memory.vacation.MemoryNotificationRegistry;
-import org.apache.james.jmap.memory.vacation.MemoryVacationRepository;
+import java.time.ZonedDateTime;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Scopes;
+public interface NotificationRegistry {
 
-public class MemoryDataJmapModule extends AbstractModule {
+    CompletableFuture<Void> register(AccountId accountId, RecipientId recipientId, Optional<ZonedDateTime> expiryDate);
 
-    @Override
-    protected void configure() {
-        bind(MemoryAccessTokenRepository.class).in(Scopes.SINGLETON);
-        bind(AccessTokenRepository.class).to(MemoryAccessTokenRepository.class);
+    CompletableFuture<Boolean> isRegistered(AccountId accountId, RecipientId recipientId);
 
-        bind(MemoryVacationRepository.class).in(Scopes.SINGLETON);
-        bind(VacationRepository.class).to(MemoryVacationRepository.class);
+    CompletableFuture<Void> flush(AccountId accountId);
 
-        bind(MemoryNotificationRegistry.class).in(Scopes.SINGLETON);
-        bind(NotificationRegistry.class).to(MemoryNotificationRegistry.class);
-    }
 }

@@ -17,15 +17,16 @@
  * under the License.                                           *
  ****************************************************************/
 
-package org.apache.james.jmap.utils;
+package org.apache.james.jmap.memory.vacation;
 
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
+import org.apache.james.jmap.api.vacation.AbstractNotificationRegistryTest;
+import org.apache.james.jmap.api.vacation.NotificationRegistry;
+import org.apache.james.util.date.ZonedDateTimeProvider;
 
-public class DefaultZonedDateTimeProvider implements ZonedDateTimeProvider {
+public class MemoryNotificationRegistryTest extends AbstractNotificationRegistryTest {
 
     @Override
-    public ZonedDateTime get() {
-        return ZonedDateTime.now(ZoneOffset.UTC);
+    protected NotificationRegistry createNotificationRegistry(ZonedDateTimeProvider zonedDateTimeProvider) {
+        return new MemoryNotificationRegistry(zonedDateTimeProvider);
     }
 }

@@ -17,12 +17,20 @@
  * under the License.                                           *
  ****************************************************************/
 
-package org.apache.james.jmap.utils;
+package org.apache.james.jmap.cassandra.vacation;
 
-import java.time.ZonedDateTime;
+import org.apache.james.backends.cassandra.CassandraCluster;
+import org.apache.james.jmap.api.vacation.AbstractNotificationRegistryTest;
+import org.apache.james.jmap.api.vacation.NotificationRegistry;
+import org.apache.james.util.date.ZonedDateTimeProvider;
 
-import javax.inject.Provider;
+public class CassandraNotificationRegistryTest extends AbstractNotificationRegistryTest {
 
-public interface ZonedDateTimeProvider extends Provider<ZonedDateTime> {
+    private CassandraCluster cassandra;
 
+    @Override
+    protected NotificationRegistry createNotificationRegistry(ZonedDateTimeProvider zonedDateTimeProvider) {
+        cassandra = CassandraCluster.create(new CassandraNotificationRegistryModule());
+        return new CassandraNotificationRegistry(zonedDateTimeProvider, new CassandraNotificationRegistryDAO(cassandra.getConf()));
+    }
 }

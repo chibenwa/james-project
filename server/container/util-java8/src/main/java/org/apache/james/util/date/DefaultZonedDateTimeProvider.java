@@ -17,29 +17,15 @@
  * under the License.                                           *
  ****************************************************************/
 
-package org.apache.james.modules.data;
+package org.apache.james.util.date;
 
-import org.apache.james.jmap.api.access.AccessTokenRepository;
-import org.apache.james.jmap.api.vacation.NotificationRegistry;
-import org.apache.james.jmap.api.vacation.VacationRepository;
-import org.apache.james.jmap.memory.access.MemoryAccessTokenRepository;
-import org.apache.james.jmap.memory.vacation.MemoryNotificationRegistry;
-import org.apache.james.jmap.memory.vacation.MemoryVacationRepository;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Scopes;
-
-public class MemoryDataJmapModule extends AbstractModule {
+public class DefaultZonedDateTimeProvider implements ZonedDateTimeProvider {
 
     @Override
-    protected void configure() {
-        bind(MemoryAccessTokenRepository.class).in(Scopes.SINGLETON);
-        bind(AccessTokenRepository.class).to(MemoryAccessTokenRepository.class);
-
-        bind(MemoryVacationRepository.class).in(Scopes.SINGLETON);
-        bind(VacationRepository.class).to(MemoryVacationRepository.class);
-
-        bind(MemoryNotificationRegistry.class).in(Scopes.SINGLETON);
-        bind(NotificationRegistry.class).to(MemoryNotificationRegistry.class);
+    public ZonedDateTime get() {
+        return ZonedDateTime.now(ZoneOffset.UTC);
     }
 }
