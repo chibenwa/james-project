@@ -189,6 +189,36 @@ public abstract class VacationIntegrationTest {
         assertOneMessageReceived(user2AccessToken, getInboxId(user2AccessToken), REASON, USER_1, USER_2);
     }
 
+    @Test
+    public void jmapVacationShouldSendNotificationTwiceWhenVacationReset() throws Exception {
+        /* Test scenario :
+            - User 1 benw@mydomain.tld sets a Vacation on its account
+            - User 2 matthieu@mydomain.tld sends User 1 a mail
+            - User 2 matthieu@mydomain.tld sends User 1 a second mail
+            - User 1 should well receive this mail
+            - User 2 should well receive only one notification about user 1 vacation
+        */
+
+        // Given
+        AccessToken user1AccessToken = JmapAuthentication.authenticateJamesUser(USER_1, PASSWORD);
+        AccessToken user2AccessToken = JmapAuthentication.authenticateJamesUser(USER_2, PASSWORD);
+        // User 1 benw@mydomain.tld sets a Vacation on its account
+        setVacationResponse(user1AccessToken);
+        // User 2 matthieu@mydomain.tld sends User 1 a mail
+        sendMail(user2AccessToken);
+
+        // When
+        // User 1 benw@mydomain.tld resets a Vacation on its account
+        setVacationResponse(user1AccessToken);
+        // User 2 matthieu@mydomain.tld sends User 1 a mail
+        sendMail(user2AccessToken);
+
+        // Then
+        // User 2 should well receive two notification about user 1 vacation
+        calmlyAwait.atMost(10, TimeUnit.SECONDS)
+            .until(() -> isTwoTextMessageReceived(user2AccessToken, getInboxId(user2AccessToken)));
+    }
+
     private void setVacationResponse(AccessToken user1AccessToken) {
         String bodyRequest = "[[" +
             "\"setVacationResponse\", " +
@@ -236,6 +266,30 @@ public abstract class VacationIntegrationTest {
             .body(requestBody)
         .when()
             .post("/jmap");
+    }
+
+    private boolean isTwoTextMessageReceived(AccessToken recipientToken, String mailboxId) {
+        try {
+            with()
+                .accept(ContentType.JSON)
+                .contentType(ContentType.JSON)
+                .header("Authorization", recipientToken.serialize())
+                .body("[[\"getMessageList\", " +
+                    "{" +
+                    "  \"fetchMessages\": true, " +
+                    "  \"filter\": {" +
+                    "    \"inMailboxes\":[\"" + mailboxId + "\"]" +
+                    "  }" +
+                    "}, \"#0\"]]")
+                .post("/jmap")
+                .then()
+                .statusCode(200)
+                .body(SECOND_NAME, equalTo("messages"))
+                .body(SECOND_ARGUMENTS + ".list", hasSize(2));
+            return true;
+        } catch(AssertionError e) {
+            return false;
+        }
     }
 
     private boolean isTextMessageReceived(AccessToken recipientToken, String mailboxId, String expectedTextBody, String expectedFrom, String expectedTo) {
