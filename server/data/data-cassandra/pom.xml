@@ -172,6 +172,7 @@
                 <dependency>
                     <groupId>${project.groupId}</groupId>
                     <artifactId>apache-james-backends-cassandra</artifactId>
+                    <version>${apache-backends-cassandra.version}</version>
                 </dependency>
                 <dependency>
                     <groupId>${project.groupId}</groupId>
