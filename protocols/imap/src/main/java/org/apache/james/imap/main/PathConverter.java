@@ -77,6 +77,9 @@ public class PathConverter {
     }
 
     private MailboxPath buildMailboxPath(String namespace, String user, String mailboxName) {
+        if (!namespace.equals(MailboxConstants.USER_NAMESPACE)) {
+            throw new DeniedSharedMailboxException();
+        }
         return new MailboxPath(namespace, user, sanitizeMailboxName(mailboxName));
     }
 
