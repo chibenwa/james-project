@@ -58,14 +58,16 @@ All these solutions allow us to identify the components that needs improvement. 
  
  ## Our incoming plans
  
- We are pretty happy with the current state of the James server. We will then push for the 3.0 release of the James server.
- 
- For this :
- 
-  - We need to do some load testing on top of JPA implementation
-  - We will continue doing bugfixes
-  - We need some additional performance enhacement, especially with IMAP SELECT command on large mailboxes
-  - We plan to start working again on the new website, which have been paused a few months
+
+We are pretty happy with the current state of the James server. We will then push for the 3.0 release of the James server.
+
+For this :
+
+    We need to do some load testing on top of JPA implementation
+    We will continue doing bug fixes
+    We need some additional performance enhancement, especially with IMAP SELECT command on large mailboxes
+    We plan to start working again on the new website, which have been paused a few months
+
  
  
  
