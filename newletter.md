@@ -27,28 +27,26 @@ with the built image uploaded on dockerhub.
 
 ## Tracking performance
 
-Everybody wants to read their e-mails fast. Thus the team made performance tracking a priority. And we developped the tools to follow performance.
+Everybody wants to read their e-mails fast. Thus the team made performance tracking a priority. And we developed the tools to follow performance.
 
 We started implementing Gatling load testing for the James server :
 
- - First with a JMAP implementation.
- - Then we added a naive SMTP implementation
- - And finally contributed a IMAP DSL for Gatling
- 
- Running these load tests we :
- 
+  - First with a JMAP implementation.
+  - Then we added a naive SMTP implementation
+  - And finally contributed a IMAP DSL for Gatling
+
+Running these load tests we :
+
   - Succeeded to support 1.000 thunderbird like users
   - However, it turned out we had problems with 10.000 users.
- 
- Additionnaly, we added metrics a bit everywhere in James using the brand new metrics API. We collect and export everything in ElasticSearch using Dropwizard metrics.
- Then we graph it all using Grafana. This allow us to cellect all statistic and percentiles. We track so far :
- 
+
+Additionally, we added metrics a bit everywhere in James using the brand new metrics API. We collect and export everything in ElasticSearch using Dropwizard metrics. Then we graph it all using Grafana. This allow us to collect all statistic and percentiles. We track so far :
+
   - Protocols detailed time execution (and count)
   - Percentile of mailet and matcher executions
   - Enqueue and Dequeue time
- 
- All these solutions allow us to identify the componants that needs improvement. For instance receiving  too much incoming e-mails overload James with very heavy garbage collection.
- We then plan to move our mail queue to RabbitMQ, to parse e-mails only once on top of the mail pipeline, to reorganize a bit our configuration. A Camel upgrade (impossible in java-6) might also help.
+
+All these solutions allow us to identify the components that needs improvement. For instance receiving too much incoming e-mails overload James with very heavy garbage collection. We then plan to move our mail queue to RabbitMQ, to parse e-mails only once on top of the mail pipeline, to reorganize a bit our configuration. A Camel upgrade (impossible in java-6) might also help.
  
  ## MessageId refactoring
  
