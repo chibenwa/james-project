@@ -6,6 +6,8 @@
 
 We now use James as the mail server behind [OpenPaaS](http://open-paas.org/). Thus we deployed it and use it on an every-day base.
 
+![Visual of the James backed OpenPaaS deployment](openpaas.png)
+
 Our deployment is based on the following components :
  - We enabled IMAP, SMTP and [JMAP](http://jmap.io/) protocols
  - We use [Cassandra](http://cassandra.apache.org/) for storing e-mails
