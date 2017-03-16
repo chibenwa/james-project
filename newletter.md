@@ -1,17 +1,17 @@
 # Linagora's James newsletter
 
-Linagora have a team of developpers devoted to the James server. We are already contributing for a few years to the project. This document will try to give you information about what we recently did for the James project, and give hints about the road-map we follow. We will also try to write it on a regular bases
+[Linagora](http://linagora.com/) have a team of developpers devoted to the James server. We are already contributing for a few years to the project. This document will try to give you information about what we recently did for the James project, and give hints about the road-map we follow. We will also try to write it on a regular bases
 
 ## Deploying James internally
 
-We now use James as the mail server behind OpenPaaS. Thus we deployed it and use it on an every-day base.
+We now use James as the mail server behind [OpenPaaS](http://open-paas.org/). Thus we deployed it and use it on an every-day base.
 
 Our deployment is based on the following components :
- - We enabled IMAP, SMTP and JMAP protocols
- - We use Cassandra for storing e-mails
- - We rely on ElasticSearch for searching e-mails
+ - We enabled IMAP, SMTP and [JMAP](http://jmap.io/) protocols
+ - We use [Cassandra](http://cassandra.apache.org/) for storing e-mails
+ - We rely on [ElasticSearch](https://www.elastic.co/fr/products/elasticsearch) for searching e-mails
  - We authenticate our users with LDAP
- - We use Guice for bringing all pieces together.
+ - We use [Guice](https://github.com/google/guice/wiki/GettingStarted) for bringing all pieces together.
  - We plan to bring soon Sieve and ManageSieve part of this deployment as many peaple request filtering.
 
 Let me share a few numbers with you :
@@ -23,24 +23,24 @@ Let me share a few numbers with you :
  - We answer 20.000 JMAP requests a day
 
 This deployment help us detecting bugs, and performance issues. We follow the current state of master branch, that we update at midnight 
-with the built image uploaded on dockerhub.
+with the built image uploaded on [dockerhub](https://hub.docker.com/r/linagora/james-ldap-project/).
 
 ## Tracking performance
 
 Everybody wants to read their e-mails fast. Thus the team made performance tracking a priority. And we developed the tools to follow performance.
 
-We started implementing Gatling load testing for the James server :
+We started implementing [Gatling](http://gatling.io/) load testing for the James server :
 
-  - First with a JMAP implementation.
+  - First with a [Gatling JMAP](https://github.com/linagora/james-gatling) implementation.
   - Then we added a naive SMTP implementation
-  - And finally contributed a IMAP DSL for Gatling
+  - And finally contributed a [IMAP DSL for Gatling](https://github.com/linagora/gatling-imap)
 
 Running these load tests we :
 
   - Succeeded to support 1.000 thunderbird like users
   - However, it turned out we had problems with 10.000 users.
 
-Additionally, we added metrics a bit everywhere in James using the brand new metrics API. We collect and export everything in ElasticSearch using Dropwizard metrics. Then we graph it all using Grafana. This allow us to collect all statistic and percentiles. We track so far :
+Additionally, we added metrics a bit everywhere in James using the brand new metrics API. We collect and export everything in [ElasticSearch](https://github.com/elastic/elasticsearch-metrics-reporter-java) using [Dropwizard metrics](http://metrics.dropwizard.io/3.2.1/). Then we graph it all using [Grafana](http://grafana.com/). This allow us to collect all statistic and percentiles. We track so far :
 
   - Protocols detailed time execution (and count)
   - Percentile of mailet and matcher executions
@@ -63,10 +63,26 @@ We are pretty happy with the current state of the James server. We will then pus
 
 For this :
 
-    We need to do some load testing on top of JPA implementation
-    We will continue doing bug fixes
-    We need some additional performance enhancement, especially with IMAP SELECT command on large mailboxes
-    We plan to start working again on the new website, which have been paused a few months
+  - We need to do some load testing on top of JPA implementation
+  - We will continue doing bug fixes
+  - We need some additional performance enhancement, especially with IMAP SELECT command on large mailboxes
+  - We plan to start working again on the new website, which have been paused a few months
+
+## Usefull links
+
+ - Gatling: http://gatling.io/
+ - Gatling James (JMAP + SMTP): https://github.com/linagora/james-gatling
+ - Gatling IMAP: https://github.com/linagora/gatling-imap
+ - Dopwizar metrics: http://metrics.dropwizard.io/3.2.1/
+ - ElasticSearch metrics: https://github.com/elastic/elasticsearch-metrics-reporter-java
+ - Grafana: http://grafana.com/
+ - JMAP: http://jmap.io/
+ - OpenPaaS: http://open-paas.org/
+ - Linagora: http://linagora.com/
+ - Cassandra: http://cassandra.apache.org/
+ - ElasticSearch: https://www.elastic.co/fr/products/elasticsearch
+ - Guice: https://github.com/google/guice/wiki/GettingStarted
+ - Our James image on DockerHub: https://hub.docker.com/r/linagora/james-ldap-project/
 
  
  
