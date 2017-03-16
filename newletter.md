@@ -76,6 +76,8 @@ For this :
   - We need some additional performance enhancement, especially with IMAP SELECT command on large mailboxes
   - We plan to start working again on the new website, which have been paused a few months
 
+![Overview of the future website](website.png)
+
 ## Usefull links
 
  - Gatling: http://gatling.io/
