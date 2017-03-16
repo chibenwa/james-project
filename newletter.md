@@ -1,8 +1,6 @@
 # Linagora's James newsletter
 
-Linagora have a team of developpers devoted to the James server. We are already contributing for a few years to the project. 
-This document will try to give you information about what we recently did for the James project, and give hints about the 
-road-map we follow. We will also try to write it on a regular bases
+Linagora have a team of developpers devoted to the James server. We are already contributing for a few years to the project. This document will try to give you information about what we recently did for the James project, and give hints about the road-map we follow. We will also try to write it on a regular bases
 
 ## Deploying James internally
 
