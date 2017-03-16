@@ -31,9 +31,9 @@ with the built image uploaded on [dockerhub](https://hub.docker.com/r/linagora/j
 
 Everybody wants to read their e-mails fast. Thus the team made performance tracking a priority. And we developed the tools to follow performance.
 
-We started implementing [Gatling](http://gatling.io/) load testing for the James server :
-
 ![Result of 1.000 thunderbird like users](gatling1.png)
+
+We started implementing [Gatling](http://gatling.io/) load testing for the James server :
 
   - First with a [Gatling JMAP](https://github.com/linagora/james-gatling) implementation.
   - Then we added a naive SMTP implementation
