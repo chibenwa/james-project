@@ -18,7 +18,7 @@ Let me share a few numbers with you :
 
  - We handle about 100 users
  - We have so far a number of 1.500.000 e-mails, that we imported using IMAP-sync scripts
- - We receive arounf 15.000 incoming e-mails a day
+ - We receive around 15.000 incoming e-mails a day
  - We execute 42.500 IMAP commands a day
  - We answer 20.000 JMAP requests a day
 
