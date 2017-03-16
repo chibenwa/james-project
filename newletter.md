@@ -33,9 +33,13 @@ Everybody wants to read their e-mails fast. Thus the team made performance track
 
 We started implementing [Gatling](http://gatling.io/) load testing for the James server :
 
+![Result of 1.000 thunderbird like users](gatling1.png)
+
   - First with a [Gatling JMAP](https://github.com/linagora/james-gatling) implementation.
   - Then we added a naive SMTP implementation
   - And finally contributed a [IMAP DSL for Gatling](https://github.com/linagora/gatling-imap)
+
+![Result graph of 1.000 thunderbird like users](gatling2.png)
 
 Running these load tests we :
 
