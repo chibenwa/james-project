@@ -45,6 +45,8 @@ Additionally, we added metrics a bit everywhere in James using the brand new met
   - Protocols detailed time execution (and count)
   - Percentile of mailet and matcher executions
   - Enqueue and Dequeue time
+  
+![James metrics and percentile for the JMAP protocol](grafana.png)
 
 All these solutions allow us to identify the components that needs improvement. For instance receiving too much incoming e-mails overload James with very heavy garbage collection. We then plan to move our mail queue to RabbitMQ, to parse e-mails only once on top of the mail pipeline, to reorganize a bit our configuration. A Camel upgrade (impossible in java-6) might also help.
  
