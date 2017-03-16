@@ -50,7 +50,7 @@ All these solutions allow us to identify the components that needs improvement. 
  
  ## MessageId refactoring
  
- We succeeded to finish and merge the MessageId refactoring. This hudge task allow us to address messages by their ID, outside of mailbox context.
+ We succeeded to finish and merge the MessageId refactoring. This huge task allow us to address messages by their ID, outside of mailbox context.
  
  This is required for JMAP protocol implementation.
  
