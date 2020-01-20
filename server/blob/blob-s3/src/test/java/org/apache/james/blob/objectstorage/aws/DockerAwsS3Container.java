@@ -21,13 +21,13 @@ package org.apache.james.blob.objectstorage.aws;
 
 import java.net.URI;
 
-import org.apache.james.blob.objectstorage.DockerAwsS3;
 import org.apache.james.util.Host;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.images.builder.ImageFromDockerfile;
 
 public class DockerAwsS3Container {
+
+    public static final Region REGION = Region.of(software.amazon.awssdk.regions.Region.EU_WEST_1.id());
 
     private static final String AWS_S3_DOCKER_IMAGE = "zenko/cloudserver:8.2.3";
     private static final int AWS_S3_PORT = 8000;
