@@ -17,39 +17,15 @@
  * under the License.                                           *
  ****************************************************************/
 
-package org.apache.james.modules;
+package org.apache.james.blob.objectstorage.aws;
 
-import org.apache.james.GuiceModuleTestExtension;
-import org.apache.james.modules.objectstorage.PayloadCodecFactory;
-import org.apache.james.modules.objectstorage.swift.DockerSwiftTestRule;
-import org.junit.jupiter.api.extension.ExtensionContext;
+public class DockerAwsS3Singleton {
 
-import com.google.inject.Module;
+    public static final DockerAwsS3Container singleton = new DockerAwsS3Container();
 
-public class SwiftBlobStoreExtension implements GuiceModuleTestExtension {
-
-    private final DockerSwiftTestRule swiftRule;
-
-    public SwiftBlobStoreExtension() {
-        this.swiftRule = new DockerSwiftTestRule();
+    static {
+        singleton.start();
     }
 
-    public SwiftBlobStoreExtension(PayloadCodecFactory payloadCodecFactory) {
-        this.swiftRule = new DockerSwiftTestRule(payloadCodecFactory);
-    }
-
-    @Override
-    public void beforeAll(ExtensionContext extensionContext) {
-        swiftRule.start();
-    }
-
-    @Override
-    public void afterAll(ExtensionContext extensionContext) {
-        swiftRule.stop();
-    }
-
-    @Override
-    public Module getModule() {
-        return swiftRule.getModule();
-    }
+    // Cleanup will be performed by test namespace resource reaper
 }
