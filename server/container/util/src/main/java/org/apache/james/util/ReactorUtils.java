@@ -43,7 +43,7 @@ public class ReactorUtils {
     /**
      * Ensures windowMaxSize gets processed every windowDuration.
      *
-     * Caller need to limit concurrency of subsequent running operations to avoid overwhelming the system in case single
+     * Caller needs to limit concurrency of subsequent running operations to avoid overwhelming the system in case single
      * item processing is longer than windowDuration.
      *
      * Example:
