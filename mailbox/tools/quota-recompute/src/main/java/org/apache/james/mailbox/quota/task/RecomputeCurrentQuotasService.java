@@ -166,7 +166,7 @@ public class RecomputeCurrentQuotasService {
         try {
             Flux<Username> users = Iterators.toFlux(usersRepository.list());
             return ReactorUtils.throttle(users, Duration.ofSeconds(1), runningOptions.getUsersPerSecond())
-                .flatMap(username -> recomputeUserCurrentQuotas(context, username))
+                .flatMap(username -> recomputeUserCurrentQuotas(context, username), runningOptions.getUsersPerSecond())
                 .reduce(Task.Result.COMPLETED, Task::combine);
         } catch (UsersRepositoryException e) {
             LOGGER.error("Error while accessing users from repository", e);

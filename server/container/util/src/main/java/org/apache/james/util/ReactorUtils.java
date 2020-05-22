@@ -40,6 +40,18 @@ public class ReactorUtils {
     public static final String MDC_KEY_PREFIX = "MDC-";
     private static final Duration DELAY = Duration.ZERO;
 
+    /**
+     * Ensures windowMaxSize gets processed every windowDuration.
+     *
+     * Caller need to limit concurrency of subsequent running operations to avoid overwhelming the system in case single
+     * item processing is longer than windowDuration.
+     *
+     * Example:
+     *
+     * int itemsPerWindow = 20;
+     * throttle(flux, Duration.ofSeconds(1), itemsPerWindow)
+     *     .flatMap(operation, itemsPerWindow)
+     */
     public static <T> Flux<T> throttle(Flux<T> flux, Duration windowDuration, int windowMaxSize) {
         return flux.windowTimeout(windowMaxSize, windowDuration)
             .zipWith(Flux.interval(DELAY, windowDuration))

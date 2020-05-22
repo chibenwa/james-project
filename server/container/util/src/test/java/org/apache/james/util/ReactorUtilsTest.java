@@ -29,11 +29,13 @@ import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.reactivestreams.Publisher;
 import org.slf4j.MDC;
 
 import com.github.steveash.guavate.Guavate;
@@ -67,6 +69,28 @@ class ReactorUtilsTest {
 
             assertThat(windowMembership)
                 .containsExactly(0L, 0L, 0L, 1L, 1L, 1L, 2L, 2L, 2L, 3L);
+        }
+
+        @Test
+        void throttleDownStreamConcurrencyShouldNotExceedWindowMaxSize() {
+            int windowMaxSize = 3;
+            Duration windowDuration = Duration.ofMillis(100);
+
+            AtomicInteger ongoingProcessing = new AtomicInteger();
+
+            Flux<Integer> originalFlux = Flux.range(0, 10);
+            Function<Integer, Publisher<? extends Integer>> longRunningOperation =
+                any -> Mono.fromCallable(ongoingProcessing::incrementAndGet)
+                    .flatMap(i -> Mono.delay(windowDuration.multipliedBy(2)).thenReturn(i))
+                    .flatMap(i -> Mono.fromRunnable(ongoingProcessing::decrementAndGet).thenReturn(i));
+
+            ImmutableList<Integer> ongoingProcessingUponComputationStart = ReactorUtils.throttle(originalFlux, windowDuration, windowMaxSize)
+                .flatMap(longRunningOperation, windowMaxSize)
+                .collect(Guavate.toImmutableList())
+                .block();
+
+            assertThat(ongoingProcessingUponComputationStart)
+                .allSatisfy(processingCount -> assertThat(processingCount).isLessThanOrEqualTo(windowMaxSize));
         }
     }
 
