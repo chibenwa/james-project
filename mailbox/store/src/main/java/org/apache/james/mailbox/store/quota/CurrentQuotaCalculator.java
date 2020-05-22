@@ -37,6 +37,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public class CurrentQuotaCalculator {
+    private static final int NO_CONCURRENCY = 1;
 
     private final MailboxSessionMapperFactory factory;
     private final QuotaRootResolver quotaRootResolver;
@@ -52,7 +53,7 @@ public class CurrentQuotaCalculator {
         MessageMapper mapper = factory.getMessageMapper(session);
 
         return Flux.from(quotaRootResolver.retrieveAssociatedMailboxes(quotaRoot, session))
-            .flatMap(mailbox -> mapper.findInMailboxReactive(mailbox, MessageRange.all(), MessageMapper.FetchType.Metadata, UNLIMITED))
+            .flatMap(mailbox -> mapper.findInMailboxReactive(mailbox, MessageRange.all(), MessageMapper.FetchType.Metadata, UNLIMITED), NO_CONCURRENCY)
             .map(message -> new CurrentQuotas(QuotaCountUsage.count(1), QuotaSizeUsage.size(message.getFullContentOctets())))
             .reduce(CurrentQuotas.emptyQuotas(), CurrentQuotas::increase);
     }

@@ -50,6 +50,7 @@ import com.github.steveash.guavate.Guavate;
 import com.google.common.collect.ImmutableList;
 
 import reactor.core.publisher.Flux;
+import reactor.core.scheduler.Schedulers;
 
 /**
  * GETQUOTA processor
@@ -106,6 +107,7 @@ public class GetQuotaProcessor extends AbstractMailboxProcessor<GetQuotaRequest>
         final MailboxSession mailboxSession = session.getMailboxSession();
         List<Mailbox> mailboxList = Flux.from(quotaRootResolver.retrieveAssociatedMailboxes(quotaRoot, mailboxSession))
             .collect(Guavate.toImmutableList())
+            .subscribeOn(Schedulers.elastic())
             .block();
         for (Mailbox mailbox : mailboxList) {
             if (getMailboxManager().hasRight(mailbox.generateAssociatedPath(), MailboxACL.Right.Read, mailboxSession)) {
