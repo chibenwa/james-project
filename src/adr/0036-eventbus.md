@@ -8,7 +8,7 @@ Accepted (lazy consensus)
 
 ## Context
 
-Many features relies on behaviors triggered by interactions with the mailbox API main interfaces (`RightManager`,
+Many features rely on behaviors triggered by interactions with the mailbox API main interfaces (`RightManager`,
 `MailboxManager`, `MessageManager`, `MessageIdManager`). We need to provide a convenient extension mechanism for 
 organizing the execution of these behaviours, provide retries and advanced error handling.
 
