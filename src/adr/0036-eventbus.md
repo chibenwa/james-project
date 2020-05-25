@@ -39,7 +39,7 @@ Guice products enable the registration of additional mailbox listeners. A user c
 mailboxListeners via the use of `extension-jars`.
 
 MailboxListener can also be registered to be executed only on events concerning a specific entity (eg. a mailbox). The 
-`registrationKey` identifying entities concerned by the event. Upon event emission, the manager will indicate the 
+`registrationKey` is identifying entities concerned by the event. Upon event emission, the manager will indicate the 
 `registrationKey` this event should be sent to. A mailboxListener will thus only receive the event for the registration 
 key it is registered to, in an at least once fashion.
 
