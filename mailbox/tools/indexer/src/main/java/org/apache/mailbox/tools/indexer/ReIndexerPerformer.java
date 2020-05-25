@@ -119,7 +119,7 @@ public class ReIndexerPerformer {
         return reIndexMessages(entries, runningOptions, reprocessingContext);
     }
 
-    Mono<Result> reIndexUserMailbox(Username username, ReprocessingContext reprocessingContext, RunningOptions runningOptions) {
+    Mono<Result> reIndexUserMailboxes(Username username, ReprocessingContext reprocessingContext, RunningOptions runningOptions) {
         MailboxSession mailboxSession = mailboxManager.createSystemSession(username);
         MailboxMapper mailboxMapper = mailboxSessionMapperFactory.getMailboxMapper(mailboxSession);
         LOGGER.info("Starting a reindex for user {}", username.asString());
