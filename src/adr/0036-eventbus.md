@@ -12,7 +12,7 @@ Many features rely on behaviors triggered by interactions with the mailbox API m
 `MailboxManager`, `MessageManager`, `MessageIdManager`). We need to provide a convenient extension mechanism for 
 organizing the execution of these behaviours, provide retries and advanced error handling.
 
-Also, protocols enables notifications upon mailbox modifications. This is for instance the case for `RFC-2177 IMAP IDLE`,
+Also, protocols enable notifications upon mailbox modifications. This is for instance the case for `RFC-2177 IMAP IDLE`,
 is leveraged for `RFC-3501 IMAP unsolicitated notifications` when selecting a Mailbox, as well as maintaining the 
 `IMAP Message Sequence Number <-> Unique IDentifier` MSN <-> UID mapping. Changes happening for a specific entity 
 (mailbox) needs to be propagated to the relevant listeners.
