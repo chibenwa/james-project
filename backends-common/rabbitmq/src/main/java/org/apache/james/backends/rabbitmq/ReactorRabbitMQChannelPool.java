@@ -103,7 +103,7 @@ public class ReactorRabbitMQChannelPool implements ChannelPool, Startable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ReactorRabbitMQChannelPool.class);
     private static final long MAXIMUM_BORROW_TIMEOUT_IN_MS = Duration.ofSeconds(5).toMillis();
-    private static final int MAX_CHANNELS_NUMBER = 10;
+    private static final int MAX_CHANNELS_NUMBER = 3;
     private static final int MAX_BORROW_RETRIES = 3;
     private static final Duration MIN_BORROW_DELAY = Duration.ofMillis(50);
 
