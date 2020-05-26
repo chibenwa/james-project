@@ -56,7 +56,7 @@ public class ReIndexerManagementTest {
         String namespace = "namespace";
         String user = "user";
         String name = "name";
-        when(reIndexer.reIndex(any(MailboxPath.class), RunningOptions.DEFAULT)).thenReturn(task);
+        when(reIndexer.reIndex(any(MailboxPath.class), any(RunningOptions.class))).thenReturn(task);
 
         assertThat(taskManager.list()).isEmpty();
         testee.reIndex(namespace, user, name);
@@ -68,7 +68,7 @@ public class ReIndexerManagementTest {
     void reIndexShouldWaitsForExecution() throws Exception {
         Task task = mock(Task.class);
         doReturn(Task.Result.COMPLETED).when(task).run();
-        when(reIndexer.reIndex(RunningOptions.DEFAULT)).thenReturn(task);
+        when(reIndexer.reIndex(any(RunningOptions.class))).thenReturn(task);
 
         assertThat(taskManager.list()).isEmpty();
         testee.reIndex();
