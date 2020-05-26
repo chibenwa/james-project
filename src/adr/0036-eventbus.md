@@ -19,7 +19,8 @@ leveraged for `RFC-3501 IMAP unsolicitated notifications` when selecting a Mailb
 
 ## Decision
 
-James mailbox should use an event driven architecture. 
+James mailbox component, a core component of James handling the storage of mails and mailboxes, should use an event 
+driven architecture. 
 
 It means every meaningful action on mailboxes or messages triggers an event for any component to react to that event.
 
