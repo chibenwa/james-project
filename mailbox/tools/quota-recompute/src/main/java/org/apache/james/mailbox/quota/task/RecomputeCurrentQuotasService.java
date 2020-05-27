@@ -165,8 +165,9 @@ public class RecomputeCurrentQuotasService {
     public Mono<Task.Result> recomputeCurrentQuotas(Context context, RunningOptions runningOptions) {
         try {
             Flux<Username> users = Iterators.toFlux(usersRepository.list());
-            return ReactorUtils.throttle(users, Duration.ofSeconds(1), runningOptions.getUsersPerSecond())
-                .flatMap(username -> recomputeUserCurrentQuotas(context, username), runningOptions.getUsersPerSecond())
+            return ReactorUtils.Throttler.<Username, Task.Result>forOperation(username -> recomputeUserCurrentQuotas(context, username))
+                .window(runningOptions.getUsersPerSecond(), Duration.ofSeconds(1))
+                .throttle(users)
                 .reduce(Task.Result.COMPLETED, Task::combine);
         } catch (UsersRepositoryException e) {
             LOGGER.error("Error while accessing users from repository", e);
