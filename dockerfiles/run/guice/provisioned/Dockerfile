@@ -2,7 +2,8 @@
 #
 # VERSION	1.0
 
-FROM linagora/james-jpa-guice:james-project-3.4.0
+ARG BASE_IMAGE=linagora/james-jpa-guice:james-project-3.4.0
+FROM ${BASE_IMAGE}
 
 # Install git
 RUN apt-get update
