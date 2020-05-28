@@ -19,11 +19,15 @@
 
 package org.apache.james.imap.api.process;
 
+import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 
 import org.apache.james.core.Username;
 import org.apache.james.imap.api.ImapSessionState;
 import org.apache.james.mailbox.MailboxSession;
+
+import com.google.common.base.MoreObjects;
 
 /**
  * Encapsulates all state held for an ongoing Imap session, which commences when
@@ -33,7 +37,52 @@ import org.apache.james.mailbox.MailboxSession;
  * @version $Revision: 109034 $
  */
 public interface ImapSession {
+    class SessionId {
+        public static SessionId random() {
+            return new SessionId(UUID.randomUUID());
+        }
+
+        private final UUID uuid;
+
+        private SessionId(UUID uuid) {
+            this.uuid = uuid;
+        }
+
+        public String asString() {
+            return uuid.toString();
+        }
+
+        @Override
+        public final boolean equals(Object o) {
+            if (o instanceof SessionId) {
+                SessionId sessionId = (SessionId) o;
+
+                return Objects.equals(this.uuid, sessionId.uuid);
+            }
+            return false;
+        }
+
+        @Override
+        public final int hashCode() {
+            return Objects.hash(uuid);
+        }
+
+        @Override
+        public String toString() {
+            return MoreObjects.toStringHelper(this)
+                .add("uuid", uuid)
+                .toString();
+        }
+    }
+
     String MAILBOX_SESSION_ATTRIBUTE_SESSION_KEY = "org.apache.james.api.imap.MAILBOX_SESSION_ATTRIBUTE_SESSION_KEY";
+
+    /**
+     * @return a unique identifier for this session.
+     *
+     * One of its usage is log correlation.
+     */
+    SessionId sessionId();
 
     /**
      * Logs out the session. Marks the connection for closure;

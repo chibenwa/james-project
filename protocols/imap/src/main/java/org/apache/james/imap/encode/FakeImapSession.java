@@ -33,9 +33,16 @@ public class FakeImapSession implements ImapSession {
     private SelectedMailbox selectedMailbox = null;
 
     private final Map<String, Object> attributesByKey;
+    private final SessionId sessionId;
 
     public FakeImapSession() {
+        this.sessionId = SessionId.random();
         this.attributesByKey = new ConcurrentHashMap<>();
+    }
+
+    @Override
+    public SessionId sessionId() {
+        return sessionId;
     }
 
     @Override
