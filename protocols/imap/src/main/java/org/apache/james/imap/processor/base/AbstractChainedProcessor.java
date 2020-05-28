@@ -26,6 +26,8 @@ import org.apache.james.imap.api.ImapConfiguration;
 import org.apache.james.imap.api.ImapMessage;
 import org.apache.james.imap.api.process.ImapProcessor;
 import org.apache.james.imap.api.process.ImapSession;
+import org.apache.james.util.MDCStructuredLogger;
+import org.apache.james.util.StructuredLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,6 +56,7 @@ public abstract class AbstractChainedProcessor<M extends ImapMessage> implements
             M acceptableMessage = (M) message;
             try (Closeable closeable = addContextToMDC(acceptableMessage)) {
                 try {
+                    LOGGER.debug("Processing {}", message);
                     doProcess(acceptableMessage, responder, session);
                 } catch (RuntimeException e) {
                     LOGGER.error("Error while processing IMAP request", e);
