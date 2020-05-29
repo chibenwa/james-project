@@ -37,6 +37,7 @@ import javax.mail.MessagingException;
 
 import org.apache.commons.configuration2.plist.PropertyListConfiguration;
 import org.apache.james.mailetcontainer.api.MailProcessor;
+import org.apache.james.mailrepository.api.MailRepositoryStore;
 import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.metrics.api.TimeMetric;
 import org.apache.james.queue.api.MailQueue;
@@ -62,7 +63,8 @@ class JamesMailSpoolerTest {
         when(metricFactory.timer(JamesMailSpooler.SPOOL_PROCESSING)).thenAnswer(ignored -> mock(TimeMetric.class));
         MailQueueFactory<?> queueFactory = mock(MailQueueFactory.class);
         MailProcessor mailProcessor = mock(MailProcessor.class);
-        JamesMailSpooler spooler = new JamesMailSpooler(metricFactory, mailProcessor, queueFactory);
+        MailRepositoryStore mailRepositoryStore = mock(MailRepositoryStore.class);
+        JamesMailSpooler spooler = new JamesMailSpooler(metricFactory, mailProcessor, mailRepositoryStore, queueFactory);
 
         UnicastProcessor<MockedMailQueueItem> workQueue = UnicastProcessor.create();
         MockedMailQueueItem item = new MockedMailQueueItem();
@@ -96,7 +98,8 @@ class JamesMailSpoolerTest {
         when(metricFactory.timer(JamesMailSpooler.SPOOL_PROCESSING)).thenAnswer(ignored -> mock(TimeMetric.class));
         MailQueueFactory<?> queueFactory = mock(MailQueueFactory.class);
         MailProcessor mailProcessor = mock(MailProcessor.class);
-        JamesMailSpooler spooler = new JamesMailSpooler(metricFactory, mailProcessor, queueFactory);
+        MailRepositoryStore mailRepositoryStore = mock(MailRepositoryStore.class);
+        JamesMailSpooler spooler = new JamesMailSpooler(metricFactory, mailProcessor, mailRepositoryStore, queueFactory);
 
         UnicastProcessor<MockedMailQueueItem> workQueue = UnicastProcessor.create();
         MockedMailQueueItem item = new MockedMailQueueItem();
