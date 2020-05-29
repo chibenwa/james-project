@@ -37,6 +37,7 @@ import org.apache.james.transport.mailets.ErrorMatcher;
 import org.apache.james.transport.mailets.NoopMailet;
 import org.apache.james.transport.mailets.Null;
 import org.apache.james.transport.mailets.OneRuntimeErrorMailet;
+import org.apache.james.transport.mailets.OneThreadSuicideMailet;
 import org.apache.james.transport.mailets.RuntimeErrorMailet;
 import org.apache.james.transport.mailets.RuntimeExceptionMailet;
 import org.apache.james.transport.mailets.RuntimeExceptionMatcher;
@@ -117,6 +118,29 @@ public class MailetErrorsTest {
                     .addMailet(MailetConfiguration.builder()
                         .matcher(All.class)
                         .mailet(OneRuntimeErrorMailet.class))
+                    .addMailet(MailetConfiguration.builder()
+                        .matcher(All.class)
+                        .mailet(ToRepository.class)
+                        .addProperty("repositoryPath", CUSTOM_REPOSITORY.asString()))))
+            .build(temporaryFolder.newFolder());
+        MailRepositoryProbeImpl probe = jamesServer.getProbe(MailRepositoryProbeImpl.class);
+
+        smtpMessageSender.connect(LOCALHOST_IP, jamesServer.getProbe(SmtpGuiceProbe.class).getSmtpPort()).sendMessage(FROM, FROM);
+
+        awaitAtMostOneMinute.until(() -> probe.getRepositoryMailCount(CUSTOM_REPOSITORY) == 1);
+    }
+
+    @Test
+    public void spoolerShouldEventuallyProcessMailsAfterThreadSuicide() throws Exception {
+        jamesServer = TemporaryJamesServer.builder()
+            .withBase(SMTP_ONLY_MODULE)
+            .withMailetContainer(MailetContainer.builder()
+                .putProcessor(CommonProcessors.deliverOnlyTransport())
+                .putProcessor(errorProcessor())
+                .putProcessor(ProcessorConfiguration.root()
+                    .addMailet(MailetConfiguration.builder()
+                        .matcher(All.class)
+                        .mailet(OneThreadSuicideMailet.class))
                     .addMailet(MailetConfiguration.builder()
                         .matcher(All.class)
                         .mailet(ToRepository.class)
