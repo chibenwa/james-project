@@ -95,7 +95,7 @@ public class ImapChannelUpstreamHandler extends SimpleChannelUpstreamHandler imp
     @Override
     public void channelBound(final ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
         ImapSession imapsession = new NettyImapSession(ctx.getChannel(), context, enabledCipherSuites, compress, plainAuthDisallowed,
-            SessionId.random());
+            SessionId.generate());
         attributes.set(ctx.getChannel(), imapsession);
         try (Closeable closeable = IMAPMDCContext.from(ctx, attributes)) {
             super.channelBound(ctx, e);

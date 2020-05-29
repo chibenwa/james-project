@@ -21,13 +21,11 @@ package org.apache.james.imap.api.process;
 
 import java.util.Objects;
 import java.util.Optional;
-import java.util.UUID;
 
+import org.apache.commons.text.RandomStringGenerator;
 import org.apache.james.core.Username;
 import org.apache.james.imap.api.ImapSessionState;
 import org.apache.james.mailbox.MailboxSession;
-
-import com.google.common.base.MoreObjects;
 
 /**
  * Encapsulates all state held for an ongoing Imap session, which commences when
@@ -38,18 +36,21 @@ import com.google.common.base.MoreObjects;
  */
 public interface ImapSession {
     class SessionId {
-        public static SessionId random() {
-            return new SessionId(UUID.randomUUID());
+        private static final RandomStringGenerator RANDOM_STRING_GENERATOR = new RandomStringGenerator.Builder().withinRange('a', 'z').build();
+        private static final int LENGTH = 12;
+
+        public static SessionId generate() {
+            return new SessionId("SID-" + RANDOM_STRING_GENERATOR.generate(LENGTH));
         }
 
-        private final UUID uuid;
+        private final String value;
 
-        private SessionId(UUID uuid) {
-            this.uuid = uuid;
+        private SessionId(String value) {
+            this.value = value;
         }
 
         public String asString() {
-            return uuid.toString();
+            return value;
         }
 
         @Override
@@ -57,21 +58,19 @@ public interface ImapSession {
             if (o instanceof SessionId) {
                 SessionId sessionId = (SessionId) o;
 
-                return Objects.equals(this.uuid, sessionId.uuid);
+                return Objects.equals(this.value, sessionId.value);
             }
             return false;
         }
 
         @Override
         public final int hashCode() {
-            return Objects.hash(uuid);
+            return Objects.hash(value);
         }
 
         @Override
         public String toString() {
-            return MoreObjects.toStringHelper(this)
-                .add("uuid", uuid)
-                .toString();
+            return asString();
         }
     }
 

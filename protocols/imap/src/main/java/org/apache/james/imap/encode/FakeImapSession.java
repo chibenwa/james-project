@@ -36,7 +36,7 @@ public class FakeImapSession implements ImapSession {
     private final SessionId sessionId;
 
     public FakeImapSession() {
-        this.sessionId = SessionId.random();
+        this.sessionId = SessionId.generate();
         this.attributesByKey = new ConcurrentHashMap<>();
     }
 
