@@ -60,7 +60,13 @@ public class CanSendFromImpl implements CanSendFrom {
     @Override
     public boolean userCanSendFrom(Username connectedUser, Username fromUser) {
         try {
-            return connectedUser.equals(fromUser) || emailIsAnAliasOfTheConnectedUser(connectedUser, fromUser);
+            boolean allowed = connectedUser.equals(fromUser) || emailIsAnAliasOfTheConnectedUser(connectedUser, fromUser);
+            if (allowed) {
+                LOGGER.debug("{} is allowed to send a mail using {} identity", connectedUser.asString(), fromUser.asString());
+            } else {
+                LOGGER.info("{} is not allowed to send a mail using {} identity", connectedUser.asString(), fromUser.asString());
+            }
+            return allowed;
         } catch (RecipientRewriteTableException | RecipientRewriteTable.ErrorMappingException e) {
             LOGGER.warn("Error upon {} mapping resolution for {}. You might want to audit mapping content for this mapping entry. ",
                 fromUser.asString(),
