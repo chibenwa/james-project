@@ -19,7 +19,7 @@ Mailbox listeners can be registered to be triggered every time an event is gener
 mailbox. They are being executed in a distributed fashion following the workqueue messaging pattern. The "group" is an 
 attribute of the mailbox listener identifying to which work queue they belong.
 
-More information about this component can be found in [ADR 0036](0037-eventbus.md).
+More information about this component can be found in [ADR 0037](0037-eventbus.md).
 
 Currently, mailbox listeners are determined by the guice bindings of the server and additional mailbox listeners defined
 via configuration files.
