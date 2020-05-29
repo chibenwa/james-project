@@ -37,7 +37,6 @@ import org.apache.james.rrt.api.RecipientRewriteTableException;
 import org.apache.james.rrt.lib.Mapping;
 import org.apache.james.user.api.UsersRepository;
 import org.apache.james.user.api.UsersRepositoryException;
-import org.apache.james.util.FunctionalUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -135,8 +134,8 @@ class LocalResources {
             .map(mapping -> mapping.asMailAddress()
                 .orElseThrow(() -> new IllegalStateException(String.format("Can not compute address for mapping %s", mapping.asString()))))
             .filter(Throwing.predicate(this::isLocaluser).sneakyThrow())
+            .peek(ownerAddress -> LOGGER.debug("{} belongs to {} local user", mailAddress.asString(), ownerAddress.asString()))
             .findFirst()
-            .map(FunctionalUtils.toFunction(ownerAddress -> LOGGER.debug("{} belongs to {} local user", mailAddress.asString(), ownerAddress.asString())))
             .isPresent();
     }
 }
