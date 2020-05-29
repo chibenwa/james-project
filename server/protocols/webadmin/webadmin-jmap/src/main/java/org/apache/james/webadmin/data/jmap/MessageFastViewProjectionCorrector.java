@@ -44,7 +44,7 @@ import org.apache.james.task.Task;
 import org.apache.james.task.Task.Result;
 import org.apache.james.user.api.UsersRepository;
 import org.apache.james.user.api.UsersRepositoryException;
-import org.apache.james.util.ReactorUtils;
+import org.apache.james.util.ReactorUtils.Throttler;
 import org.apache.james.util.streams.Iterators;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -216,9 +216,9 @@ public class MessageFastViewProjectionCorrector {
     }
 
     private Mono<Result> correctProjection(Flux<ProjectionEntry> entries, RunningOptions runningOptions, Progress progress) {
-        return ReactorUtils.Throttler.<ProjectionEntry, Result>forOperation(entry -> correctProjection(entry, progress))
-            .window(runningOptions.getMessagesPerSecond(), PERIOD)
-            .throttle(entries)
+        return entries
+            .transform(Throttler.<ProjectionEntry>throttler().elements(runningOptions.getMessagesPerSecond()).per(PERIOD))
+            .flatMap(entry -> correctProjection(entry, progress))
             .reduce(Task::combine)
             .switchIfEmpty(Mono.just(Result.COMPLETED));
     }

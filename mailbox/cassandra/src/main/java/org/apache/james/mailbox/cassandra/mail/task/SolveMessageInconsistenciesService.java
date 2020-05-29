@@ -424,9 +424,9 @@ public class SolveMessageInconsistenciesService {
     }
 
     private Flux<Task.Result> fixInconsistenciesInImapUid(Context context, RunningOptions runningOptions) {
-        return ReactorUtils.Throttler.forOperation(this::detectInconsistencyInImapUid)
-            .window(runningOptions.getMessagesPerSecond(), PERIOD)
-            .throttle(messageIdToImapUidDAO.retrieveAllMessages())
+        return messageIdToImapUidDAO.retrieveAllMessages()
+            .transform(ReactorUtils.Throttler.<ComposedMessageIdWithMetaData>throttler().elements(runningOptions.getMessagesPerSecond()).per(PERIOD))
+            .flatMap(this::detectInconsistencyInImapUid)
             .doOnNext(any -> context.incrementProcessedImapUidEntries())
             .flatMap(inconsistency -> inconsistency.fix(context, messageIdToImapUidDAO, messageIdDAO));
     }
@@ -469,9 +469,9 @@ public class SolveMessageInconsistenciesService {
     }
 
     private Flux<Task.Result> fixInconsistenciesInMessageId(Context context, RunningOptions runningOptions) {
-        return ReactorUtils.Throttler.forOperation(this::detectInconsistencyInMessageId)
-            .window(runningOptions.getMessagesPerSecond(), PERIOD)
-            .throttle(messageIdDAO.retrieveAllMessages())
+        return messageIdDAO.retrieveAllMessages()
+            .transform(ReactorUtils.Throttler.<ComposedMessageIdWithMetaData>throttler().elements(runningOptions.getMessagesPerSecond()).per(Duration.ofSeconds(1)))
+            .flatMap(this::detectInconsistencyInMessageId)
             .doOnNext(any -> context.incrementMessageIdEntries())
             .flatMap(inconsistency -> inconsistency.fix(context, messageIdToImapUidDAO, messageIdDAO));
     }

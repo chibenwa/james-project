@@ -37,6 +37,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Signal;
 import reactor.core.publisher.SynchronousSink;
+import reactor.core.scheduler.Schedulers;
 import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
 
@@ -44,38 +45,27 @@ public class ReactorUtils {
 
     public static final String MDC_KEY_PREFIX = "MDC-";
 
-    public static class Throttler<T, U> {
-        private static final Duration DELAY = Duration.ZERO;
+    private static final Duration DELAY = Duration.ZERO;
 
-        public static <T, U> RequiresWindowingParameters<T, U> forOperation(Function<T, Publisher<U>> operation) {
-            return (maxSize, duration) -> new Throttler<>(operation, maxSize, duration);
-        }
+    public static <T> RequiresQuantity<T> throttle() {
+        return elements -> duration -> {
+            Preconditions.checkArgument(elements > 0, "'windowMaxSize' must be strictly positive");
+            Preconditions.checkArgument(!duration.isNegative(), "'windowDuration' must be strictly positive");
+            Preconditions.checkArgument(!duration.isZero(), "'windowDuration' must be strictly positive");
+            return flux -> flux
+                .windowTimeout(elements, duration)
+                .zipWith(Flux.interval(DELAY, duration), 1)
+                .flatMap(Tuple2::getT1, elements, elements);
+        };
+    }
+    @FunctionalInterface
+    public interface RequiresQuantity<T> {
+        RequiresPeriod<T> elements(int maxSize);
+    }
 
-        @FunctionalInterface
-        public interface RequiresWindowingParameters<T, U> {
-            Throttler<T, U> window(int maxSize, Duration duration);
-        }
-
-        private Throttler(Function<T, Publisher<U>> operation, int windowMaxSize, Duration windowDuration) {
-            Preconditions.checkArgument(windowMaxSize > 0, "'windowMaxSize' must be strictly positive");
-            Preconditions.checkArgument(!windowDuration.isNegative(), "'windowDuration' must be strictly positive");
-            Preconditions.checkArgument(!windowDuration.isZero(), "'windowDuration' must be strictly positive");
-
-            this.operation = operation;
-            this.windowMaxSize = windowMaxSize;
-            this.windowDuration = windowDuration;
-        }
-
-        private final Function<T, Publisher<U>> operation;
-        private final int windowMaxSize;
-        private final Duration windowDuration;
-
-        public Flux<U> throttle(Flux<T> flux) {
-            return flux.windowTimeout(windowMaxSize, windowDuration)
-                .zipWith(Flux.interval(DELAY, windowDuration))
-                .flatMap(Tuple2::getT1)
-                .flatMap(operation, windowMaxSize);
-        }
+    @FunctionalInterface
+    public interface RequiresPeriod<T> {
+        Function<Flux<T>, Flux<T>> per(Duration duration);
     }
 
     public static <T> Mono<T> executeAndEmpty(Runnable runnable) {
