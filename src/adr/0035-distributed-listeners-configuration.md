@@ -78,7 +78,7 @@ A WebAdmin endpoint will allow:
     
 A broadcast on the event bus will be attempted to propagate topology changes, by the mean of a common registrationKey 
 to all nodes, a "TopologyChanged" event, and a mailbox listener starting the MailboxListeners on local node upon
-topology changes. `registrationKey` concept is explained in [ADR 0036](0037-eventbus.md).
+topology changes. `registrationKey` concept is explained in [ADR 0037](0037-eventbus.md).
  
 If a listener is added but is not in the classpath, an ERROR log is emitted. This can happen during a rolling upgrade,
 which defines a new guice binding for a new mailbox listener. Events will still be emitted (and consumed by other James
