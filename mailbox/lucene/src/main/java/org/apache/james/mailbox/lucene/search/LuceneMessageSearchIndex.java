@@ -492,7 +492,7 @@ public class LuceneMessageSearchIndex extends ListeningMessageSearchIndex {
 
             List<Criterion> crits = searchQuery.getCriteria();
             for (Criterion crit : crits) {
-                query.add(createQuery(crit, inMailboxes, searchQuery.getRecentMessageUids()), BooleanClause.Occur.MUST);
+                query.add(createQuery(crit, inMailboxes), BooleanClause.Occur.MUST);
             }
 
             // query for all the documents sorted as specified in the SearchQuery
@@ -922,7 +922,7 @@ public class LuceneMessageSearchIndex extends ListeningMessageSearchIndex {
      * Return a {@link Query} which is build based on the given {@link SearchQuery.FlagCriterion}. This is kind of a hack
      * as it will do a search for the flags in this method and
      */
-    private Query createFlagQuery(String flag, boolean isSet, Query inMailboxes, Collection<MessageUid> recentUids) throws MailboxException {
+    private Query createFlagQuery(String flag, boolean isSet, Query inMailboxes) throws MailboxException {
         BooleanQuery query = new BooleanQuery();
         
         if (isSet) {   
@@ -947,15 +947,6 @@ public class LuceneMessageSearchIndex extends ListeningMessageSearchIndex {
             for (ScoreDoc sDoc : sDocs) {
                 MessageUid uid = MessageUid.of(Long.parseLong(searcher.doc(sDoc.doc).get(UID_FIELD)));
                 uids.add(uid);
-            }
-            
-            // add or remove recent uids
-            if (flag.equalsIgnoreCase("\\RECENT")) {
-                if (isSet) {
-                    uids.addAll(recentUids);
-                } else {
-                    uids.removeAll(recentUids);
-                }
             }
             
             List<MessageRange> ranges = MessageRange.toRanges(new ArrayList<>(uids));
@@ -1106,24 +1097,24 @@ public class LuceneMessageSearchIndex extends ListeningMessageSearchIndex {
     /**
      * Return a {@link Query} which is build based on the given {@link SearchQuery.ConjunctionCriterion}
      */
-    private Query createConjunctionQuery(SearchQuery.ConjunctionCriterion crit, Query inMailboxes, Collection<MessageUid> recentUids) throws UnsupportedSearchException, MailboxException {
+    private Query createConjunctionQuery(SearchQuery.ConjunctionCriterion crit, Query inMailboxes) throws UnsupportedSearchException, MailboxException {
         List<Criterion> crits = crit.getCriteria();
         BooleanQuery conQuery = new BooleanQuery();
         switch (crit.getType()) {
         case AND:
             for (Criterion criterion : crits) {
-                conQuery.add(createQuery(criterion, inMailboxes, recentUids), BooleanClause.Occur.MUST);
+                conQuery.add(createQuery(criterion, inMailboxes), BooleanClause.Occur.MUST);
             }
             return conQuery;
         case OR:
             for (Criterion criterion : crits) {
-                conQuery.add(createQuery(criterion, inMailboxes, recentUids), BooleanClause.Occur.SHOULD);
+                conQuery.add(createQuery(criterion, inMailboxes), BooleanClause.Occur.SHOULD);
             }
             return conQuery;
         case NOR:
             BooleanQuery nor = new BooleanQuery();
             for (Criterion criterion : crits) {
-                conQuery.add(createQuery(criterion, inMailboxes, recentUids), BooleanClause.Occur.SHOULD);
+                conQuery.add(createQuery(criterion, inMailboxes), BooleanClause.Occur.SHOULD);
             }
             nor.add(inMailboxes, BooleanClause.Occur.MUST);
 
@@ -1138,7 +1129,7 @@ public class LuceneMessageSearchIndex extends ListeningMessageSearchIndex {
     /**
      * Return a {@link Query} which is builded based on the given {@link Criterion}
      */
-    private Query createQuery(Criterion criterion, Query inMailboxes, Collection<MessageUid> recentUids) throws MailboxException {
+    private Query createQuery(Criterion criterion, Query inMailboxes) throws MailboxException {
         if (criterion instanceof SearchQuery.InternalDateCriterion) {
             SearchQuery.InternalDateCriterion crit = (SearchQuery.InternalDateCriterion) criterion;
             return createInternalDateQuery(crit);
@@ -1153,13 +1144,13 @@ public class LuceneMessageSearchIndex extends ListeningMessageSearchIndex {
             return createUidQuery(crit);
         } else if (criterion instanceof SearchQuery.FlagCriterion) {
             FlagCriterion crit = (FlagCriterion) criterion;
-            return createFlagQuery(toString(crit.getFlag()), crit.getOperator().isSet(), inMailboxes, recentUids);
+            return createFlagQuery(toString(crit.getFlag()), crit.getOperator().isSet(), inMailboxes);
         } else if (criterion instanceof SearchQuery.AttachmentCriterion) {
             AttachmentCriterion crit = (AttachmentCriterion) criterion;
             return createAttachmentQuery(crit.getOperator().isSet());
         } else if (criterion instanceof SearchQuery.CustomFlagCriterion) {
             CustomFlagCriterion crit = (CustomFlagCriterion) criterion;
-            return createFlagQuery(crit.getFlag(), crit.getOperator().isSet(), inMailboxes, recentUids);
+            return createFlagQuery(crit.getFlag(), crit.getOperator().isSet(), inMailboxes);
         } else if (criterion instanceof SearchQuery.TextCriterion) {
             SearchQuery.TextCriterion crit = (SearchQuery.TextCriterion) criterion;
             return createTextQuery(crit);
@@ -1167,7 +1158,7 @@ public class LuceneMessageSearchIndex extends ListeningMessageSearchIndex {
             return createAllQuery((AllCriterion) criterion);
         } else if (criterion instanceof SearchQuery.ConjunctionCriterion) {
             SearchQuery.ConjunctionCriterion crit = (SearchQuery.ConjunctionCriterion) criterion;
-            return createConjunctionQuery(crit, inMailboxes, recentUids);
+            return createConjunctionQuery(crit, inMailboxes);
         } else if (criterion instanceof SearchQuery.ModSeqCriterion) {
             return createModSeqQuery((SearchQuery.ModSeqCriterion) criterion);
         } else if (criterion instanceof SearchQuery.MimeMessageIDCriterion) {

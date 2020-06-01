@@ -264,13 +264,8 @@ public class SearchProcessor extends AbstractMailboxProcessor<SearchRequest> imp
     }
 
     private SearchQuery toQuery(SearchKey key, ImapSession session) throws MessageRangeException {
-        SearchQuery.Criterion criterion = toCriterion(key, session);
-        SearchQuery.Builder builder = SearchQuery.builder();
-        SelectedMailbox selected = session.getSelected();
-        if (selected != null) {
-            builder.addRecentMessageUids(selected.getRecent());
-        }
-        return builder.andCriteria(criterion)
+        return SearchQuery.builder()
+            .andCriteria(toCriterion(key, session))
             .build();
     }
 

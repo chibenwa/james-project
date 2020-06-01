@@ -25,7 +25,6 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 import javax.mail.Flags;
 import javax.mail.Flags.Flag;
@@ -36,7 +35,6 @@ import com.google.common.base.MoreObjects;
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
 
 /**
  * <p>
@@ -762,13 +760,11 @@ public class SearchQuery implements Serializable {
 
     public static class Builder {
         private final ImmutableList.Builder<Criterion> criterias;
-        private final ImmutableSet.Builder<MessageUid> recentMessageUids;
         private Optional<ImmutableList<Sort>> sorts;
 
         public Builder() {
             criterias = ImmutableList.builder();
             sorts = Optional.empty();
-            recentMessageUids = ImmutableSet.builder();
         }
 
         public Builder andCriteria(Criterion... criteria) {
@@ -792,15 +788,9 @@ public class SearchQuery implements Serializable {
             return this;
         }
 
-        public Builder addRecentMessageUids(Collection<MessageUid> uids) {
-            recentMessageUids.addAll(uids);
-            return this;
-        }
-
         public SearchQuery build() {
             return new SearchQuery(criterias.build(),
-                sorts.orElse(ImmutableList.of(new Sort(Sort.SortClause.Uid, Sort.Order.NATURAL))),
-                recentMessageUids.build());
+                sorts.orElse(ImmutableList.of(new Sort(Sort.SortClause.Uid, Sort.Order.NATURAL))));
         }
     }
 
@@ -822,12 +812,10 @@ public class SearchQuery implements Serializable {
 
     private final ImmutableList<Criterion> criteria;
     private final ImmutableList<Sort> sorts;
-    private final ImmutableSet<MessageUid> recentMessageUids;
 
-    private SearchQuery(ImmutableList<Criterion> criteria, ImmutableList<Sort> sorts, ImmutableSet<MessageUid> recentMessageUids) {
+    private SearchQuery(ImmutableList<Criterion> criteria, ImmutableList<Sort> sorts) {
         this.criteria = criteria;
         this.sorts = sorts;
-        this.recentMessageUids = recentMessageUids;
     }
 
     public List<Criterion> getCriteria() {
@@ -847,17 +835,6 @@ public class SearchQuery implements Serializable {
         return sorts;
     }
 
-    /**
-     * Gets the UIDS of messages which are recent for this client session. The
-     * list of recent mail is maintained in the protocol layer since the
-     * mechanics are protocol specific.
-     * 
-     * @return mutable <code>Set</code> of <code>MessageUid</code> UIDS
-     */
-    public Set<MessageUid> getRecentMessageUids() {
-        return recentMessageUids;
-    }
-
     @Override
     public String toString() {
         return "Search:" + criteria.toString();
@@ -865,7 +842,7 @@ public class SearchQuery implements Serializable {
 
     @Override
     public final int hashCode() {
-        return Objects.hashCode(criteria, sorts, recentMessageUids);
+        return Objects.hashCode(criteria, sorts);
     }
 
     @Override
@@ -874,8 +851,7 @@ public class SearchQuery implements Serializable {
             SearchQuery that = (SearchQuery) obj;
 
             return Objects.equal(this.criteria, that.criteria)
-                && Objects.equal(this.sorts, that.sorts)
-                && Objects.equal(this.recentMessageUids, that.recentMessageUids);
+                && Objects.equal(this.sorts, that.sorts);
         }
         return false;
     }
