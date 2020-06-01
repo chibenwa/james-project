@@ -26,6 +26,7 @@ import java.util.Optional;
 import java.util.function.Supplier;
 
 import javax.inject.Inject;
+import javax.inject.Named;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -40,6 +41,7 @@ import org.apache.james.task.TaskNotFoundException;
 import org.apache.james.util.DurationParser;
 import org.apache.james.webadmin.Routes;
 import org.apache.james.webadmin.dto.ExecutionDetailsDto;
+import org.apache.james.webadmin.dto.Injections;
 import org.apache.james.webadmin.utils.ErrorResponder;
 import org.apache.james.webadmin.utils.JsonTransformer;
 import org.apache.james.webadmin.utils.Responses;
@@ -69,7 +71,8 @@ public class TasksRoutes implements Routes {
     private final DTOConverter<TaskExecutionDetails.AdditionalInformation, AdditionalInformationDTO> additionalInformationDTOConverter;
 
     @Inject
-    public TasksRoutes(TaskManager taskManager, JsonTransformer jsonTransformer, DTOConverter<TaskExecutionDetails.AdditionalInformation, AdditionalInformationDTO> additionalInformationDTOConverter) {
+    public TasksRoutes(TaskManager taskManager, JsonTransformer jsonTransformer,
+                       @Named(Injections.WEBADMIN_DTO) DTOConverter<TaskExecutionDetails.AdditionalInformation, AdditionalInformationDTO> additionalInformationDTOConverter) {
         this.taskManager = taskManager;
         this.jsonTransformer = jsonTransformer;
         this.additionalInformationDTOConverter = additionalInformationDTOConverter;
