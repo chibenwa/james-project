@@ -19,101 +19,63 @@
 
 package org.apache.james.blob.mail;
 
-import static org.apache.commons.io.output.NullOutputStream.NULL_OUTPUT_STREAM;
-import static org.apache.james.blob.api.BlobStore.StoragePolicy.LOW_COST;
 import static org.apache.james.blob.api.BlobStore.StoragePolicy.SIZE_BASED;
-import static org.apache.james.blob.mail.MimeMessagePartsId.BODY_BLOB_TYPE;
-import static org.apache.james.blob.mail.MimeMessagePartsId.HEADER_BLOB_TYPE;
+import static org.apache.james.util.io.InputStreamConsummer.consume;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.SequenceInputStream;
-import java.nio.ByteBuffer;
-import java.util.Map;
-import java.util.Properties;
-import java.util.stream.Stream;
+import java.util.UUID;
 
 import javax.inject.Inject;
 import javax.mail.MessagingException;
-import javax.mail.Session;
 import javax.mail.internet.MimeMessage;
 
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.io.input.BoundedInputStream;
 import org.apache.james.blob.api.BlobStore;
-import org.apache.james.blob.api.BlobType;
 import org.apache.james.blob.api.Store;
+import org.apache.james.server.core.MimeMessageCopyOnWriteProxy;
+import org.apache.james.server.core.MimeMessageInputStream;
+import org.apache.james.server.core.MimeMessageInputStreamSource;
 import org.apache.james.util.io.BodyOffsetInputStream;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableMap;
 
-public class MimeMessageStore {
+import reactor.core.publisher.Mono;
 
-    public static class Factory {
-        private final BlobStore blobStore;
+public class MimeMessageStore implements Store<MimeMessage, MimeMessagePartsId> {
+    private final BlobStore blobStore;
 
-        @Inject
-        public Factory(BlobStore blobStore) {
-            this.blobStore = blobStore;
-        }
-
-        public Store<MimeMessage, MimeMessagePartsId> mimeMessageStore() {
-            return new Store.Impl<>(
-                new MimeMessagePartsId.Factory(),
-                new MimeMessageEncoder(),
-                new MimeMessageDecoder(),
-                blobStore);
-        }
+    @Inject
+    @VisibleForTesting
+    public MimeMessageStore(BlobStore blobStore) {
+        this.blobStore = blobStore;
     }
 
-    static class MimeMessageEncoder implements Store.Impl.Encoder<MimeMessage> {
-        @Override
-        public Stream<Pair<BlobType, Store.Impl.ValueToSave>> encode(MimeMessage message) {
-            try {
-                byte[] messageAsArray = messageToArray(message);
-                int bodyStartOctet = computeBodyStartOctet(messageAsArray);
-                byte[] headerBytes = getHeaderBytes(messageAsArray, bodyStartOctet);
-                byte[] bodyBytes = getBodyBytes(messageAsArray, bodyStartOctet);
-                return Stream.of(
-                    Pair.of(HEADER_BLOB_TYPE, new Store.Impl.BytesToSave(headerBytes, SIZE_BASED)),
-                    Pair.of(BODY_BLOB_TYPE, new Store.Impl.BytesToSave(bodyBytes, LOW_COST)));
-            } catch (MessagingException | IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        
-        private static byte[] messageToArray(MimeMessage message) throws IOException, MessagingException {
-            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-            message.writeTo(byteArrayOutputStream);
-            return byteArrayOutputStream.toByteArray();
-        }
+    @Override
+    public Mono<MimeMessagePartsId> save(MimeMessage mimeMessage) {
+        Preconditions.checkNotNull(mimeMessage);
 
-        private static byte[] getHeaderBytes(byte[] messageContentAsArray, int bodyStartOctet) {
-            ByteBuffer headerContent = ByteBuffer.wrap(messageContentAsArray, 0, bodyStartOctet);
-            byte[] headerBytes = new byte[bodyStartOctet];
-            headerContent.get(headerBytes);
-            return headerBytes;
-        }
+        return computeBodyStartOctet(mimeMessage)
+            .zipWith(Mono.fromCallable(() -> new MimeMessageInputStream(mimeMessage)))
+            .flatMap(tuple -> save(tuple.getT1(), tuple.getT2()));
+    }
 
-        private static byte[] getBodyBytes(byte[] messageContentAsArray, int bodyStartOctet) {
-            if (bodyStartOctet < messageContentAsArray.length) {
-                ByteBuffer bodyContent = ByteBuffer.wrap(messageContentAsArray,
-                    bodyStartOctet,
-                    messageContentAsArray.length - bodyStartOctet);
-                byte[] bodyBytes = new byte[messageContentAsArray.length - bodyStartOctet];
-                bodyContent.get(bodyBytes);
-                return bodyBytes;
-            } else {
-                return new byte[] {};
-            }
-        }
+    private Mono<MimeMessagePartsId> save(int bodyStartOctet, InputStream inputStream) {
+        InputStream headerStream = new BoundedInputStream(inputStream, bodyStartOctet);
+        return Mono.from(blobStore.save(blobStore.getDefaultBucketName(), headerStream, SIZE_BASED))
+            .flatMap(headerId -> Mono.from(blobStore.save(blobStore.getDefaultBucketName(), inputStream, SIZE_BASED))
+                .map(bodyId -> MimeMessagePartsId.builder()
+                    .headerBlobId(headerId)
+                    .bodyBlobId(bodyId)
+                    .build()));
+    }
 
-        private static int computeBodyStartOctet(byte[] messageAsArray) throws IOException {
-            try (BodyOffsetInputStream bodyOffsetInputStream =
-                     new BodyOffsetInputStream(new ByteArrayInputStream(messageAsArray))) {
+    private static Mono<Integer> computeBodyStartOctet(MimeMessage mimeMessage) {
+        return Mono.fromCallable(() -> {
+            try (MimeMessageInputStream inputStream = new MimeMessageInputStream(mimeMessage);
+                 BodyOffsetInputStream bodyOffsetInputStream = new BodyOffsetInputStream(inputStream)) {
+
                 consume(bodyOffsetInputStream);
 
                 if (bodyOffsetInputStream.getBodyStartOffset() == -1) {
@@ -121,37 +83,24 @@ public class MimeMessageStore {
                 }
                 return (int) bodyOffsetInputStream.getBodyStartOffset();
             }
-        }
-
-        private static void consume(InputStream in) throws IOException {
-            IOUtils.copy(in, NULL_OUTPUT_STREAM);
-        }
+        });
     }
 
-    static class MimeMessageDecoder implements Store.Impl.Decoder<MimeMessage> {
-        @Override
-        public MimeMessage decode(Stream<Pair<BlobType, byte[]>> streams) {
-            Preconditions.checkNotNull(streams);
-            Map<BlobType,byte[]> pairs = streams.collect(ImmutableMap.toImmutableMap(Pair::getLeft, Pair::getRight));
-            Preconditions.checkArgument(pairs.containsKey(HEADER_BLOB_TYPE));
-            Preconditions.checkArgument(pairs.containsKey(BODY_BLOB_TYPE));
+    @Override
+    public Mono<MimeMessage> read(MimeMessagePartsId blobIds) {
+        Preconditions.checkNotNull(blobIds);
 
-            return toMimeMessage(
-                new SequenceInputStream(
-                    new ByteArrayInputStream(pairs.get(HEADER_BLOB_TYPE)),
-                    new ByteArrayInputStream(pairs.get(BODY_BLOB_TYPE))));
-        }
-
-        private MimeMessage toMimeMessage(InputStream inputStream) {
-            try {
-                return new MimeMessage(Session.getInstance(new Properties()), inputStream);
-            } catch (MessagingException e) {
-                throw new RuntimeException(e);
-            }
-        }
+        return Mono.fromCallable(() -> toMimeMessage(
+            new SequenceInputStream(
+                blobStore.read(blobStore.getDefaultBucketName(), blobIds.getHeaderBlobId()),
+                blobStore.read(blobStore.getDefaultBucketName(), blobIds.getBodyBlobId()))));
     }
 
-    public static Factory factory(BlobStore blobStore) {
-        return new Factory(blobStore);
+    private MimeMessage toMimeMessage(InputStream inputStream) {
+        try {
+            return new MimeMessageCopyOnWriteProxy(new MimeMessageInputStreamSource(UUID.randomUUID().toString(), inputStream));
+        } catch (MessagingException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

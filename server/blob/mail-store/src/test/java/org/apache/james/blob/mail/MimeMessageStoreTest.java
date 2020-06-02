@@ -49,7 +49,7 @@ class MimeMessageStoreTest {
     @BeforeEach
     void setUp() {
         blobStore = new MemoryBlobStore(BLOB_ID_FACTORY, new MemoryDumbBlobStore());
-        testee = MimeMessageStore.factory(blobStore).mimeMessageStore();
+        testee = new MimeMessageStore(blobStore);
     }
 
     @Test

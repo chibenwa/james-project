@@ -26,9 +26,7 @@ import java.util.Iterator;
 
 import javax.inject.Inject;
 import javax.mail.MessagingException;
-import javax.mail.internet.MimeMessage;
 
-import org.apache.james.blob.api.Store;
 import org.apache.james.blob.mail.MimeMessagePartsId;
 import org.apache.james.blob.mail.MimeMessageStore;
 import org.apache.james.mailrepository.api.MailKey;
@@ -45,18 +43,12 @@ public class CassandraMailRepository implements MailRepository {
     private final CassandraMailRepositoryKeysDAO keysDAO;
     private final CassandraMailRepositoryCountDAO countDAO;
     private final CassandraMailRepositoryMailDaoAPI mailDAO;
-    private final Store<MimeMessage, MimeMessagePartsId> mimeMessageStore;
+    private final MimeMessageStore mimeMessageStore;
 
     @Inject
     CassandraMailRepository(MailRepositoryUrl url, CassandraMailRepositoryKeysDAO keysDAO,
                             CassandraMailRepositoryCountDAO countDAO, CassandraMailRepositoryMailDaoAPI mailDAO,
-                            MimeMessageStore.Factory mimeMessageStoreFactory) {
-        this(url, keysDAO, countDAO, mailDAO, mimeMessageStoreFactory.mimeMessageStore());
-    }
-
-    CassandraMailRepository(MailRepositoryUrl url, CassandraMailRepositoryKeysDAO keysDAO,
-                            CassandraMailRepositoryCountDAO countDAO, CassandraMailRepositoryMailDaoAPI mailDAO,
-                            Store<MimeMessage, MimeMessagePartsId> mimeMessageStore) {
+                            MimeMessageStore mimeMessageStore) {
         this.url = url;
         this.keysDAO = keysDAO;
         this.countDAO = countDAO;

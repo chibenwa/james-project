@@ -89,13 +89,13 @@ public class CassandraMailQueueBrowser {
     CassandraMailQueueBrowser(BrowseStartDAO browseStartDao,
                               DeletedMailsDAO deletedMailsDao,
                               EnqueuedMailsDAO enqueuedMailsDao,
-                              MimeMessageStore.Factory mimeMessageStoreFactory,
+                              MimeMessageStore mimeMessageStore,
                               CassandraMailQueueViewConfiguration configuration,
                               Clock clock) {
         this.browseStartDao = browseStartDao;
         this.deletedMailsDao = deletedMailsDao;
         this.enqueuedMailsDao = enqueuedMailsDao;
-        this.mimeMessageStore = mimeMessageStoreFactory.mimeMessageStore();
+        this.mimeMessageStore = mimeMessageStore;
         this.configuration = configuration;
         this.clock = clock;
     }

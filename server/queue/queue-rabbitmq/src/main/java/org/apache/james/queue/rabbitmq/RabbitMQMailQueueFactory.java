@@ -74,7 +74,7 @@ public class RabbitMQMailQueueFactory implements MailQueueFactory<RabbitMQMailQu
         @Inject
         @VisibleForTesting PrivateFactory(MetricFactory metricFactory,
                                           GaugeRegistry gaugeRegistry,
-                                          Sender sender, ReceiverProvider receiverProvider, MimeMessageStore.Factory mimeMessageStoreFactory,
+                                          Sender sender, ReceiverProvider receiverProvider, MimeMessageStore mimeMessageStore,
                                           BlobId.Factory blobIdFactory,
                                           MailQueueView.Factory mailQueueViewFactory,
                                           Clock clock,
@@ -84,7 +84,7 @@ public class RabbitMQMailQueueFactory implements MailQueueFactory<RabbitMQMailQu
             this.gaugeRegistry = gaugeRegistry;
             this.sender = sender;
             this.receiverProvider = receiverProvider;
-            this.mimeMessageStore = mimeMessageStoreFactory.mimeMessageStore();
+            this.mimeMessageStore = mimeMessageStore;
             this.mailQueueViewFactory = mailQueueViewFactory;
             this.clock = clock;
             this.decoratorFactory = decoratorFactory;

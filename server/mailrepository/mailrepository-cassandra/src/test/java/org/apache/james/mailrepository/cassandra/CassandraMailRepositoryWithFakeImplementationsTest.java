@@ -34,7 +34,6 @@ import org.apache.james.backends.cassandra.utils.CassandraUtils;
 import org.apache.james.backends.cassandra.versions.CassandraSchemaVersionModule;
 import org.apache.james.blob.api.BlobId;
 import org.apache.james.blob.api.HashBlobId;
-import org.apache.james.blob.api.Store;
 import org.apache.james.blob.cassandra.BlobTables;
 import org.apache.james.blob.cassandra.CassandraBlobModule;
 import org.apache.james.blob.cassandra.CassandraBlobStore;
@@ -82,7 +81,11 @@ class CassandraMailRepositoryWithFakeImplementationsTest {
                     keysDAO, countDAO, mailDAO, new FailingStore());
         }
 
-        class FailingStore implements Store<MimeMessage, MimeMessagePartsId> {
+        class FailingStore extends MimeMessageStore {
+
+            FailingStore() {
+                super(null);
+            }
 
             @Override
             public Mono<MimeMessagePartsId> save(MimeMessage mimeMessage) {
@@ -130,7 +133,7 @@ class CassandraMailRepositoryWithFakeImplementationsTest {
             CassandraBlobStore blobStore = CassandraBlobStore.forTesting(cassandra.getConf());
 
             cassandraMailRepository = new CassandraMailRepository(URL,
-                    keysDAO, countDAO, mailDAO, MimeMessageStore.factory(blobStore).mimeMessageStore());
+                    keysDAO, countDAO, mailDAO, new MimeMessageStore(blobStore));
         }
 
         class FailingMailDAO implements CassandraMailRepositoryMailDaoAPI {
@@ -215,7 +218,7 @@ class CassandraMailRepositoryWithFakeImplementationsTest {
             CassandraBlobStore blobStore = CassandraBlobStore.forTesting(cassandra.getConf());
 
             cassandraMailRepository = new CassandraMailRepository(URL,
-                    keysDAO, countDAO, mailDAO, MimeMessageStore.factory(blobStore).mimeMessageStore());
+                    keysDAO, countDAO, mailDAO, new MimeMessageStore(blobStore));
         }
 
         class FailingKeysDAO extends CassandraMailRepositoryKeysDAO {

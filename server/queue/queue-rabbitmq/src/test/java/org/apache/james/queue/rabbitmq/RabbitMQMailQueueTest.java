@@ -23,8 +23,6 @@ import static java.time.temporal.ChronoUnit.HOURS;
 import static org.apache.james.queue.api.Mails.defaultMail;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.awaitility.Awaitility.await;
-import static org.awaitility.Duration.FIVE_SECONDS;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -322,7 +320,7 @@ class RabbitMQMailQueueTest {
 
     private void setUp(CassandraCluster cassandra, MailQueueMetricExtension.MailQueueMetricTestSystem metricTestSystem, RabbitMQMailQueueConfiguration configuration) throws Exception {
         CassandraBlobStore blobStore = CassandraBlobStore.forTesting(cassandra.getConf());
-        MimeMessageStore.Factory mimeMessageStoreFactory = MimeMessageStore.factory(blobStore);
+        MimeMessageStore mimeMessageStore = new MimeMessageStore(blobStore);
         clock = new UpdatableTickingClock(IN_SLICE_1);
 
         MailQueueView.Factory mailQueueViewFactory = CassandraMailQueueViewTestFactory.factory(clock, cassandra.getConf(),
@@ -331,13 +329,13 @@ class RabbitMQMailQueueTest {
                 .updateBrowseStartPace(UPDATE_BROWSE_START_PACE)
                 .sliceWindow(ONE_HOUR_SLICE_WINDOW)
                 .build(),
-            mimeMessageStoreFactory);
+            mimeMessageStore);
 
         RabbitMQMailQueueFactory.PrivateFactory factory = new RabbitMQMailQueueFactory.PrivateFactory(
             metricTestSystem.getMetricFactory(),
             metricTestSystem.getSpyGaugeRegistry(),
             rabbitMQExtension.getSender(), rabbitMQExtension.getReceiverProvider(),
-            mimeMessageStoreFactory,
+            mimeMessageStore,
             BLOB_ID_FACTORY,
             mailQueueViewFactory,
             clock,
