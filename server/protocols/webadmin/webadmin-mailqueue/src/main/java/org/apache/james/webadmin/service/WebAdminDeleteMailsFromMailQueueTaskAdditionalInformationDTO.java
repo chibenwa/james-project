@@ -81,8 +81,7 @@ public class WebAdminDeleteMailsFromMailQueueTaskAdditionalInformationDTO implem
                                                                         @JsonProperty("recipient") Optional<String> recipient,
                                                                         @JsonProperty("initialCount") long initialCount,
                                                                         @JsonProperty("remainingCount") long remainingCount,
-                                                                        @JsonProperty("timestamp") Instant timestamp
-    ) {
+                                                                        @JsonProperty("timestamp") Instant timestamp) {
         this.type = type;
         this.mailQueueName = mailQueueName;
         this.sender = sender;
