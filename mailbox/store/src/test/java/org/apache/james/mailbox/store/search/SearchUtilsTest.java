@@ -39,9 +39,7 @@ import static org.apache.james.mailbox.model.SearchQuery.sizeLessThan;
 import static org.apache.james.mailbox.model.SearchQuery.uid;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Collection;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.Locale;
