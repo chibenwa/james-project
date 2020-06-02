@@ -80,8 +80,6 @@ class SearchUtilsTest {
 
     MessageBuilder builder;
 
-    Collection<MessageUid> recent;
-
     MessageSearches messageSearches;
     
     Calendar getGMT() {
@@ -96,7 +94,6 @@ class SearchUtilsTest {
     
     @BeforeEach
     void setUp() {
-        recent = new ArrayList<>();
         builder = new MessageBuilder()
             .uid(MessageUid.of(1009));
         
@@ -497,9 +494,8 @@ class SearchUtilsTest {
 
     @Test
     void testShouldMatchSeenRecentSet() throws Exception {
-        builder.setFlags(false, false, false, false, false, false);
+        builder.setFlags(false, false, false, false, false, true);
         MailboxMessage row = builder.build();
-        recent.add(row.getUid());
         assertThat(messageSearches.isMatch(flagIsSet(Flags.Flag.SEEN), row)).isFalse();
         assertThat(messageSearches.isMatch(flagIsSet(Flags.Flag.FLAGGED), row)).isFalse();
         assertThat(messageSearches.isMatch(flagIsSet(Flags.Flag.ANSWERED), row)).isFalse();
@@ -512,7 +508,6 @@ class SearchUtilsTest {
     void testShouldMatchSeenFlagUnSet() throws Exception {
         builder.setFlags(false, true, true, true, true, true);
         MailboxMessage row = builder.build();
-        recent.add(row.getUid());
         assertThat(messageSearches.isMatch(flagIsUnSet(Flags.Flag.SEEN), row)).isTrue();
         assertThat(messageSearches.isMatch(flagIsUnSet(Flags.Flag.FLAGGED), row)).isFalse();
         assertThat(messageSearches.isMatch(flagIsUnSet(Flags.Flag.ANSWERED), row)).isFalse();
@@ -525,7 +520,6 @@ class SearchUtilsTest {
     void testShouldMatchAnsweredFlagUnSet() throws Exception {
         builder.setFlags(true, true, false, true, true, true);
         MailboxMessage row = builder.build();
-        recent.add(row.getUid());
         assertThat(messageSearches.isMatch(flagIsUnSet(Flags.Flag.SEEN), row)).isFalse();
         assertThat(messageSearches.isMatch(flagIsUnSet(Flags.Flag.FLAGGED), row)).isFalse();
         assertThat(messageSearches.isMatch(flagIsUnSet(Flags.Flag.ANSWERED), row)).isTrue();
@@ -538,7 +532,6 @@ class SearchUtilsTest {
     void testShouldMatchFlaggedFlagUnSet() throws Exception {
         builder.setFlags(true, false, true, true, true, true);
         MailboxMessage row = builder.build();
-        recent.add(row.getUid());
         assertThat(messageSearches.isMatch(flagIsUnSet(Flags.Flag.SEEN), row)).isFalse();
         assertThat(messageSearches.isMatch(flagIsUnSet(Flags.Flag.FLAGGED), row)).isTrue();
         assertThat(messageSearches.isMatch(flagIsUnSet(Flags.Flag.ANSWERED), row)).isFalse();
@@ -551,7 +544,6 @@ class SearchUtilsTest {
     void testShouldMatchDraftFlagUnSet() throws Exception {
         builder.setFlags(true, true, true, false, true, true);
         MailboxMessage row = builder.build();
-        recent.add(row.getUid());
         assertThat(messageSearches.isMatch(flagIsUnSet(Flags.Flag.SEEN), row)).isFalse();
         assertThat(messageSearches.isMatch(flagIsUnSet(Flags.Flag.FLAGGED), row)).isFalse();
         assertThat(messageSearches.isMatch(flagIsUnSet(Flags.Flag.ANSWERED), row)).isFalse();
@@ -564,7 +556,6 @@ class SearchUtilsTest {
     void testShouldMatchDeletedFlagUnSet() throws Exception {
         builder.setFlags(true, true, true, true, false, true);
         MailboxMessage row = builder.build();
-        recent.add(row.getUid());
         assertThat(messageSearches.isMatch(flagIsUnSet(Flags.Flag.SEEN), row)).isFalse();
         assertThat(messageSearches.isMatch(flagIsUnSet(Flags.Flag.FLAGGED), row)).isFalse();
         assertThat(messageSearches.isMatch(flagIsUnSet(Flags.Flag.ANSWERED), row)).isFalse();
@@ -575,9 +566,8 @@ class SearchUtilsTest {
 
     @Test
     void testShouldMatchSeenRecentUnSet() throws Exception {
-        builder.setFlags(true, true, true, true, true, true);
+        builder.setFlags(true, true, true, true, true, false);
         MailboxMessage row = builder.build();
-        recent.add(row.getUid().next());
         assertThat(messageSearches.isMatch(flagIsUnSet(Flags.Flag.SEEN), row)).isFalse();
         assertThat(messageSearches.isMatch(flagIsUnSet(Flags.Flag.FLAGGED), row)).isFalse();
         assertThat(messageSearches.isMatch(flagIsUnSet(Flags.Flag.ANSWERED), row)).isFalse();
