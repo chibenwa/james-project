@@ -36,7 +36,9 @@ import org.apache.james.mailbox.MailboxSession;
  */
 public interface ImapSession {
     class SessionId {
-        private static final RandomStringGenerator RANDOM_STRING_GENERATOR = new RandomStringGenerator.Builder().withinRange('a', 'z').build();
+        private static final RandomStringGenerator RANDOM_STRING_GENERATOR = new RandomStringGenerator.Builder()
+            .withinRange('a', 'z')
+            .build();
         private static final int LENGTH = 12;
 
         public static SessionId generate() {
