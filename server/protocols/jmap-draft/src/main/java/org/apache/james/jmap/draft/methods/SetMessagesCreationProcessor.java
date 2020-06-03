@@ -132,7 +132,7 @@ public class SetMessagesCreationProcessor implements SetMessagesProcessor {
             assertIsUserOwnerOfMailboxes(mailboxIds, mailboxSession);
             performCreate(create, responseBuilder, mailboxSession);
         } catch (MailboxSendingNotAllowedException e) {
-            LOG.debug("{} is allowed to send a mail using {} identity", e.getConnectedUser().asString(), e.getFromField());
+            LOG.debug("{} is not allowed to send a mail using {} identity", e.getConnectedUser().asString(), e.getFromField());
 
             responseBuilder.notCreated(create.getCreationId(),
                     SetError.builder()
