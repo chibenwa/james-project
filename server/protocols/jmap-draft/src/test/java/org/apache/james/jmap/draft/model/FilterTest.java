@@ -101,7 +101,7 @@ public class FilterTest {
             .to("bob@domain.tld")
             .build();
 
-        assertThat(condition.flatten(10))
+        assertThat(condition.breadthFirstVisit(10))
             .containsExactly(condition);
     }
 
@@ -115,7 +115,7 @@ public class FilterTest {
             .build();
 
         assertThat(FilterOperator.and(condition1, condition2)
-                .flatten())
+                .breadthFirstVisit())
             .containsExactly(condition1, condition2);
     }
 
@@ -132,7 +132,7 @@ public class FilterTest {
             .build();
 
         assertThat(FilterOperator.and(condition1, FilterOperator.and(condition2, condition3))
-                .flatten())
+                .breadthFirstVisit())
             .containsExactly(condition1, condition2, condition3);
     }
 
@@ -149,7 +149,7 @@ public class FilterTest {
                 throw new RuntimeException("unsuported combinaison");
             });
 
-        assertThat(nestedFilter.flatten())
+        assertThat(nestedFilter.breadthFirstVisit())
             .containsExactly(condition);
     }
 
@@ -166,7 +166,7 @@ public class FilterTest {
                 throw new RuntimeException("unsuported combinaison");
             });
 
-        assertThatThrownBy(nestedFilter::flatten)
+        assertThatThrownBy(nestedFilter::breadthFirstVisit)
             .isInstanceOf(Filter.TooDeepFilterHierarchyException.class);
     }
 }
