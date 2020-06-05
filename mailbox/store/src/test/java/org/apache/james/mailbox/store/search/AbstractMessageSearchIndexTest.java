@@ -243,7 +243,7 @@ public abstract class AbstractMessageSearchIndexTest {
 
         await();
 
-        SearchQuery searchQuery = SearchQuery.of();
+        SearchQuery searchQuery = SearchQuery.matchAll();
 
         List<MessageId> result = messageSearchIndex.search(session,
             ImmutableList.of(mailbox.getMailboxId(), mailbox2.getMailboxId()),
@@ -276,7 +276,7 @@ public abstract class AbstractMessageSearchIndexTest {
 
         await();
 
-        SearchQuery searchQuery = SearchQuery.of();
+        SearchQuery searchQuery = SearchQuery.matchAll();
 
         List<MessageId> result = messageSearchIndex.search(session,
             ImmutableList.of(mailbox.getMailboxId(), mailbox2.getMailboxId()),
@@ -312,7 +312,7 @@ public abstract class AbstractMessageSearchIndexTest {
 
         await();
 
-        SearchQuery searchQuery = SearchQuery.of();
+        SearchQuery searchQuery = SearchQuery.matchAll();
 
         int limit = 10;
         List<MessageId> result = messageSearchIndex.search(session,
@@ -327,7 +327,7 @@ public abstract class AbstractMessageSearchIndexTest {
 
     @Test
     void whenEmptyListOfMailboxGivenSearchShouldReturnEmpty() throws MailboxException {
-        SearchQuery searchQuery = SearchQuery.of();
+        SearchQuery searchQuery = SearchQuery.matchAll();
 
         List<MessageId> result = messageSearchIndex.search(session,
             ImmutableList.of(),
@@ -344,7 +344,7 @@ public abstract class AbstractMessageSearchIndexTest {
         assumeTrue(messageIdManager != null);
         messageIdManager.setInMailboxes(m1.getMessageId(), ImmutableList.of(mailbox.getMailboxId(), mailbox2.getMailboxId()), session);
 
-        SearchQuery searchQuery = SearchQuery.of();
+        SearchQuery searchQuery = SearchQuery.matchAll();
 
         myFolderMessageManager.appendMessage(MessageManager.AppendCommand.builder()
             .withFlags(new Flags(Flags.Flag.SEEN))
@@ -366,7 +366,7 @@ public abstract class AbstractMessageSearchIndexTest {
 
     @Test
     void searchShouldThrowWhenSessionIsNull() {
-        SearchQuery searchQuery = SearchQuery.of();
+        SearchQuery searchQuery = SearchQuery.matchAll();
         MailboxSession session = null;
         
         assertThatThrownBy(() -> messageSearchIndex.search(session, mailbox, searchQuery))
@@ -375,7 +375,7 @@ public abstract class AbstractMessageSearchIndexTest {
 
     @Test
     void emptySearchQueryShouldReturnAllUids() throws MailboxException {
-        SearchQuery searchQuery = SearchQuery.of();
+        SearchQuery searchQuery = SearchQuery.matchAll();
         
         assertThat(messageSearchIndex.search(session, mailbox, searchQuery))
             .containsOnly(m1.getUid(), m2.getUid(), m3.getUid(), m4.getUid(), m5.getUid(), m6.getUid(), m7.getUid(), m8.getUid(), m9.getUid());
@@ -617,7 +617,7 @@ public abstract class AbstractMessageSearchIndexTest {
     @Test
     void multimailboxSearchShouldWorkWithOtherUserMailbox() throws  MailboxException {
         assumeTrue(storeMailboxManager.hasCapability(MailboxManager.MailboxCapabilities.ACL));
-        SearchQuery searchQuery = SearchQuery.of();
+        SearchQuery searchQuery = SearchQuery.matchAll();
 
         long limit = 256;
         List<MessageId> actual = messageSearchIndex.search(
@@ -1536,7 +1536,7 @@ public abstract class AbstractMessageSearchIndexTest {
 
         storeMailboxManager.copyMessages(MessageRange.all(), inboxMessageManager.getId(), newBoxId, session);
 
-        SearchQuery searchQuery = SearchQuery.of();
+        SearchQuery searchQuery = SearchQuery.matchAll();
 
         StoreMessageManager newBox = (StoreMessageManager) storeMailboxManager.getMailbox(newBoxId, session);
 

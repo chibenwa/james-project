@@ -812,6 +812,10 @@ public class SearchQuery implements Serializable {
         return new Builder().andCriteria(criterias).build();
     }
 
+    public static SearchQuery matchAll() {
+        return new Builder().build();
+    }
+
     public static SearchQuery allSortedWith(Sort... sorts) {
         return new Builder().sorts(sorts).build();
     }
