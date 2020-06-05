@@ -19,22 +19,15 @@
 package org.apache.james.webadmin.dto;
 
 import java.time.Instant;
-import java.util.Collection;
-import java.util.Map;
 
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.james.json.DTOModule;
-import org.apache.james.mailbox.indexer.ReIndexingExecutionFailures;
 import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.server.task.json.dto.AdditionalInformationDTO;
 import org.apache.james.server.task.json.dto.AdditionalInformationDTOModule;
 import org.apache.mailbox.tools.indexer.ErrorRecoveryIndexationTask;
 import org.apache.mailbox.tools.indexer.FullReindexingTask;
 import org.apache.mailbox.tools.indexer.ReprocessingContextInformationDTO;
-
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.github.steveash.guavate.Guavate;
-import com.google.common.collect.ImmutableList;
 
 public class WebAdminReprocessingContextInformationDTO implements AdditionalInformationDTO {
     public static class WebAdminErrorRecoveryIndexationDTO extends WebAdminReprocessingContextInformationDTO {
