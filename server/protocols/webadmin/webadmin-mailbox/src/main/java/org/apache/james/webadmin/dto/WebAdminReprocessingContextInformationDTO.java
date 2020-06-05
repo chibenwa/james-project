@@ -54,11 +54,8 @@ public class WebAdminReprocessingContextInformationDTO implements AdditionalInfo
                 .withFactory(AdditionalInformationDTOModule::new);
         }
 
-        WebAdminErrorRecoveryIndexationDTO(@JsonProperty("type") String type,
-            @JsonProperty("successfullyReprocessedMailCount") int successfullyReprocessedMailCount,
-            @JsonProperty("failedReprocessedMailCount") int failedReprocessedMailCount,
-            @JsonProperty("failures") SerializableReIndexingExecutionFailures failures,
-            @JsonProperty("timestamp") Instant timestamp) {
+        WebAdminErrorRecoveryIndexationDTO(String type, int successfullyReprocessedMailCount, int failedReprocessedMailCount,
+                                           SerializableReIndexingExecutionFailures failures, Instant timestamp) {
             super(type, successfullyReprocessedMailCount, failedReprocessedMailCount, failures, timestamp);
         }
     }
@@ -80,22 +77,11 @@ public class WebAdminReprocessingContextInformationDTO implements AdditionalInfo
                 .withFactory(AdditionalInformationDTOModule::new);
         }
 
-        WebAdminFullIndexationDTO(@JsonProperty("type") String type,
-                                  @JsonProperty("successfullyReprocessedMailCount") int successfullyReprocessedMailCount,
-                                  @JsonProperty("failedReprocessedMailCount") int failedReprocessedMailCount,
-                                  @JsonProperty("failures") SerializableReIndexingExecutionFailures failures,
-                                  @JsonProperty("timestamp") Instant timestamp) {
+        WebAdminFullIndexationDTO(String type, int successfullyReprocessedMailCount, int failedReprocessedMailCount,
+                                  SerializableReIndexingExecutionFailures failures, Instant timestamp) {
             super(type, successfullyReprocessedMailCount, failedReprocessedMailCount, failures, timestamp);
         }
 
-    }
-
-    private static ImmutableList<Long> extractMessageUidsFromFailure(Map.Entry<MailboxId, Collection<ReIndexingExecutionFailures.ReIndexingFailure>> failureByMailbox) {
-        return failureByMailbox
-            .getValue()
-            .stream()
-            .map(failure -> failure.getUid().asLong())
-            .collect(Guavate.toImmutableList());
     }
 
     protected final String type;
@@ -105,11 +91,8 @@ public class WebAdminReprocessingContextInformationDTO implements AdditionalInfo
     protected final Instant timestamp;
 
 
-    WebAdminReprocessingContextInformationDTO(@JsonProperty("type") String type,
-                                              @JsonProperty("successfullyReprocessedMailCount") int successfullyReprocessedMailCount,
-                                              @JsonProperty("failedReprocessedMailCount") int failedReprocessedMailCount,
-                                              @JsonProperty("failures") SerializableReIndexingExecutionFailures failures,
-                                              @JsonProperty("timestamp") Instant timestamp) {
+    WebAdminReprocessingContextInformationDTO(String type, int successfullyReprocessedMailCount, int failedReprocessedMailCount,
+                                              SerializableReIndexingExecutionFailures failures, Instant timestamp) {
         this.type = type;
         this.successfullyReprocessedMailCount = successfullyReprocessedMailCount;
         this.failedReprocessedMailCount = failedReprocessedMailCount;
