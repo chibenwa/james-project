@@ -7,3 +7,14 @@ dockerfiles/run/**/glowroot
 .m2
 test-run.log
 build
+
+.idea
+*.iml
+
+**/.settings/*.prefs
+**/.classpath
+**/.project
+derby.log
+.factorypath
+
+mailbox/var/
