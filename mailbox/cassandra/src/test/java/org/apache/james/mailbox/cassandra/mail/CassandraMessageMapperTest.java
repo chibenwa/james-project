@@ -39,6 +39,7 @@ import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.testcontainers.shaded.com.google.common.collect.ImmutableList;
 
 import com.datastax.driver.core.BoundStatement;
 import com.github.fge.lambdas.Throwing;
@@ -60,7 +61,7 @@ class CassandraMessageMapperTest extends MessageMapperTest {
         cassandra.getConf().recordStatements(statementRecorder);
 
         int limit = 2;
-        messageMapper.findInMailbox(benwaInboxMailbox, MessageRange.all(), FetchType.Full, limit);
+        ImmutableList.copyOf(messageMapper.findInMailbox(benwaInboxMailbox, MessageRange.all(), FetchType.Full, limit));
 
         assertThat(statementRecorder.listExecutedStatements())
             .filteredOn(statement -> statement instanceof BoundStatement)
