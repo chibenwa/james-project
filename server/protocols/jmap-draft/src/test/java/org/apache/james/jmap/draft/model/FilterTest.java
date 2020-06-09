@@ -106,7 +106,7 @@ public class FilterTest {
     }
 
     @Test
-    public void flattenShouldUnboxOneLevelOperator() {
+    public void breadthFirstVisitShouldUnboxOneLevelOperator() {
         FilterCondition condition1 = FilterCondition.builder()
             .to("bob@domain.tld")
             .build();
@@ -120,7 +120,7 @@ public class FilterTest {
     }
 
     @Test
-    public void flattenShouldUnboxTwoLevelOperator() {
+    public void breadthFirstVisitShouldUnboxTwoLevelOperator() {
         FilterCondition condition1 = FilterCondition.builder()
             .to("bob@domain.tld")
             .build();
@@ -133,11 +133,31 @@ public class FilterTest {
 
         assertThat(FilterOperator.and(condition1, FilterOperator.and(condition2, condition3))
                 .breadthFirstVisit())
-            .containsExactly(condition1, condition2, condition3);
+            .containsOnly(condition1, condition2, condition3);
     }
 
     @Test
-    public void flattenShouldAllowUpToLimitNesting() {
+    public void breadthFirstVisitShouldBeBreadthFirst() {
+        FilterCondition condition1 = FilterCondition.builder()
+            .to("bob@domain.tld")
+            .build();
+        FilterCondition condition2 = FilterCondition.builder()
+            .to("alice@domain.tld")
+            .build();
+        FilterCondition condition3 = FilterCondition.builder()
+            .to("cedric@domain.tld")
+            .build();
+        FilterCondition condition4 = FilterCondition.builder()
+            .to("david@domain.tld")
+            .build();
+
+        assertThat(FilterOperator.and(condition1, FilterOperator.and(condition2, condition3), condition4)
+                .breadthFirstVisit())
+            .containsOnly(condition1, condition2, condition3, condition4);
+    }
+
+    @Test
+    public void breadthFirstVisitShouldAllowUpToLimitNesting() {
         FilterCondition condition = FilterCondition.builder()
             .to("bob@domain.tld")
             .build();
@@ -154,7 +174,7 @@ public class FilterTest {
     }
 
     @Test
-    public void flattenShouldRejectDeepNesting() {
+    public void breadthFirstVisitShouldRejectDeepNesting() {
         FilterCondition condition = FilterCondition.builder()
             .to("bob@domain.tld")
             .build();
