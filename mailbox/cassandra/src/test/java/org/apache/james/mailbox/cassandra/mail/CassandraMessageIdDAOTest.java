@@ -420,7 +420,7 @@ class CassandraMessageIdDAOTest {
                 .build();
         Flux.merge(testee.insert(composedMessageIdWithMetaData),
                 testee.insert(composedMessageIdWithMetaData2))
-        .blockLast();
+            .blockLast();
 
         assertThat(testee.retrieveMessages(mailboxId, MessageRange.all(), Limit.limit(1)).toIterable())
             .containsOnly(composedMessageIdWithMetaData);
