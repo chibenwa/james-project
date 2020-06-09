@@ -47,25 +47,33 @@ public class ReactorUtils {
 
     private static final Duration DELAY = Duration.ZERO;
 
-    public static <T> RequiresQuantity<T> throttle() {
-        return elements -> duration -> {
+    public static <T, U> RequiresQuantity<T, U> throttle() {
+        return elements -> duration -> operation -> {
             Preconditions.checkArgument(elements > 0, "'windowMaxSize' must be strictly positive");
             Preconditions.checkArgument(!duration.isNegative(), "'windowDuration' must be strictly positive");
             Preconditions.checkArgument(!duration.isZero(), "'windowDuration' must be strictly positive");
+
             return flux -> flux
                 .windowTimeout(elements, duration)
-                .zipWith(Flux.interval(DELAY, duration), 1)
-                .flatMap(Tuple2::getT1, elements, elements);
+                .zipWith(Flux.interval(DELAY, duration))
+                .flatMap(Tuple2::getT1, elements, elements)
+                .flatMap(operation, elements);
         };
-    }
-    @FunctionalInterface
-    public interface RequiresQuantity<T> {
-        RequiresPeriod<T> elements(int maxSize);
     }
 
     @FunctionalInterface
-    public interface RequiresPeriod<T> {
-        Function<Flux<T>, Flux<T>> per(Duration duration);
+    public interface RequiresQuantity<T, U> {
+        RequiresPeriod<T, U> elements(int maxSize);
+    }
+
+    @FunctionalInterface
+    public interface RequiresPeriod<T, U> {
+        RequiresOperation<T, U> per(Duration duration);
+    }
+
+    @FunctionalInterface
+    public interface RequiresOperation<T, U> {
+        Function<Flux<T>, Flux<U>> forOperation(Function<T, Publisher<U>> operation);
     }
 
     public static <T> Mono<T> executeAndEmpty(Runnable runnable) {
