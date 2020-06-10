@@ -22,6 +22,7 @@ package org.apache.james.mailbox.cassandra.mail;
 import static org.apache.james.backends.cassandra.Scenario.Builder.fail;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Iterator;
 import java.util.Optional;
 
 import org.apache.james.backends.cassandra.CassandraCluster;
@@ -32,6 +33,7 @@ import org.apache.james.mailbox.cassandra.ids.CassandraMessageId;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.model.MessageRange;
 import org.apache.james.mailbox.store.mail.MessageMapper.FetchType;
+import org.apache.james.mailbox.store.mail.model.MailboxMessage;
 import org.apache.james.mailbox.store.mail.model.MapperProvider;
 import org.apache.james.mailbox.store.mail.model.MessageMapperTest;
 import org.apache.james.util.streams.Limit;
@@ -61,7 +63,7 @@ class CassandraMessageMapperTest extends MessageMapperTest {
         cassandra.getConf().recordStatements(statementRecorder);
 
         int limit = 2;
-        ImmutableList.copyOf(messageMapper.findInMailbox(benwaInboxMailbox, MessageRange.all(), FetchType.Full, limit));
+        consume(messageMapper.findInMailbox(benwaInboxMailbox, MessageRange.all(), FetchType.Full, limit));
 
         assertThat(statementRecorder.listExecutedStatements())
             .filteredOn(statement -> statement instanceof BoundStatement)
@@ -69,6 +71,10 @@ class CassandraMessageMapperTest extends MessageMapperTest {
             .extracting(statement -> statement.preparedStatement().getQueryString())
             .filteredOn(statementString -> statementString.equals("SELECT messageId,internalDate,bodyStartOctet,fullContentOctets,bodyOctets,bodyContent,headerContent,textualLineCount,properties,attachments FROM messageV2 WHERE messageId=:messageId;"))
             .hasSize(limit);
+    }
+
+    private void consume(Iterator<MailboxMessage> inMailbox) {
+        ImmutableList.copyOf(inMailbox);
     }
 
     @Nested
