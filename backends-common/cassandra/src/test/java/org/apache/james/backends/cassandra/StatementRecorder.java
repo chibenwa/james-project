@@ -21,26 +21,23 @@ package org.apache.james.backends.cassandra;
 
 
 import java.util.List;
+import java.util.concurrent.ConcurrentLinkedDeque;
 
 import com.datastax.driver.core.Statement;
 import com.google.common.collect.ImmutableList;
 
 public class StatementRecorder {
-    private final ImmutableList.Builder<Statement> statements;
+    private final ConcurrentLinkedDeque statements;
 
     public StatementRecorder() {
-        statements = ImmutableList.builder();
+        statements = new ConcurrentLinkedDeque();
     }
 
     void recordStatement(Statement statement) {
-        synchronized (statements) {
-            statements.add(statement);
-        }
+        statements.add(statement);
     }
 
     public List<Statement> listExecutedStatements() {
-        synchronized (statements) {
-            return statements.build();
-        }
+        return ImmutableList.copyOf(statements);
     }
 }
