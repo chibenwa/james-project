@@ -857,7 +857,7 @@ class UserMailboxesRoutesTest {
             mailboxManager = mock(MailboxManager.class);
             when(mailboxManager.createSystemSession(any())).thenReturn(MailboxSessionUtil.create(USERNAME));
 
-            createServer(mailboxManager, mock(MailboxSessionMapperFactory.class), mock(MailboxId.Factory.class));
+            createServer(mailboxManager, mock(MailboxSessionMapperFactory.class), new InMemoryId.Factory());
         }
 
         @Test
