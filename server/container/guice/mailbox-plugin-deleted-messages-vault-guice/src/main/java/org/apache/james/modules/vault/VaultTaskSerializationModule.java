@@ -28,7 +28,7 @@ import org.apache.james.task.TaskExecutionDetails;
 import org.apache.james.vault.blob.BlobStoreVaultGarbageCollectionTask;
 import org.apache.james.vault.blob.BlobStoreVaultGarbageCollectionTaskAdditionalInformationDTO;
 import org.apache.james.vault.blob.BlobStoreVaultGarbageCollectionTaskDTO;
-import org.apache.james.webadmin.dto.Injections;
+import org.apache.james.webadmin.dto.DTOModuleInjections;
 import org.apache.james.webadmin.vault.routes.DeletedMessagesVaultDeleteTask;
 import org.apache.james.webadmin.vault.routes.DeletedMessagesVaultDeleteTaskAdditionalInformationDTO;
 import org.apache.james.webadmin.vault.routes.DeletedMessagesVaultDeleteTaskDTO;
@@ -69,7 +69,7 @@ public class VaultTaskSerializationModule extends AbstractModule {
         return BlobStoreVaultGarbageCollectionTaskAdditionalInformationDTO.module();
     }
 
-    @Named(Injections.WEBADMIN_DTO)
+    @Named(DTOModuleInjections.WEBADMIN_DTO)
     @ProvidesIntoSet
     public AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends  AdditionalInformationDTO> webAdminBlobStoreVaultGarbageCollectionAdditionalInformation() {
         return BlobStoreVaultGarbageCollectionTaskAdditionalInformationDTO.module();
@@ -80,7 +80,7 @@ public class VaultTaskSerializationModule extends AbstractModule {
         return DeletedMessagesVaultDeleteTaskAdditionalInformationDTO.module(factory);
     }
 
-    @Named(Injections.WEBADMIN_DTO)
+    @Named(DTOModuleInjections.WEBADMIN_DTO)
     @ProvidesIntoSet
     public AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends  AdditionalInformationDTO> webAdminDeletedMessagesVaultDeleteAdditionalInformation(MessageId.Factory factory) {
         return WebAdminDeletedMessagesVaultDeleteTaskAdditionalInformationDTO.module(factory);
@@ -91,7 +91,7 @@ public class VaultTaskSerializationModule extends AbstractModule {
         return DeletedMessagesVaultExportTaskAdditionalInformationDTO.module();
     }
 
-    @Named(Injections.WEBADMIN_DTO)
+    @Named(DTOModuleInjections.WEBADMIN_DTO)
     @ProvidesIntoSet
     public AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends  AdditionalInformationDTO> webAdminDeletedMessagesVaultExportAdditionalInformation() {
         return DeletedMessagesVaultExportTaskAdditionalInformationDTO.module();
@@ -102,7 +102,7 @@ public class VaultTaskSerializationModule extends AbstractModule {
         return DeletedMessagesVaultRestoreTaskAdditionalInformationDTO.module();
     }
 
-    @Named(Injections.WEBADMIN_DTO)
+    @Named(DTOModuleInjections.WEBADMIN_DTO)
     @ProvidesIntoSet
     public AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends  AdditionalInformationDTO> webAdminDeletedMessagesVaultRestoreAdditionalInformation() {
         return WebAdminDeletedMessagesVaultRestoreTaskAdditionalInformationDTO.module();

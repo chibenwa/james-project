@@ -27,7 +27,7 @@ import org.apache.james.server.task.json.dto.TaskDTO;
 import org.apache.james.server.task.json.dto.TaskDTOModule;
 import org.apache.james.task.Task;
 import org.apache.james.task.TaskExecutionDetails;
-import org.apache.james.webadmin.dto.Injections;
+import org.apache.james.webadmin.dto.DTOModuleInjections;
 import org.apache.james.webadmin.service.EventDeadLettersRedeliverAllTaskDTO;
 import org.apache.james.webadmin.service.EventDeadLettersRedeliverGroupTaskDTO;
 import org.apache.james.webadmin.service.EventDeadLettersRedeliverOneTaskDTO;
@@ -64,7 +64,7 @@ public class WebadminMailboxTaskSerializationModule extends AbstractModule {
         return EventDeadLettersRedeliveryTaskAdditionalInformationDTO.EventDeadLettersRedeliveryTaskAdditionalInformationForAll.module();
     }
 
-    @Named(Injections.WEBADMIN_DTO)
+    @Named(DTOModuleInjections.WEBADMIN_DTO)
     @ProvidesIntoSet
     public AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends  AdditionalInformationDTO> webAdminEventDeadLettersRedeliveryAdditionalInformationForAll() {
         return EventDeadLettersRedeliveryTaskAdditionalInformationDTO.EventDeadLettersRedeliveryTaskAdditionalInformationForAll.module();
@@ -75,7 +75,7 @@ public class WebadminMailboxTaskSerializationModule extends AbstractModule {
         return EventDeadLettersRedeliveryTaskAdditionalInformationDTO.EventDeadLettersRedeliveryTaskAdditionalInformationForGroup.module();
     }
 
-    @Named(Injections.WEBADMIN_DTO)
+    @Named(DTOModuleInjections.WEBADMIN_DTO)
     @ProvidesIntoSet
     public AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends  AdditionalInformationDTO> webAdminEventDeadLettersRedeliveryAdditionalInformationForGroup() {
         return EventDeadLettersRedeliveryTaskAdditionalInformationDTO.EventDeadLettersRedeliveryTaskAdditionalInformationForGroup.module();
@@ -86,7 +86,7 @@ public class WebadminMailboxTaskSerializationModule extends AbstractModule {
         return EventDeadLettersRedeliveryTaskAdditionalInformationDTO.EventDeadLettersRedeliveryTaskAdditionalInformationForOne.module();
     }
 
-    @Named(Injections.WEBADMIN_DTO)
+    @Named(DTOModuleInjections.WEBADMIN_DTO)
     @ProvidesIntoSet
     public AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends  AdditionalInformationDTO> webAdminEventDeadLettersRedeliveryAdditionalInformationForOne() {
         return EventDeadLettersRedeliveryTaskAdditionalInformationDTO.EventDeadLettersRedeliveryTaskAdditionalInformationForOne.module();
@@ -97,7 +97,7 @@ public class WebadminMailboxTaskSerializationModule extends AbstractModule {
         return RecomputeCurrentQuotasTaskAdditionalInformationDTO.module();
     }
 
-    @Named(Injections.WEBADMIN_DTO)
+    @Named(DTOModuleInjections.WEBADMIN_DTO)
     @ProvidesIntoSet
     public AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends  AdditionalInformationDTO> webAdminRecomputeCurrentQuotasAdditionalInformation() {
         return RecomputeCurrentQuotasTaskAdditionalInformationDTO.module();

@@ -23,7 +23,7 @@ import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.server.task.json.dto.AdditionalInformationDTO;
 import org.apache.james.server.task.json.dto.AdditionalInformationDTOModule;
 import org.apache.james.task.TaskExecutionDetails;
-import org.apache.james.webadmin.dto.Injections;
+import org.apache.james.webadmin.dto.DTOModuleInjections;
 import org.apache.james.webadmin.dto.WebAdminReprocessingContextInformationDTO;
 import org.apache.james.webadmin.dto.WebAdminSingleMailboxReindexingTaskAdditionalInformationDTO;
 import org.apache.james.webadmin.dto.WebAdminUserReindexingTaskAdditionalInformationDTO;
@@ -35,37 +35,37 @@ import com.google.inject.multibindings.ProvidesIntoSet;
 import com.google.inject.name.Named;
 
 public class WebAdminReIndexingTaskSerializationModule extends AbstractModule {
-    @Named(Injections.WEBADMIN_DTO)
+    @Named(DTOModuleInjections.WEBADMIN_DTO)
     @ProvidesIntoSet
     public AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends  AdditionalInformationDTO> errorRecoveryAdditionalInformation(MailboxId.Factory mailboxIdFactory) {
         return WebAdminReprocessingContextInformationDTO.WebAdminErrorRecoveryIndexationDTO.serializationModule(mailboxIdFactory);
     }
 
-    @Named(Injections.WEBADMIN_DTO)
+    @Named(DTOModuleInjections.WEBADMIN_DTO)
     @ProvidesIntoSet
     public AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends  AdditionalInformationDTO> fullReindexAdditionalInformation(MailboxId.Factory mailboxIdFactory) {
         return WebAdminReprocessingContextInformationDTO.WebAdminFullIndexationDTO.serializationModule(mailboxIdFactory);
     }
 
-    @Named(Injections.WEBADMIN_DTO)
+    @Named(DTOModuleInjections.WEBADMIN_DTO)
     @ProvidesIntoSet
     public AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends  AdditionalInformationDTO> messageIdReindexingAdditionalInformation(MessageId.Factory messageIdFactory) {
         return MessageIdReindexingTaskAdditionalInformationDTO.module(messageIdFactory);
     }
 
-    @Named(Injections.WEBADMIN_DTO)
+    @Named(DTOModuleInjections.WEBADMIN_DTO)
     @ProvidesIntoSet
     public AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends  AdditionalInformationDTO> singleMailboxReindexingAdditionalInformation(MailboxId.Factory mailboxIdFactory) {
         return WebAdminSingleMailboxReindexingTaskAdditionalInformationDTO.serializationModule(mailboxIdFactory);
     }
 
-    @Named(Injections.WEBADMIN_DTO)
+    @Named(DTOModuleInjections.WEBADMIN_DTO)
     @ProvidesIntoSet
     public AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends  AdditionalInformationDTO> singleMessageReindexingAdditionalInformation(MailboxId.Factory mailboxIdFactory) {
         return SingleMessageReindexingTaskAdditionalInformationDTO.module(mailboxIdFactory);
     }
 
-    @Named(Injections.WEBADMIN_DTO)
+    @Named(DTOModuleInjections.WEBADMIN_DTO)
     @ProvidesIntoSet
     public AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends  AdditionalInformationDTO> userReindexingAdditionalInformation(MailboxId.Factory mailboxIdFactory) {
         return WebAdminUserReindexingTaskAdditionalInformationDTO.serializationModule(mailboxIdFactory);

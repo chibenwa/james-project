@@ -29,7 +29,7 @@ import org.apache.james.webadmin.data.jmap.RecomputeAllFastViewProjectionItemsTa
 import org.apache.james.webadmin.data.jmap.RecomputeAllFastViewTaskAdditionalInformationDTO;
 import org.apache.james.webadmin.data.jmap.RecomputeUserFastViewProjectionItemsTask;
 import org.apache.james.webadmin.data.jmap.RecomputeUserFastViewTaskAdditionalInformationDTO;
-import org.apache.james.webadmin.dto.Injections;
+import org.apache.james.webadmin.dto.DTOModuleInjections;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.multibindings.ProvidesIntoSet;
@@ -51,7 +51,7 @@ public class JmapTaskSerializationModule extends AbstractModule {
         return RecomputeAllFastViewTaskAdditionalInformationDTO.module();
     }
 
-    @Named(Injections.WEBADMIN_DTO)
+    @Named(DTOModuleInjections.WEBADMIN_DTO)
     @ProvidesIntoSet
     public AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends  AdditionalInformationDTO> webAdminRecomputeAllJmapPreviewsAdditionalInformation() {
         return RecomputeAllFastViewTaskAdditionalInformationDTO.module();
@@ -62,7 +62,7 @@ public class JmapTaskSerializationModule extends AbstractModule {
         return RecomputeUserFastViewTaskAdditionalInformationDTO.module();
     }
 
-    @Named(Injections.WEBADMIN_DTO)
+    @Named(DTOModuleInjections.WEBADMIN_DTO)
     @ProvidesIntoSet
     public AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends  AdditionalInformationDTO> webAdminRecomputeUserJmapPreviewsAdditionalInformation() {
         return RecomputeUserFastViewTaskAdditionalInformationDTO.module();

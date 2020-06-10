@@ -26,7 +26,7 @@ import org.apache.james.server.task.json.dto.TaskDTO;
 import org.apache.james.server.task.json.dto.TaskDTOModule;
 import org.apache.james.task.Task;
 import org.apache.james.task.TaskExecutionDetails;
-import org.apache.james.webadmin.dto.Injections;
+import org.apache.james.webadmin.dto.DTOModuleInjections;
 import org.apache.james.webadmin.service.ClearMailRepositoryTask;
 import org.apache.james.webadmin.service.ClearMailRepositoryTaskAdditionalInformationDTO;
 import org.apache.james.webadmin.service.ClearMailRepositoryTaskDTO;
@@ -62,7 +62,7 @@ public class MailRepositoryTaskSerializationModule extends AbstractModule {
         return ClearMailRepositoryTaskAdditionalInformationDTO.module();
     }
 
-    @Named(Injections.WEBADMIN_DTO)
+    @Named(DTOModuleInjections.WEBADMIN_DTO)
     @ProvidesIntoSet
     public AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends  AdditionalInformationDTO> webAdminClearMailRepositoryAdditionalInformation() {
         return WebAdminClearMailRepositoryTaskAdditionalInformationDTO.module();
@@ -73,7 +73,7 @@ public class MailRepositoryTaskSerializationModule extends AbstractModule {
         return ReprocessingAllMailsTaskAdditionalInformationDTO.module();
     }
 
-    @Named(Injections.WEBADMIN_DTO)
+    @Named(DTOModuleInjections.WEBADMIN_DTO)
     @ProvidesIntoSet
     public AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends  AdditionalInformationDTO> webAdminReprocessingAllMailsAdditionalInformation() {
         return ReprocessingAllMailsTaskAdditionalInformationDTO.module();
@@ -84,7 +84,7 @@ public class MailRepositoryTaskSerializationModule extends AbstractModule {
         return ReprocessingOneMailTaskAdditionalInformationDTO.module();
     }
 
-    @Named(Injections.WEBADMIN_DTO)
+    @Named(DTOModuleInjections.WEBADMIN_DTO)
     @ProvidesIntoSet
     public AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends  AdditionalInformationDTO> webAdminReprocessingOneMailAdditionalInformation() {
         return ReprocessingOneMailTaskAdditionalInformationDTO.module();

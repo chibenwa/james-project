@@ -40,8 +40,8 @@ import org.apache.james.task.TaskManager;
 import org.apache.james.task.TaskNotFoundException;
 import org.apache.james.util.DurationParser;
 import org.apache.james.webadmin.Routes;
+import org.apache.james.webadmin.dto.DTOModuleInjections;
 import org.apache.james.webadmin.dto.ExecutionDetailsDto;
-import org.apache.james.webadmin.dto.Injections;
 import org.apache.james.webadmin.utils.ErrorResponder;
 import org.apache.james.webadmin.utils.JsonTransformer;
 import org.apache.james.webadmin.utils.Responses;
@@ -72,7 +72,7 @@ public class TasksRoutes implements Routes {
 
     @Inject
     public TasksRoutes(TaskManager taskManager, JsonTransformer jsonTransformer,
-                       @Named(Injections.WEBADMIN_DTO) DTOConverter<TaskExecutionDetails.AdditionalInformation, AdditionalInformationDTO> additionalInformationDTOConverter) {
+                       @Named(DTOModuleInjections.WEBADMIN_DTO) DTOConverter<TaskExecutionDetails.AdditionalInformation, AdditionalInformationDTO> additionalInformationDTOConverter) {
         this.taskManager = taskManager;
         this.jsonTransformer = jsonTransformer;
         this.additionalInformationDTOConverter = additionalInformationDTOConverter;

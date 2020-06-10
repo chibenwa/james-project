@@ -19,6 +19,6 @@
 
 package org.apache.james.webadmin.dto;
 
-public interface Injections {
+public interface DTOModuleInjections {
     String WEBADMIN_DTO = "webadmin-dto";
 }

@@ -42,7 +42,7 @@ import org.apache.james.server.task.json.dto.TaskDTO;
 import org.apache.james.server.task.json.dto.TaskDTOModule;
 import org.apache.james.task.Task;
 import org.apache.james.task.TaskExecutionDetails;
-import org.apache.james.webadmin.dto.Injections;
+import org.apache.james.webadmin.dto.DTOModuleInjections;
 import org.apache.james.webadmin.dto.WebAdminMigrationTaskAdditionalInformationDTO;
 import org.apache.james.webadmin.service.CassandraMappingsSolveInconsistenciesTask;
 
@@ -86,7 +86,7 @@ public class CassandraConsistencyTaskSerializationModule extends AbstractModule 
         return MappingsSourcesMigrationTaskAdditionalInformationDTO.module(CassandraMappingsSolveInconsistenciesTask.TYPE);
     }
 
-    @Named(Injections.WEBADMIN_DTO)
+    @Named(DTOModuleInjections.WEBADMIN_DTO)
     @ProvidesIntoSet
     public AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends  AdditionalInformationDTO> webAdminCassandraMappingsSolveInconsistenciesAdditionalInformation() {
         return MappingsSourcesMigrationTaskAdditionalInformationDTO.module(CassandraMappingsSolveInconsistenciesTask.TYPE);
@@ -97,7 +97,7 @@ public class CassandraConsistencyTaskSerializationModule extends AbstractModule 
         return MailboxMergingTaskAdditionalInformationDTO.module();
     }
 
-    @Named(Injections.WEBADMIN_DTO)
+    @Named(DTOModuleInjections.WEBADMIN_DTO)
     @ProvidesIntoSet
     public AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends  AdditionalInformationDTO> webAdminMailboxMergingAdditionalInformation() {
         return MailboxMergingTaskAdditionalInformationDTO.module();
@@ -108,7 +108,7 @@ public class CassandraConsistencyTaskSerializationModule extends AbstractModule 
         return SolveMailboxInconsistenciesTaskAdditionalInformationDTO.module();
     }
 
-    @Named(Injections.WEBADMIN_DTO)
+    @Named(DTOModuleInjections.WEBADMIN_DTO)
     @ProvidesIntoSet
     public AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends  AdditionalInformationDTO> webAdminSolveMailboxInconsistenciesAdditionalInformation() {
         return SolveMailboxInconsistenciesTaskAdditionalInformationDTO.module();
@@ -119,7 +119,7 @@ public class CassandraConsistencyTaskSerializationModule extends AbstractModule 
         return RecomputeMailboxCountersTaskAdditionalInformationDTO.module();
     }
 
-    @Named(Injections.WEBADMIN_DTO)
+    @Named(DTOModuleInjections.WEBADMIN_DTO)
     @ProvidesIntoSet
     public AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends  AdditionalInformationDTO> webAdminRecomputeMailboxCountersAdditionalInformation() {
         return RecomputeMailboxCountersTaskAdditionalInformationDTO.module();
@@ -130,7 +130,7 @@ public class CassandraConsistencyTaskSerializationModule extends AbstractModule 
         return MigrationTaskAdditionalInformationDTO.module();
     }
 
-    @Named(Injections.WEBADMIN_DTO)
+    @Named(DTOModuleInjections.WEBADMIN_DTO)
     @ProvidesIntoSet
     public AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends  AdditionalInformationDTO> webAdminMigrationTaskAdditionalInformation() {
         return WebAdminMigrationTaskAdditionalInformationDTO.module();
@@ -141,7 +141,7 @@ public class CassandraConsistencyTaskSerializationModule extends AbstractModule 
         return SolveMessageInconsistenciesTaskAdditionalInformationDTO.module();
     }
 
-    @Named(Injections.WEBADMIN_DTO)
+    @Named(DTOModuleInjections.WEBADMIN_DTO)
     @ProvidesIntoSet
     public AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends  AdditionalInformationDTO> webAdminSolveMessageInconsistenciesAdditionalInformation() {
         return SolveMessageInconsistenciesTaskAdditionalInformationDTO.module();

@@ -26,7 +26,7 @@ import org.apache.james.server.task.json.dto.AdditionalInformationDTO;
 import org.apache.james.server.task.json.dto.AdditionalInformationDTOModule;
 import org.apache.james.task.TaskExecutionDetails;
 import org.apache.james.webadmin.Routes;
-import org.apache.james.webadmin.dto.Injections;
+import org.apache.james.webadmin.dto.DTOModuleInjections;
 import org.apache.james.webadmin.routes.TasksRoutes;
 
 import com.google.inject.AbstractModule;
@@ -45,11 +45,11 @@ public class TaskRoutesModule extends AbstractModule {
         routesMultibinder.addBinding().to(TasksRoutes.class);
     }
 
-    @Named(Injections.WEBADMIN_DTO)
+    @Named(DTOModuleInjections.WEBADMIN_DTO)
     @Provides
     @Singleton
     public DTOConverter<TaskExecutionDetails.AdditionalInformation, AdditionalInformationDTO> additionalInformationDTOConverter(
-            @Named(Injections.WEBADMIN_DTO) Set<AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends AdditionalInformationDTO>> modules) {
+            @Named(DTOModuleInjections.WEBADMIN_DTO) Set<AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends AdditionalInformationDTO>> modules) {
 
         return new DTOConverter<>(modules);
     }

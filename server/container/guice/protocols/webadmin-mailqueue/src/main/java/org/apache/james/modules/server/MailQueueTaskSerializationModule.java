@@ -26,7 +26,7 @@ import org.apache.james.server.task.json.dto.TaskDTO;
 import org.apache.james.server.task.json.dto.TaskDTOModule;
 import org.apache.james.task.Task;
 import org.apache.james.task.TaskExecutionDetails;
-import org.apache.james.webadmin.dto.Injections;
+import org.apache.james.webadmin.dto.DTOModuleInjections;
 import org.apache.james.webadmin.service.ClearMailQueueTaskAdditionalInformationDTO;
 import org.apache.james.webadmin.service.ClearMailQueueTaskDTO;
 import org.apache.james.webadmin.service.DeleteMailsFromMailQueueTaskAdditionalInformationDTO;
@@ -53,7 +53,7 @@ public class MailQueueTaskSerializationModule extends AbstractModule {
         return ClearMailQueueTaskAdditionalInformationDTO.module();
     }
 
-    @Named(Injections.WEBADMIN_DTO)
+    @Named(DTOModuleInjections.WEBADMIN_DTO)
     @ProvidesIntoSet
     public AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends  AdditionalInformationDTO> webAdminClearMailQueueAdditionalInformation() {
         return ClearMailQueueTaskAdditionalInformationDTO.module();
@@ -64,7 +64,7 @@ public class MailQueueTaskSerializationModule extends AbstractModule {
         return DeleteMailsFromMailQueueTaskAdditionalInformationDTO.module();
     }
 
-    @Named(Injections.WEBADMIN_DTO)
+    @Named(DTOModuleInjections.WEBADMIN_DTO)
     @ProvidesIntoSet
     public AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends  AdditionalInformationDTO> webAdminDeleteMailsFromMailQueueAdditionalInformation() {
         return WebAdminDeleteMailsFromMailQueueTaskAdditionalInformationDTO.module();
