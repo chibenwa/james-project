@@ -45,7 +45,7 @@ public class WebAdminSingleMailboxReindexingTaskAdditionalInformationDTO impleme
                 details.getFailedReprocessedMailCount(),
                 SerializableReIndexingExecutionFailures.from(details.failures()),
                 details.timestamp()))
-            .typeName(SingleMailboxReindexingTask.MAILBOX_RE_INDEXING.asString())
+            .typeName(SingleMailboxReindexingTask.TYPE.asString())
             .withFactory(AdditionalInformationDTOModule::new);
     }
 
