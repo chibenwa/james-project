@@ -166,7 +166,7 @@ public class FilterTest {
             (Filter) condition,
             (filter, i) -> FilterOperator.and(filter),
             (f1, f2) -> {
-                throw new RuntimeException("unsuported combinaison");
+                throw new RuntimeException("unsupported combination");
             });
 
         assertThat(nestedFilter.breadthFirstVisit())
@@ -183,7 +183,7 @@ public class FilterTest {
             (Filter) condition,
             (filter, i) -> FilterOperator.and(filter),
             (f1, f2) -> {
-                throw new RuntimeException("unsuported combinaison");
+                throw new RuntimeException("unsupported combination");
             });
 
         assertThatThrownBy(nestedFilter::breadthFirstVisit)
