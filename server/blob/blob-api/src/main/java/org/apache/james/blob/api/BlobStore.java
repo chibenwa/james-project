@@ -20,6 +20,7 @@ package org.apache.james.blob.api;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.function.Supplier;
 
 import org.reactivestreams.Publisher;
 
@@ -34,6 +35,10 @@ public interface BlobStore {
     Publisher<BlobId> save(BucketName bucketName, byte[] data, StoragePolicy storagePolicy);
 
     Publisher<BlobId> save(BucketName bucketName, InputStream data, StoragePolicy storagePolicy);
+
+    default Publisher<BlobId> save(BucketName bucketName, Supplier<InputStream> data, StoragePolicy storagePolicy) {
+        return save(bucketName, data.get(), storagePolicy);
+    }
 
     default Publisher<BlobId> save(BucketName bucketName, String data, StoragePolicy storagePolicy) {
         return save(bucketName, data.getBytes(StandardCharsets.UTF_8), storagePolicy);

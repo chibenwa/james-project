@@ -19,6 +19,8 @@
 
 package org.apache.james.blob.objectstorage;
 
+import static org.apache.commons.io.output.NullOutputStream.NULL_OUTPUT_STREAM;
+
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -41,6 +43,7 @@ import org.apache.james.blob.objectstorage.swift.SwiftTempAuthObjectStorage;
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.blobstore.domain.StorageType;
+import org.reactivestreams.Publisher;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
@@ -122,11 +125,31 @@ public class ObjectStorageBlobStore implements BlobStore {
         return Mono.defer(() -> savingStrategySelection(bucketName, data, storagePolicy));
     }
 
+    @Override
+    public Publisher<BlobId> save(BucketName bucketName, Supplier<InputStream> data, StoragePolicy storagePolicy) {
+        Preconditions.checkNotNull(data);
+
+        return Mono.defer(() -> savingStrategySelection(bucketName, data, storagePolicy));
+    }
+
     private Mono<BlobId> savingStrategySelection(BucketName bucketName, InputStream data, StoragePolicy storagePolicy) {
         InputStream bufferedData = new BufferedInputStream(data, BUFFERED_SIZE + 1);
         try {
             if (isItABigStream(bufferedData)) {
                 return saveBigStream(bucketName, bufferedData);
+            } else {
+                return save(bucketName, IOUtils.toByteArray(bufferedData), storagePolicy);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private Mono<BlobId> savingStrategySelection(BucketName bucketName, Supplier<InputStream> data, StoragePolicy storagePolicy) {
+        InputStream bufferedData = new BufferedInputStream(data.get(), BUFFERED_SIZE + 1);
+        try {
+            if (isItABigStream(bufferedData)) {
+                return saveBigStream(bucketName, data);
             } else {
                 return save(bucketName, IOUtils.toByteArray(bufferedData), storagePolicy);
             }
@@ -157,6 +180,28 @@ public class ObjectStorageBlobStore implements BlobStore {
                 Supplier<BlobId> blobIdSupplier = () -> blobIdFactory.from(hashingInputStream.hash().toString());
                 return blobPutter.putAndComputeId(resolvedBucketName, blob, blobIdSupplier);
             });
+    }
+
+    private Mono<BlobId> saveBigStream(BucketName bucketName, Supplier<InputStream> data) {
+        ObjectStorageBucketName resolvedBucketName = bucketNameResolver.resolve(bucketName);
+
+        return Mono.fromCallable(() -> {
+            HashingInputStream hashingInputStream = new HashingInputStream(Hashing.sha256(), data.get());
+            consume(hashingInputStream);
+            return blobIdFactory.from(hashingInputStream.hash().toString());
+        })
+            .flatMap(blobId -> {
+                Payload payload = payloadCodec.write(data.get());
+                Blob blob = blobStore.blobBuilder(blobId.asString())
+                    .payload(payload.getPayload())
+                    .build();
+                return blobPutter.putDirectly(resolvedBucketName, blob)
+                    .thenReturn(blobId);
+            });
+    }
+
+    private static void consume(InputStream in) throws IOException {
+        IOUtils.copy(in, NULL_OUTPUT_STREAM);
     }
 
     @Override

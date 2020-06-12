@@ -26,6 +26,7 @@ import java.io.BufferedInputStream;
 import java.io.InputStream;
 import java.io.SequenceInputStream;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 import javax.inject.Inject;
 import javax.mail.MessagingException;
@@ -65,13 +66,17 @@ public class MimeMessageStore implements Store<MimeMessage, MimeMessagePartsId> 
     }
 
     private Mono<MimeMessagePartsId> save(int bodyStartOctet, MimeMessage mimeMessage) throws MessagingException {
-        InputStream headerStream = new BoundedInputStream(new MimeMessageInputStream(mimeMessage), bodyStartOctet);
-        InputStream bodyStream = new BufferedInputStream(new MimeMessageInputStream(mimeMessage));
 
-        Mono<BlobId> headerIdMono = Mono.from(blobStore.save(blobStore.getDefaultBucketName(), headerStream, SIZE_BASED))
+
+        Mono<BlobId> headerIdMono = Mono.from(blobStore.save(
+                blobStore.getDefaultBucketName(),
+                headerStream(bodyStartOctet, mimeMessage),
+                SIZE_BASED))
             .subscribeOn(Schedulers.elastic());
-        Mono<BlobId> bodyIdMono = Mono.fromCallable(() -> bodyStream.skip(bodyStartOctet))
-            .then(Mono.defer(() -> Mono.from(blobStore.save(blobStore.getDefaultBucketName(), bodyStream, SIZE_BASED))))
+        Mono<BlobId> bodyIdMono = Mono.from(blobStore.save(
+                blobStore.getDefaultBucketName(),
+                bodyStream(bodyStartOctet, mimeMessage),
+                SIZE_BASED))
             .subscribeOn(Schedulers.elastic());
 
         return Mono.zip(headerIdMono, bodyIdMono,
@@ -79,6 +84,18 @@ public class MimeMessageStore implements Store<MimeMessage, MimeMessagePartsId> 
                 .headerBlobId(headerId)
                 .bodyBlobId(bodyId)
                 .build());
+    }
+
+    private Supplier<InputStream> bodyStream(int bodyStartOctet, MimeMessage mimeMessage) {
+        return Throwing.supplier(() -> {
+            BufferedInputStream bodyStream = new BufferedInputStream(new MimeMessageInputStream(mimeMessage));
+            bodyStream.skip(bodyStartOctet);
+            return bodyStream;
+        });
+    }
+
+    private Supplier<InputStream> headerStream(int bodyStartOctet, MimeMessage mimeMessage) {
+        return Throwing.supplier(() -> new BoundedInputStream(new MimeMessageInputStream(mimeMessage), bodyStartOctet));
     }
 
     private static Mono<Integer> computeBodyStartOctet(MimeMessage mimeMessage) {
