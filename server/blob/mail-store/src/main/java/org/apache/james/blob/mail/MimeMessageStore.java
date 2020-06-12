@@ -22,6 +22,7 @@ package org.apache.james.blob.mail;
 import static org.apache.james.blob.api.BlobStore.StoragePolicy.SIZE_BASED;
 import static org.apache.james.util.io.InputStreamConsummer.consume;
 
+import java.io.BufferedInputStream;
 import java.io.InputStream;
 import java.io.SequenceInputStream;
 import java.util.UUID;
@@ -31,6 +32,7 @@ import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
 
 import org.apache.commons.io.input.BoundedInputStream;
+import org.apache.james.blob.api.BlobId;
 import org.apache.james.blob.api.BlobStore;
 import org.apache.james.blob.api.Store;
 import org.apache.james.server.core.MimeMessageCopyOnWriteProxy;
@@ -38,10 +40,12 @@ import org.apache.james.server.core.MimeMessageInputStream;
 import org.apache.james.server.core.MimeMessageInputStreamSource;
 import org.apache.james.util.io.BodyOffsetInputStream;
 
+import com.github.fge.lambdas.Throwing;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 public class MimeMessageStore implements Store<MimeMessage, MimeMessagePartsId> {
     private final BlobStore blobStore;
@@ -57,24 +61,31 @@ public class MimeMessageStore implements Store<MimeMessage, MimeMessagePartsId> 
         Preconditions.checkNotNull(mimeMessage);
 
         return computeBodyStartOctet(mimeMessage)
-            .zipWith(Mono.fromCallable(() -> new MimeMessageInputStream(mimeMessage)))
-            .flatMap(tuple -> save(tuple.getT1(), tuple.getT2()));
+            .flatMap(Throwing.function(bodyStartOctet -> save(bodyStartOctet, mimeMessage)));
     }
 
-    private Mono<MimeMessagePartsId> save(int bodyStartOctet, InputStream inputStream) {
-        InputStream headerStream = new BoundedInputStream(inputStream, bodyStartOctet);
-        return Mono.from(blobStore.save(blobStore.getDefaultBucketName(), headerStream, SIZE_BASED))
-            .flatMap(headerId -> Mono.from(blobStore.save(blobStore.getDefaultBucketName(), inputStream, SIZE_BASED))
-                .map(bodyId -> MimeMessagePartsId.builder()
-                    .headerBlobId(headerId)
-                    .bodyBlobId(bodyId)
-                    .build()));
+    private Mono<MimeMessagePartsId> save(int bodyStartOctet, MimeMessage mimeMessage) throws MessagingException {
+        InputStream headerStream = new BoundedInputStream(new MimeMessageInputStream(mimeMessage), bodyStartOctet);
+        InputStream bodyStream = new BufferedInputStream(new MimeMessageInputStream(mimeMessage));
+
+        Mono<BlobId> headerIdMono = Mono.from(blobStore.save(blobStore.getDefaultBucketName(), headerStream, SIZE_BASED))
+            .subscribeOn(Schedulers.elastic());
+        Mono<BlobId> bodyIdMono = Mono.fromCallable(() -> bodyStream.skip(bodyStartOctet))
+            .then(Mono.defer(() -> Mono.from(blobStore.save(blobStore.getDefaultBucketName(), bodyStream, SIZE_BASED))))
+            .subscribeOn(Schedulers.elastic());
+
+        return Mono.zip(headerIdMono, bodyIdMono,
+            (headerId, bodyId) -> MimeMessagePartsId.builder()
+                .headerBlobId(headerId)
+                .bodyBlobId(bodyId)
+                .build());
     }
 
     private static Mono<Integer> computeBodyStartOctet(MimeMessage mimeMessage) {
         return Mono.fromCallable(() -> {
             try (MimeMessageInputStream inputStream = new MimeMessageInputStream(mimeMessage);
-                 BodyOffsetInputStream bodyOffsetInputStream = new BodyOffsetInputStream(inputStream)) {
+                 BufferedInputStream bufferedInputStream = new BufferedInputStream(inputStream);
+                 BodyOffsetInputStream bodyOffsetInputStream = new BodyOffsetInputStream(bufferedInputStream)) {
 
                 consume(bodyOffsetInputStream);
 
