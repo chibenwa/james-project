@@ -132,7 +132,7 @@ public class CassandraACLMapper {
         return updateAcl(cassandraId, acl -> new ACLWithVersion(acl.version, mailboxACL), mailboxACL)
             .flatMap(aclDiff -> userMailboxRightsDAO.update(cassandraId, aclDiff)
             .thenReturn(aclDiff))
-            .switchIfEmpty(Mono.error(new MailboxException("Unable to update ACL")));
+            .switchIfEmpty(Mono.defer(() -> Mono.error(new MailboxException("Unable to update ACL"))));
     }
 
     private Mono<ACLDiff> updateAcl(CassandraId cassandraId, Function<ACLWithVersion, ACLWithVersion> aclTransformation, MailboxACL replacement) {
