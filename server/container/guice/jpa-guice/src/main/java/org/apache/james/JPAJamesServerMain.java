@@ -19,6 +19,8 @@
 
 package org.apache.james;
 
+import java.util.Optional;
+
 import org.apache.james.modules.MailboxModule;
 import org.apache.james.modules.activemq.ActiveMQQueueModule;
 import org.apache.james.modules.data.JPADataModule;
@@ -50,11 +52,15 @@ import org.apache.james.modules.server.TaskManagerModule;
 import org.apache.james.modules.server.WebAdminServerModule;
 import org.apache.james.modules.spamassassin.SpamAssassinListenerModule;
 import org.apache.james.server.core.configuration.Configuration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.inject.Module;
 import com.google.inject.util.Modules;
 
 public class JPAJamesServerMain implements JamesServerMain {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(JPAJamesServerMain.class);
 
     private static final Module WEBADMIN = Modules.combine(
         new WebAdminServerModule(),
@@ -95,10 +101,15 @@ public class JPAJamesServerMain implements JamesServerMain {
     private static final Module JPA_MODULE_AGGREGATE = Modules.combine(JPA_SERVER_MODULE, PROTOCOLS);
 
     public static void main(String[] args) throws Exception {
+        Optional.ofNullable(System.getProperty("logback.configurationFile"))
+            .stream()
+            .forEach(file -> System.err.println("Load logging config from " + file));
+
         Configuration configuration = Configuration.builder()
             .useWorkingDirectoryEnvProperty()
             .build();
 
+        LOGGER.info("Loading configuration {}", configuration);
         GuiceJamesServer server = createServer(configuration)
             .combineWith(new JMXServerModule());
 
