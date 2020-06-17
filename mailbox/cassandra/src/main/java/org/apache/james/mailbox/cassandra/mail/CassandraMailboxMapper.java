@@ -147,7 +147,7 @@ public class CassandraMailboxMapper implements MailboxMapper {
     public Mono<Mailbox> findMailboxById(MailboxId id) {
         CassandraId mailboxId = (CassandraId) id;
         return retrieveMailbox(mailboxId)
-            .switchIfEmpty(Mono.error(new MailboxNotFoundException(id)));
+            .switchIfEmpty(Mono.error(() -> new MailboxNotFoundException(id)));
     }
 
     private Mono<Mailbox> retrieveMailbox(CassandraId mailboxId) {
@@ -204,7 +204,7 @@ public class CassandraMailboxMapper implements MailboxMapper {
             .filter(isCreated -> isCreated)
             .flatMap(mailboxHasCreated -> persistMailboxEntity(mailbox)
                 .thenReturn(mailbox))
-            .switchIfEmpty(Mono.error(new MailboxExistsException(mailbox.generateAssociatedPath().asString())));
+            .switchIfEmpty(Mono.error(() -> new MailboxExistsException(mailbox.generateAssociatedPath().asString())));
     }
 
     @Override
@@ -214,7 +214,7 @@ public class CassandraMailboxMapper implements MailboxMapper {
         CassandraId cassandraId = (CassandraId) mailbox.getMailboxId();
         return tryRename(mailbox, cassandraId)
             .filter(FunctionalUtils.identityPredicate())
-            .switchIfEmpty(Mono.error(new MailboxExistsException(mailbox.generateAssociatedPath().asString())))
+            .switchIfEmpty(Mono.error(() -> new MailboxExistsException(mailbox.generateAssociatedPath().asString())))
             .thenReturn(cassandraId);
     }
 
