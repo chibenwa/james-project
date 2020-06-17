@@ -118,7 +118,7 @@ public class StoreMessageIdManager implements MessageIdManager {
     public void setFlags(Flags newState, MessageManager.FlagsUpdateMode replace, MessageId messageId, List<MailboxId> mailboxIds, MailboxSession mailboxSession) throws MailboxException {
         MessageIdMapper messageIdMapper = mailboxSessionMapperFactory.getMessageIdMapper(mailboxSession);
 
-        assertRightsOnMailboxes(mailboxIds, mailboxSession, Right.Write);
+        assertRightsOnMailboxes(mailboxIds, mailboxSession, Right.Write).block();
 
         Multimap<MailboxId, UpdatedFlags> updatedFlags = messageIdMapper.setFlags(messageId, mailboxIds, newState, replace);
         for (Map.Entry<MailboxId, Collection<UpdatedFlags>> entry : updatedFlags.asMap().entrySet()) {
@@ -159,18 +159,19 @@ public class StoreMessageIdManager implements MessageIdManager {
     }
 
     private ImmutableSet<MailboxId> getAllowedMailboxIds(MailboxSession mailboxSession, List<MailboxMessage> messageList, Right... rights) {
-        return messageList.stream()
-                .map(MailboxMessage::getMailboxId)
-                .distinct()
-                .filter(hasRightsOnMailbox(mailboxSession, rights))
-                .collect(Guavate.toImmutableSet());
+        return Flux.fromIterable(messageList)
+            .map(MailboxMessage::getMailboxId)
+            .distinct()
+            .filterWhen(hasRightsOnMailboxReactive(mailboxSession, rights))
+            .collect(Guavate.toImmutableSet())
+            .block();
     }
 
     @Override
     public DeleteResult delete(MessageId messageId, List<MailboxId> mailboxIds, MailboxSession mailboxSession) throws MailboxException {
         MessageIdMapper messageIdMapper = mailboxSessionMapperFactory.getMessageIdMapper(mailboxSession);
 
-        assertRightsOnMailboxes(mailboxIds, mailboxSession, Right.DeleteMessages);
+        assertRightsOnMailboxes(mailboxIds, mailboxSession, Right.DeleteMessages).block();
 
         List<MailboxMessage> messageList = messageIdMapper
             .find(ImmutableList.of(messageId), MessageMapper.FetchType.Metadata)
@@ -243,7 +244,7 @@ public class StoreMessageIdManager implements MessageIdManager {
 
     @Override
     public void setInMailboxes(MessageId messageId, Collection<MailboxId> targetMailboxIds, MailboxSession mailboxSession) throws MailboxException {
-        assertRightsOnMailboxes(targetMailboxIds, mailboxSession, Right.Read);
+        assertRightsOnMailboxes(targetMailboxIds, mailboxSession, Right.Read).block();
 
         List<MailboxMessage> currentMailboxMessages = findRelatedMailboxMessages(messageId, mailboxSession);
 
@@ -279,15 +280,15 @@ public class StoreMessageIdManager implements MessageIdManager {
     private List<MailboxMessage> findRelatedMailboxMessages(MessageId messageId, MailboxSession mailboxSession) {
         MessageIdMapper messageIdMapper = mailboxSessionMapperFactory.getMessageIdMapper(mailboxSession);
 
-        return messageIdMapper.find(ImmutableList.of(messageId), MessageMapper.FetchType.Metadata)
-            .stream()
-            .filter(hasRightsOn(mailboxSession, Right.Read))
-            .collect(Guavate.toImmutableList());
+        return messageIdMapper.findReactive(ImmutableList.of(messageId), MessageMapper.FetchType.Metadata)
+            .filterWhen(hasRightsOn(mailboxSession, Right.Read))
+            .collect(Guavate.toImmutableList())
+            .block();
     }
 
     private void applyMessageMoves(MailboxSession mailboxSession, List<MailboxMessage> currentMailboxMessages, MessageMoves messageMoves) throws MailboxException {
-        assertRightsOnMailboxes(messageMoves.addedMailboxIds(), mailboxSession, Right.Insert);
-        assertRightsOnMailboxes(messageMoves.removedMailboxIds(), mailboxSession, Right.DeleteMessages);
+        assertRightsOnMailboxes(messageMoves.addedMailboxIds(), mailboxSession, Right.Insert).block();
+        assertRightsOnMailboxes(messageMoves.removedMailboxIds(), mailboxSession, Right.DeleteMessages).block();
 
         applyMessageMoveNoMailboxChecks(mailboxSession, currentMailboxMessages, messageMoves);
     }
@@ -427,14 +428,8 @@ public class StoreMessageIdManager implements MessageIdManager {
         return mailboxMessage -> mailboxIds.contains(mailboxMessage.getMailboxId());
     }
 
-    private Predicate<MailboxMessage> hasRightsOn(MailboxSession session, Right... rights) {
-        return message -> hasRightsOnMailbox(session, rights).test(message.getMailboxId());
-    }
-
-
-    private Predicate<MailboxId> hasRightsOnMailbox(MailboxSession session, Right... rights) {
-        return Throwing.predicate((MailboxId mailboxId) -> block(Mono.from(rightManager.myRights(mailboxId, session))).contains(rights))
-            .fallbackTo(any -> false);
+    private Function<MailboxMessage, Mono<Boolean>> hasRightsOn(MailboxSession session, Right... rights) {
+        return hasRightsOnMailboxReactive(session, rights).compose(MailboxMessage::getMailboxId);
     }
 
     private Function<MailboxId, Mono<Boolean>> hasRightsOnMailboxReactive(MailboxSession session, Right... rights) {
@@ -443,14 +438,14 @@ public class StoreMessageIdManager implements MessageIdManager {
             .onErrorResume(any -> Mono.just(false));
     }
 
-    private void assertRightsOnMailboxes(Collection<MailboxId> mailboxIds, MailboxSession mailboxSession, Right... rights) throws MailboxNotFoundException {
-        Optional<MailboxId> mailboxForbidden = mailboxIds.stream()
-            .filter(hasRightsOnMailbox(mailboxSession, rights).negate())
-            .findFirst();
-
-        if (mailboxForbidden.isPresent()) {
-            LOGGER.info("Mailbox with Id {} does not belong to {}", mailboxForbidden.get(), mailboxSession.getUser().asString());
-            throw new MailboxNotFoundException(mailboxForbidden.get());
-        }
+    private Mono<Void> assertRightsOnMailboxes(Collection<MailboxId> mailboxIds, MailboxSession mailboxSession, Right... rights) throws MailboxNotFoundException {
+        return Flux.fromIterable(mailboxIds)
+            .filterWhen(hasRightsOnMailboxReactive(mailboxSession, rights).andThen(result -> result.map(b -> !b)))
+            .next()
+            .flatMap(mailboxForbidden -> {
+                LOGGER.info("Mailbox with Id {} does not belong to {}", mailboxForbidden, mailboxSession.getUser().asString());
+                return Mono.error(new MailboxNotFoundException(mailboxForbidden));
+            })
+            .then();
     }
 }
