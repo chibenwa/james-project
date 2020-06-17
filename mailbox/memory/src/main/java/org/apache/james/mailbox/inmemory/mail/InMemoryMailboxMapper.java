@@ -77,7 +77,7 @@ public class InMemoryMailboxMapper implements MailboxMapper {
             .filter(mailbox -> mailbox.getMailboxId().equals(id))
             .next()
             .map(Mailbox::new)
-            .switchIfEmpty(Mono.error(new MailboxNotFoundException(id)));
+            .switchIfEmpty(Mono.error(() -> new MailboxNotFoundException(id)));
     }
 
     @Override
