@@ -134,7 +134,7 @@ public class CassandraMessageIdMapper implements MessageIdMapper {
     public void save(MailboxMessage mailboxMessage) throws MailboxException {
         CassandraId mailboxId = (CassandraId) mailboxMessage.getMailboxId();
         MailboxReactorUtils.block(mailboxMapper.findMailboxById(mailboxId)
-            .switchIfEmpty(Mono.error(new MailboxNotFoundException(mailboxId)))
+            .switchIfEmpty(Mono.error(() -> new MailboxNotFoundException(mailboxId)))
             .then(messageDAO.save(mailboxMessage))
             .thenEmpty(saveMessageMetadata(mailboxMessage, mailboxId)));
     }
@@ -143,7 +143,7 @@ public class CassandraMessageIdMapper implements MessageIdMapper {
     public void copyInMailbox(MailboxMessage mailboxMessage) throws MailboxException {
         CassandraId mailboxId = (CassandraId) mailboxMessage.getMailboxId();
         MailboxReactorUtils.block(mailboxMapper.findMailboxById(mailboxId)
-            .switchIfEmpty(Mono.error(new MailboxNotFoundException(mailboxId)))
+            .switchIfEmpty(Mono.error(() -> new MailboxNotFoundException(mailboxId)))
             .then(saveMessageMetadata(mailboxMessage, mailboxId)));
     }
 
