@@ -178,7 +178,7 @@ public class MessageFastViewProjectionCorrector {
             return Iterators.toFlux(usersRepository.list())
                 .map(mailboxManager::createSystemSession)
                 .doOnNext(any -> progress.incrementProcessedUserCount())
-                .flatMap(session -> listUserMailboxMessages(progress, session));
+                .flatMap(session -> listUserMailboxMessages(progress, session), 1);
         } catch (UsersRepositoryException e) {
             return Flux.error(e);
         }
@@ -187,9 +187,9 @@ public class MessageFastViewProjectionCorrector {
     private Flux<ProjectionEntry> listUserMailboxMessages(Progress progress, MailboxSession session) {
         try {
             return listUsersMailboxes(session)
-                .flatMap(mailboxMetadata -> retrieveMailbox(session, mailboxMetadata))
+                .flatMap(mailboxMetadata -> retrieveMailbox(session, mailboxMetadata), 1)
                 .flatMap(Throwing.function(messageManager -> listAllMailboxMessages(messageManager, session)
-                    .map(message -> new ProjectionEntry(messageManager, message.getUid(), session))));
+                    .map(message -> new ProjectionEntry(messageManager, message.getUid(), session))), 1);
         } catch (MailboxException e) {
             LOGGER.error("JMAP fastview re-computation aborted for {} as we failed listing user mailboxes", session.getUser(), e);
             progress.incrementFailedUserCount();
