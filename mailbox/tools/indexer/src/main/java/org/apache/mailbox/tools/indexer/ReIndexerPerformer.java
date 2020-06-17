@@ -174,7 +174,7 @@ public class ReIndexerPerformer {
 
         try {
             Flux<Either<Failure, ReIndexingEntry>> entriesToIndex = mailboxMapper.findMailboxWithPathLike(mailboxQuery.asUserBound())
-                .flatMap(mailbox -> reIndexingEntriesForMailbox(mailbox, mailboxSession), 1);
+                .flatMap(mailbox -> reIndexingEntriesForMailbox(mailbox, mailboxSession), MAILBOX_CONCURRENCY);
 
             return reIndexMessages(entriesToIndex, runningOptions, reprocessingContext)
                 .doFinally(any -> LOGGER.info("User {} reindex finished", username.asString()));
