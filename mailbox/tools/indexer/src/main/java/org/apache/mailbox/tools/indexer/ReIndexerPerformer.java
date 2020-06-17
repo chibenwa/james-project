@@ -147,7 +147,7 @@ public class ReIndexerPerformer {
         LOGGER.info("Starting a full reindex");
 
         Flux<Either<Failure, ReIndexingEntry>> entriesToIndex = mailboxSessionMapperFactory.getMailboxMapper(mailboxSession).list()
-            .flatMap(mailbox -> reIndexingEntriesForMailbox(mailbox, mailboxSession));
+            .flatMap(mailbox -> reIndexingEntriesForMailbox(mailbox, mailboxSession), 1);
 
         return reIndexMessages(entriesToIndex, runningOptions, reprocessingContext)
             .doFinally(any -> LOGGER.info("Full reindex finished"));
@@ -172,7 +172,7 @@ public class ReIndexerPerformer {
 
         try {
             Flux<Either<Failure, ReIndexingEntry>> entriesToIndex = mailboxMapper.findMailboxWithPathLike(mailboxQuery.asUserBound())
-                .flatMap(mailbox -> reIndexingEntriesForMailbox(mailbox, mailboxSession));
+                .flatMap(mailbox -> reIndexingEntriesForMailbox(mailbox, mailboxSession), 1);
 
             return reIndexMessages(entriesToIndex, runningOptions, reprocessingContext)
                 .doFinally(any -> LOGGER.info("User {} reindex finished", username.asString()));
