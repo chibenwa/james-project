@@ -118,7 +118,7 @@ public class StoreMessageIdManager implements MessageIdManager {
     public void setFlags(Flags newState, MessageManager.FlagsUpdateMode replace, MessageId messageId, List<MailboxId> mailboxIds, MailboxSession mailboxSession) throws MailboxException {
         MessageIdMapper messageIdMapper = mailboxSessionMapperFactory.getMessageIdMapper(mailboxSession);
 
-        assertRightsOnMailboxes(mailboxIds, mailboxSession, Right.Write).block();
+        MailboxReactorUtils.block(assertRightsOnMailboxes(mailboxIds, mailboxSession, Right.Write));
 
         Multimap<MailboxId, UpdatedFlags> updatedFlags = messageIdMapper.setFlags(messageId, mailboxIds, newState, replace);
         for (Map.Entry<MailboxId, Collection<UpdatedFlags>> entry : updatedFlags.asMap().entrySet()) {
@@ -158,20 +158,19 @@ public class StoreMessageIdManager implements MessageIdManager {
             .map(Throwing.function(messageResultConverter(fetchGroup)).sneakyThrow());
     }
 
-    private ImmutableSet<MailboxId> getAllowedMailboxIds(MailboxSession mailboxSession, List<MailboxMessage> messageList, Right... rights) {
-        return Flux.fromIterable(messageList)
+    private ImmutableSet<MailboxId> getAllowedMailboxIds(MailboxSession mailboxSession, List<MailboxMessage> messageList, Right... rights) throws MailboxException {
+        return MailboxReactorUtils.block(Flux.fromIterable(messageList)
             .map(MailboxMessage::getMailboxId)
             .distinct()
             .filterWhen(hasRightsOnMailboxReactive(mailboxSession, rights))
-            .collect(Guavate.toImmutableSet())
-            .block();
+            .collect(Guavate.toImmutableSet()));
     }
 
     @Override
     public DeleteResult delete(MessageId messageId, List<MailboxId> mailboxIds, MailboxSession mailboxSession) throws MailboxException {
         MessageIdMapper messageIdMapper = mailboxSessionMapperFactory.getMessageIdMapper(mailboxSession);
 
-        assertRightsOnMailboxes(mailboxIds, mailboxSession, Right.DeleteMessages).block();
+        MailboxReactorUtils.block(assertRightsOnMailboxes(mailboxIds, mailboxSession, Right.DeleteMessages));
 
         List<MailboxMessage> messageList = messageIdMapper
             .find(ImmutableList.of(messageId), MessageMapper.FetchType.Metadata)
@@ -244,7 +243,7 @@ public class StoreMessageIdManager implements MessageIdManager {
 
     @Override
     public void setInMailboxes(MessageId messageId, Collection<MailboxId> targetMailboxIds, MailboxSession mailboxSession) throws MailboxException {
-        assertRightsOnMailboxes(targetMailboxIds, mailboxSession, Right.Read).block();
+        MailboxReactorUtils.block(assertRightsOnMailboxes(targetMailboxIds, mailboxSession, Right.Read));
 
         List<MailboxMessage> currentMailboxMessages = findRelatedMailboxMessages(messageId, mailboxSession);
 
@@ -277,18 +276,17 @@ public class StoreMessageIdManager implements MessageIdManager {
         }
     }
 
-    private List<MailboxMessage> findRelatedMailboxMessages(MessageId messageId, MailboxSession mailboxSession) {
+    private List<MailboxMessage> findRelatedMailboxMessages(MessageId messageId, MailboxSession mailboxSession) throws MailboxException {
         MessageIdMapper messageIdMapper = mailboxSessionMapperFactory.getMessageIdMapper(mailboxSession);
 
-        return messageIdMapper.findReactive(ImmutableList.of(messageId), MessageMapper.FetchType.Metadata)
+        return MailboxReactorUtils.block(messageIdMapper.findReactive(ImmutableList.of(messageId), MessageMapper.FetchType.Metadata)
             .filterWhen(hasRightsOn(mailboxSession, Right.Read))
-            .collect(Guavate.toImmutableList())
-            .block();
+            .collect(Guavate.toImmutableList()));
     }
 
     private void applyMessageMoves(MailboxSession mailboxSession, List<MailboxMessage> currentMailboxMessages, MessageMoves messageMoves) throws MailboxException {
-        assertRightsOnMailboxes(messageMoves.addedMailboxIds(), mailboxSession, Right.Insert).block();
-        assertRightsOnMailboxes(messageMoves.removedMailboxIds(), mailboxSession, Right.DeleteMessages).block();
+        MailboxReactorUtils.block(assertRightsOnMailboxes(messageMoves.addedMailboxIds(), mailboxSession, Right.Insert));
+        MailboxReactorUtils.block(assertRightsOnMailboxes(messageMoves.removedMailboxIds(), mailboxSession, Right.DeleteMessages));
 
         applyMessageMoveNoMailboxChecks(mailboxSession, currentMailboxMessages, messageMoves);
     }
