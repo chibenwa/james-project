@@ -152,7 +152,8 @@ public interface RecipientRewriteTable {
             .map(mappings -> mappings.select(type))
             .reduce(MappingsImpl.builder(), MappingsImpl.Builder::addAll, (builder1, builder2) -> builder1.addAll(builder2.build()))
             .build()
-            .asStream();
+            .asStream()
+            .distinct();
     }
 
 }
