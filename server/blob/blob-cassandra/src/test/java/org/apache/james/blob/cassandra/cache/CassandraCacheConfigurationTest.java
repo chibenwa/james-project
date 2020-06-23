@@ -33,6 +33,7 @@ import com.google.common.base.Strings;
 
 public class CassandraCacheConfigurationTest {
 
+    public static final int IN_FLIGHT_REQUESTS_THRESHOLD = 562;
     byte[] EIGHT_KILOBYTES = Strings.repeat("01234567\n", 1000).getBytes(StandardCharsets.UTF_8);
     private final Duration DEFAULT_TIME_OUT = Duration.ofSeconds(50);
     private final int DEFAULT_THRESHOLD_SIZE_IN_BYTES = EIGHT_KILOBYTES.length;
@@ -50,12 +51,14 @@ public class CassandraCacheConfigurationTest {
             .sizeThresholdInBytes(DEFAULT_THRESHOLD_SIZE_IN_BYTES)
             .timeOut(DEFAULT_TIME_OUT)
             .ttl(_1_SEC_TTL)
+            .inFlightRequestsThreshold(IN_FLIGHT_REQUESTS_THRESHOLD)
             .build();
 
         SoftAssertions.assertSoftly(soflty -> {
             assertThat(cacheConfiguration.getReadTimeOut()).isEqualTo(DEFAULT_TIME_OUT);
             assertThat(cacheConfiguration.getSizeThresholdInBytes()).isEqualTo(DEFAULT_THRESHOLD_SIZE_IN_BYTES);
             assertThat(cacheConfiguration.getTtl()).isEqualTo(_1_SEC_TTL);
+            assertThat(cacheConfiguration.getInFlightRequestsThreshold()).isEqualTo(IN_FLIGHT_REQUESTS_THRESHOLD);
         });
     }
 
@@ -130,6 +133,20 @@ public class CassandraCacheConfigurationTest {
     }
 
     @Test
+    void shouldThrowWhenConfiguredNegativeInFlightRequestsThreshold() {
+        assertThatThrownBy(() -> new CassandraCacheConfiguration.Builder()
+            .inFlightRequestsThreshold(-1))
+            .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void shouldThrowWhenConfiguredZeroInFlightRequestsThreshold() {
+        assertThatThrownBy(() -> new CassandraCacheConfiguration.Builder()
+            .inFlightRequestsThreshold(0))
+            .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
     void timeOutShouldNotThrowWhenMilliSeconds() {
         assertThatCode(() -> CassandraCacheConfiguration.builder().timeOut(Duration.ofMillis(50)))
             .doesNotThrowAnyException();
@@ -149,12 +166,14 @@ public class CassandraCacheConfigurationTest {
         configuration.addProperty("cache.cassandra.ttl", "3 days");
         configuration.addProperty("cache.cassandra.timeout", "50 ms");
         configuration.addProperty("cache.sizeThresholdInBytes", "4 KiB");
+        configuration.addProperty("cache.inFlightRequests.threshold", "128");
 
         assertThat(CassandraCacheConfiguration.from(configuration))
             .isEqualTo(CassandraCacheConfiguration.builder()
                 .ttl(Duration.ofDays(3))
                 .timeOut(Duration.ofMillis(50))
                 .sizeThresholdInBytes(4096)
+                .inFlightRequestsThreshold(128)
                 .build());
     }
 

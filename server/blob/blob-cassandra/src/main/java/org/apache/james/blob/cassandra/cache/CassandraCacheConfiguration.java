@@ -32,14 +32,17 @@ import com.google.common.base.Preconditions;
 
 public class CassandraCacheConfiguration {
 
+
     public static class Builder {
         private static final Duration DEFAULT_READ_TIMEOUT = Duration.ofMillis(100);
         private static final Duration MAX_READ_TIMEOUT = Duration.ofHours(1);
         private static final Duration DEFAULT_TTL = Duration.ofDays(7);
         private static final int DEFAULT_BYTE_THRESHOLD_SIZE = 8 * 1024;
+        public static final int DEFAULT_IN_FLIGHT_REQUESTS_THRESHOLD = 256;
 
         private Optional<Duration> readTimeout = Optional.empty();
         private Optional<Integer> sizeThresholdInBytes = Optional.empty();
+        private Optional<Integer> inFlightRequestsThreshold = Optional.empty();
         private Optional<Duration> ttl = Optional.empty();
 
         public Builder timeOut(Duration timeout) {
@@ -56,6 +59,18 @@ public class CassandraCacheConfiguration {
             Preconditions.checkArgument(sizeThresholdInBytes >= 0, "'Threshold size' needs to be positive");
 
             this.sizeThresholdInBytes = Optional.of(sizeThresholdInBytes);
+            return this;
+        }
+
+        public Builder inFlightRequestsThreshold(int inFlightRequestsThreshold) {
+            Preconditions.checkArgument(inFlightRequestsThreshold > 0, "'inFlightRequestsThreshold' needs to be strictly positive");
+
+            this.inFlightRequestsThreshold = Optional.of(inFlightRequestsThreshold);
+            return this;
+        }
+
+        public Builder inFlightRequestsThreshold(Optional<Integer> inFlightRequestsThreshold) {
+            inFlightRequestsThreshold.ifPresent(this::inFlightRequestsThreshold);
             return this;
         }
 
@@ -88,6 +103,7 @@ public class CassandraCacheConfiguration {
             return new CassandraCacheConfiguration(
                 readTimeout.orElse(DEFAULT_READ_TIMEOUT),
                 sizeThresholdInBytes.orElse(DEFAULT_BYTE_THRESHOLD_SIZE),
+                inFlightRequestsThreshold.orElse(DEFAULT_IN_FLIGHT_REQUESTS_THRESHOLD),
                 ttl.orElse(DEFAULT_TTL));
         }
     }
@@ -106,22 +122,30 @@ public class CassandraCacheConfiguration {
         Optional<Integer> sizeThreshold = Optional.ofNullable(configuration.getString("cache.sizeThresholdInBytes", null))
             .map(SizeFormat::parseAsByteCount)
             .map(Math::toIntExact);
+        Optional<Integer> inFlightRequestsThreshold = Optional.ofNullable(configuration.getInteger("cache.inFlightRequests.threshold", null));
 
         return builder()
             .ttl(ttl)
             .timeOut(timeOut)
             .sizeThresholdInBytes(sizeThreshold)
+            .inFlightRequestsThreshold(inFlightRequestsThreshold)
             .build();
     }
 
     private final Duration readTimeOut;
     private final int sizeThresholdInBytes;
+    private final int inFlightRequestsThreshold;
     private final Duration ttl;
 
-    private CassandraCacheConfiguration(Duration timeout, int sizeThresholdInBytes, Duration ttl) {
+    private CassandraCacheConfiguration(Duration timeout, int sizeThresholdInBytes, int inFlightRequestsThreshold, Duration ttl) {
         this.readTimeOut = timeout;
         this.sizeThresholdInBytes = sizeThresholdInBytes;
+        this.inFlightRequestsThreshold = inFlightRequestsThreshold;
         this.ttl = ttl;
+    }
+
+    public int getInFlightRequestsThreshold() {
+        return inFlightRequestsThreshold;
     }
 
     public Duration getReadTimeOut() {
@@ -143,6 +167,7 @@ public class CassandraCacheConfiguration {
 
             return Objects.equals(this.sizeThresholdInBytes, that.sizeThresholdInBytes)
                 && Objects.equals(this.readTimeOut, that.readTimeOut)
+                && Objects.equals(this.inFlightRequestsThreshold, that.inFlightRequestsThreshold)
                 && Objects.equals(this.ttl, that.ttl);
         }
         return false;
@@ -150,6 +175,6 @@ public class CassandraCacheConfiguration {
 
     @Override
     public final int hashCode() {
-        return Objects.hash(readTimeOut, sizeThresholdInBytes, ttl);
+        return Objects.hash(readTimeOut, inFlightRequestsThreshold, sizeThresholdInBytes, ttl);
     }
 }

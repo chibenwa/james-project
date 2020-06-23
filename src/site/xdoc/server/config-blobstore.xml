@@ -77,6 +77,13 @@
                         Supported units: bytes, Kib, MiB, GiB, TiB
                         Maximum size of stored objects expressed in bytes.</dd>
                 </dl>
+                <dl>
+                    <dt><strong>cache.inFlightRequests.threshold</strong></dt>
+                    <dd>DEFAULT: 256, Circuit breaking based on in flight request count at the driver level.
+                        Above a threshold of in flight requests, the Cassandra server is considered overwhelmed
+                        In a self-healing effort, we stop submitting requests to the cache in order to recover.
+                        </dd>
+                </dl>
             </subsection>
 
             <subsection name="Hybrid BlobStore size threshold (deprecated)">

@@ -43,6 +43,7 @@ import org.apache.james.blob.api.BlobId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.codahale.metrics.Gauge;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
@@ -61,27 +62,39 @@ public class CassandraBlobStoreCache implements BlobStoreCache {
 
     private final int readTimeOutFromDataBase;
     private final int timeToLive;
+    private final CassandraCacheConfiguration cacheConfiguration;
+    private final Gauge<Integer> inFlightRequests;
 
     @Inject
     @VisibleForTesting
     CassandraBlobStoreCache(@Named(InjectionNames.CACHE) Session session,
                             CassandraCacheConfiguration cacheConfiguration) {
+
+        inFlightRequests = session.getCluster().getMetrics().getInFlightRequests();
+
         this.cassandraAsyncExecutor = new CassandraAsyncExecutor(session);
         this.insertStatement = prepareInsert(session);
         this.selectStatement = prepareSelect(session);
         this.deleteStatement = prepareDelete(session);
 
-        this.readTimeOutFromDataBase = Math.toIntExact(cacheConfiguration.getReadTimeOut().toMillis());
+        this.cacheConfiguration = cacheConfiguration;
+        this.readTimeOutFromDataBase = Math.toIntExact(this.cacheConfiguration.getReadTimeOut().toMillis());
         this.timeToLive = Math.toIntExact(cacheConfiguration.getTtl().getSeconds());
     }
 
     @Override
     public Mono<Void> cache(BlobId blobId, byte[] bytes) {
+        if (isOverwhelmed()) {
+            return Mono.empty();
+        }
         return save(blobId, toByteBuffer(bytes));
     }
 
     @Override
     public Mono<byte[]> read(BlobId blobId) {
+        if (isOverwhelmed()) {
+            return Mono.empty();
+        }
         return cassandraAsyncExecutor.executeSingleRow(
                 selectStatement.bind()
                     .setString(ID, blobId.asString())
@@ -141,7 +154,10 @@ public class CassandraBlobStoreCache implements BlobStoreCache {
             insertInto(TABLE_NAME)
                 .value(ID, bindMarker(ID))
                 .value(DATA, bindMarker(DATA))
-                .using(ttl(bindMarker(TTL_FOR_ROW)))
-        );
+                .using(ttl(bindMarker(TTL_FOR_ROW))));
+    }
+
+    private boolean isOverwhelmed() {
+        return inFlightRequests.getValue() > cacheConfiguration.getInFlightRequestsThreshold();
     }
 }
