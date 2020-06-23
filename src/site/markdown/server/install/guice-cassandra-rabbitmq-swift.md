@@ -50,7 +50,7 @@ You need to have a Cassandra, ElasticSearch and RabbitMQ instance running. You c
 $ docker run -d -p 9042:9042 --name=cassandra cassandra:3.11.3
 $ docker run -d -p 9200:9200 --name=elasticsearch --env 'discovery.type=single-node' docker.elastic.co/elasticsearch/elasticsearch:6.3.2
 $ docker run -d -p 5672:5672 -p 15672:15672 --name=rabbitmq rabbitmq:3.8.1-management
-$ docker run -d -p 5000:5000 -p 8080:8080 -p 35357:35357 --name=swift linagora/openstack-keystone-swift:pike
+$ docker run -d -p 8080:8000 --name=s3 scality/s3server:6018536a
 ```
 
 Once everything is set up, you just have to run the jar with:
@@ -60,23 +60,16 @@ $ java -Dworking.directory=. -jar target/james-server-cassandra-rabbitmq-guice.j
 ```
 
 #### Using AWS S3 of Scality S3 server
-In order to use AWS S3 or a compatible implementation, `blobstore.propeties` has to be filled with:
+By default, James is configured with [Scality](https://hub.docker.com/r/scality/s3server) which is compatible with AWS S3, in `blobstore.propeties` as such:
 
 ```
-objectstorage.provider=aws-s3
+implementation=s3
 objectstorage.namespace=james
 objectstorage.s3.endPoint=http://scality:8080/
+objectstorage.s3.region=eu-west-1
 objectstorage.s3.accessKeyId=accessKey1
 objectstorage.s3.secretKey=verySecretKey1
 ```
-
-To use Scality S3 server you have to launch it instead of swift container:
-
-```
-$ docker run -d -p 8080:8000 --name=s3 scality/s3server:6018536a
-```
-
-More information about available options [here](https://hub.docker.com/r/scality/s3server).
 
 ## Guice-cassandra-rabbitmq-ldap
 
