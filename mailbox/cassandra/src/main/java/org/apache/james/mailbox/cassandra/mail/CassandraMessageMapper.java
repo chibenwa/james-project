@@ -325,8 +325,8 @@ public class CassandraMessageMapper implements MessageMapper {
     }
 
     private Mono<FlagsUpdateStageResult> runUpdateStage(CassandraId mailboxId, Flux<ComposedMessageIdWithMetaData> toBeUpdated, FlagsUpdateCalculator flagsUpdateCalculator) {
-        Mono<ModSeq> newModSeqMono = computeNewModSeq(mailboxId);
-        return newModSeqMono.flatMapMany(newModSeq -> toBeUpdated
+        return computeNewModSeq(mailboxId)
+            .flatMapMany(newModSeq -> toBeUpdated
             .concatMap(metadata -> tryFlagsUpdate(flagsUpdateCalculator, newModSeq, metadata)))
             .reduce(FlagsUpdateStageResult.none(), FlagsUpdateStageResult::merge)
             .flatMap(result -> updateIndexesForUpdatesResult(mailboxId, result));
