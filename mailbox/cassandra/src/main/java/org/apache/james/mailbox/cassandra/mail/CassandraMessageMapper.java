@@ -311,8 +311,10 @@ public class CassandraMessageMapper implements MessageMapper {
     public List<UpdatedFlags> resetRecent(Mailbox mailbox) {
         CassandraId mailboxId = (CassandraId) mailbox.getMailboxId();
 
-        Flux<ComposedMessageIdWithMetaData> toBeUpdated = messageIdDAO
-            .retrieveMessages(mailboxId, MessageRange.all(), Limit.unlimited())
+        Flux<ComposedMessageIdWithMetaData> toBeUpdated = mailboxRecentDAO.getRecentMessageUidsInMailbox(mailboxId)
+            .collectList()
+            .flatMapMany(uids -> Flux.fromIterable(MessageRange.toRanges(uids)))
+            .concatMap(range -> messageIdDAO.retrieveMessages(mailboxId, MessageRange.all(), Limit.unlimited()))
             .filter(message -> message.getFlags().contains(Flag.RECENT));
         FlagsUpdateCalculator calculator = new FlagsUpdateCalculator(new Flags(Flag.RECENT), FlagsUpdateMode.REMOVE);
 
