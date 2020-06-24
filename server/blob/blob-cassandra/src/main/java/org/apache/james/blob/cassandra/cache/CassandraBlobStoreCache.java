@@ -89,7 +89,7 @@ public class CassandraBlobStoreCache implements BlobStoreCache {
                     .setReadTimeoutMillis(readTimeOutFromDataBase))
             .map(this::toByteArray)
             .onErrorResume(e -> {
-                LOGGER.error("Fail reading blob store cache", e);
+                LOGGER.warn("Fail reading blob store cache", e);
                 return Mono.empty();
             });
     }
