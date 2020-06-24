@@ -474,7 +474,7 @@ public class SolveMessageInconsistenciesService {
         return messageIdDAO.retrieveAllMessages()
             .transform(ReactorUtils.<ComposedMessageIdWithMetaData, Task.Result>throttle()
                 .elements(runningOptions.getMessagesPerSecond())
-                .per(Duration.ofSeconds(1))
+                .per(PERIOD)
                 .forOperation(metadata -> detectInconsistencyInMessageId(metadata)
                     .doOnNext(any -> context.incrementMessageIdEntries())
                     .flatMap(inconsistency -> inconsistency.fix(context, messageIdToImapUidDAO, messageIdDAO))));
