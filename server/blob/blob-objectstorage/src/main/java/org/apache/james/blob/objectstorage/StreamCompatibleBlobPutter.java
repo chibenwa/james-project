@@ -75,7 +75,9 @@ public class StreamCompatibleBlobPutter implements BlobPutter {
     private BlobId updateBlobId(ObjectStorageBucketName bucketName, String from, BlobId to) {
         String bucketNameAsString = bucketName.asString();
         blobStore.copyBlob(bucketNameAsString, from, bucketNameAsString, to.asString(), CopyOptions.NONE);
-        blobStore.removeBlob(bucketNameAsString, from);
+        Mono.fromRunnable(() -> blobStore.removeBlob(bucketNameAsString, from))
+            .subscribeOn(Schedulers.elastic())
+            .subscribe();
         return to;
     }
 
