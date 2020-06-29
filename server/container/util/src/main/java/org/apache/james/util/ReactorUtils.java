@@ -45,6 +45,7 @@ public class ReactorUtils {
     public static final String MDC_KEY_PREFIX = "MDC-";
 
     private static final Duration DELAY = Duration.ZERO;
+    private static final int BATCH_SIZE = 4;
 
     public static <T, U> RequiresQuantity<T, U> throttle() {
         return elements -> duration -> operation -> {
@@ -84,7 +85,15 @@ public class ReactorUtils {
     }
 
     public static InputStream toInputStream(Flux<ByteBuffer> byteArrays) {
-        return new StreamInputStream(byteArrays.toIterable(1).iterator());
+        int prefect = 1;
+        return toInputStream(byteArrays, prefect);
+    }
+
+
+    public static InputStream toInputStream(Flux<ByteBuffer> byteArrays, int prefect) {
+        Preconditions.checkArgument(prefect > 0, "'prefetch' needs to be strictly positive");
+
+        return new StreamInputStream(byteArrays.toIterable(prefect).iterator());
     }
 
     public static Flux<ByteBuffer> toChunks(InputStream inputStream, int bufferSize) {
