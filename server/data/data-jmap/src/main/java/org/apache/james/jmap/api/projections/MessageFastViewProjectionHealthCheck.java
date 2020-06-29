@@ -22,6 +22,8 @@ package org.apache.james.jmap.api.projections;
 import static org.apache.james.jmap.api.projections.MessageFastViewProjection.METRIC_RETRIEVE_HIT_COUNT;
 import static org.apache.james.jmap.api.projections.MessageFastViewProjection.METRIC_RETRIEVE_MISS_COUNT;
 
+import java.util.Locale;
+
 import javax.inject.Inject;
 
 import org.apache.james.core.healthcheck.ComponentName;
@@ -70,7 +72,7 @@ public class MessageFastViewProjectionHealthCheck implements HealthCheck {
 
         if (missPercentage > MAXIMUM_MISS_PERCENTAGE_ACCEPTED) {
             return Result.degraded(COMPONENT_NAME,
-                String.format("Miss percentage %s%% (%s/%s) is higher than the threshold %s%%",
+                String.format(Locale.US, "Miss percentage %.2f%% (%.0f/%.0f) is higher than the threshold %.0f%%",
                     missPercentage, missAverage, total, MAXIMUM_MISS_PERCENTAGE_ACCEPTED));
         }
 
