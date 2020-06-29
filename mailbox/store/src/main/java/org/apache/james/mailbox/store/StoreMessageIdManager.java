@@ -244,7 +244,7 @@ public class StoreMessageIdManager implements MessageIdManager {
     public void setInMailboxes(MessageId messageId, Collection<MailboxId> targetMailboxIds, MailboxSession mailboxSession) throws MailboxException {
         List<MailboxMessage> currentMailboxMessages = findRelatedMailboxMessages(messageId, mailboxSession);
 
-        MailboxReactorUtils.block(load(MessageMoves.builder()
+        MailboxReactorUtils.block(messageMovesWithMailbox(MessageMoves.builder()
             .targetMailboxIds(targetMailboxIds)
             .previousMailboxIds(toMailboxIds(currentMailboxMessages))
             .build(), mailboxSession)
@@ -268,7 +268,7 @@ public class StoreMessageIdManager implements MessageIdManager {
         List<MailboxMessage> currentMailboxMessages = messageIdMapper.find(ImmutableList.of(messageId), MessageMapper.FetchType.Metadata);
 
 
-        MailboxReactorUtils.block(load(MessageMoves.builder()
+        MailboxReactorUtils.block(messageMovesWithMailbox(MessageMoves.builder()
             .targetMailboxIds(targetMailboxId)
             .previousMailboxIds(toMailboxIds(currentMailboxMessages))
             .build(), mailboxSession)
@@ -468,7 +468,7 @@ public class StoreMessageIdManager implements MessageIdManager {
         }
     }
 
-    private Mono<MessageMovesWithMailbox> load(MessageMoves messageMoves, MailboxSession session) {
+    private Mono<MessageMovesWithMailbox> messageMovesWithMailbox(MessageMoves messageMoves, MailboxSession session) {
         MailboxMapper mailboxMapper = mailboxSessionMapperFactory.getMailboxMapper(session);
 
         Mono<List<Mailbox>> target = Flux.fromIterable(messageMoves.getTargetMailboxIds())
