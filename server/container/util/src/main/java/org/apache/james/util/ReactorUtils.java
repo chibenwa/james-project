@@ -40,7 +40,6 @@ import reactor.core.publisher.Mono;
 import reactor.core.publisher.Signal;
 import reactor.core.publisher.SynchronousSink;
 import reactor.util.context.Context;
-import reactor.util.function.Tuple2;
 
 public class ReactorUtils {
     private static final Logger LOGGER = LoggerFactory.getLogger(ReactorUtils.class);
@@ -55,9 +54,8 @@ public class ReactorUtils {
 
             return flux -> flux
                 .window(elements)
-                .zipWith(Flux.interval(DELAY, duration))
-                .flatMap(Tuple2::getT1, elements, elements)
-                .flatMap(operation, elements)
+                .delayElements(duration)
+                .concatMap(window -> window.flatMap(operation))
                 .onErrorContinue((e, o) -> LOGGER.error("Error encountered while throttling for {}", o.toString(), e));
         };
     }

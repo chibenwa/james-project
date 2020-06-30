@@ -112,8 +112,9 @@ class ReactorUtilsTest {
                 .collect(Guavate.toImmutableList())
                 .block();
 
+            // delayElements also delay the first element
             assertThat(windowMembership)
-                .containsExactly(0L, 0L, 0L, 1L, 1L, 1L, 2L, 2L, 2L, 3L);
+                .containsExactly(1L, 1L, 1L, 2L, 2L, 2L, 3L, 3L, 3L, 4L);
         }
 
         @Test
@@ -223,6 +224,9 @@ class ReactorUtilsTest {
                 .blockLast();
         }
 
+        @Disabled("We no longer rely on 'windowTimeout', this breakage is expected." +
+            "'windowTimeout' solves this but create other, more critical issues (large flux cannot be throttled" +
+            "as described in https://github.com/reactor/reactor-core/issues/1099")
         @Test
         void throttleShouldGenerateSmallerWindowsWhenUpstreamIsSlow() {
             int windowMaxSize = 3;
@@ -356,8 +360,6 @@ class ReactorUtilsTest {
             assertThat(results).containsExactly(0L, 1L, 2L);
         }
 
-        @Disabled("reactor.core.Exceptions$OverflowException: Could not emit tick 32 due to lack of requests (interval " +
-            "doesn't support small downstream requests that replenish slower than the ticks)")
         @Test
         void throttleShouldTolerateManyEmptyWindows() {
             int windowMaxSize = 3;
