@@ -56,7 +56,7 @@ public class ReactorUtils {
                 .window(elements)
                 .delayElements(duration)
                 .concatMap(window -> window.flatMap(operation))
-                .onErrorContinue((e, o) -> LOGGER.error("Error encountered while throttling for {}", o.toString(), e));
+                .onErrorContinue((e, o) -> LOGGER.error("Error encountered while throttling for {}", o, e));
         };
     }
 
