@@ -159,7 +159,7 @@ class ReactorUtilsTest {
             Duration windowDuration = Duration.ofMillis(100);
 
             Flux<Integer> originalFlux = Flux.range(0, 10);
-            Function<Integer, Publisher<Integer>> longRunningOperation =
+            Function<Integer, Publisher<Integer>> operation =
                 i -> {
                     if (i == 5) {
                         return Mono.error(new RuntimeException());
@@ -171,7 +171,7 @@ class ReactorUtilsTest {
                 .transform(ReactorUtils.<Integer, Integer>throttle()
                     .elements(windowMaxSize)
                     .per(windowDuration)
-                    .forOperation(longRunningOperation))
+                    .forOperation(operation))
                 .collectList()
                 .block();
 
