@@ -44,7 +44,6 @@ import reactor.util.context.Context;
 public class ReactorUtils {
     private static final Logger LOGGER = LoggerFactory.getLogger(ReactorUtils.class);
     public static final String MDC_KEY_PREFIX = "MDC-";
-    private static final Duration DELAY = Duration.ZERO;
 
     public static <T, U> RequiresQuantity<T, U> throttle() {
         return elements -> duration -> operation -> {
