@@ -114,8 +114,8 @@ public class UploadRoutes implements JMAPRoutes {
     }
 
     private Mono<Void> post(HttpServerRequest request, HttpServerResponse response, ContentType contentType, MailboxSession session) {
-        int prefect = 4;
-        InputStream content = ReactorUtils.toInputStream(request.receive().asByteBuffer().subscribeOn(Schedulers.elastic()), prefect);
+        int prefetch = 4;
+        InputStream content = ReactorUtils.toInputStream(request.receive().asByteBuffer().subscribeOn(Schedulers.elastic()), prefetch);
         return Mono.from(metricFactory.decoratePublisherWithTimerMetric("JMAP-upload-post",
             handle(contentType, content, session, response)));
     }

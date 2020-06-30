@@ -85,15 +85,15 @@ public class ReactorUtils {
     }
 
     public static InputStream toInputStream(Flux<ByteBuffer> byteArrays) {
-        int prefect = 1;
-        return toInputStream(byteArrays, prefect);
+        int prefetch = 1;
+        return toInputStream(byteArrays, prefetch);
     }
 
 
-    public static InputStream toInputStream(Flux<ByteBuffer> byteArrays, int prefect) {
-        Preconditions.checkArgument(prefect > 0, "'prefetch' needs to be strictly positive");
+    public static InputStream toInputStream(Flux<ByteBuffer> byteArrays, int prefetch) {
+        Preconditions.checkArgument(prefetch > 0, "'prefetch' needs to be strictly positive");
 
-        return new StreamInputStream(byteArrays.toIterable(prefect).iterator());
+        return new StreamInputStream(byteArrays.toIterable(prefetch).iterator());
     }
 
     public static Flux<ByteBuffer> toChunks(InputStream inputStream, int bufferSize) {
