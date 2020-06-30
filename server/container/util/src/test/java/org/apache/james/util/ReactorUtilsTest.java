@@ -205,6 +205,67 @@ class ReactorUtilsTest {
             assertThat(results)
                 .containsExactly(0, 1, 2, 3, 4, 6, 7, 8, 9);
         }
+
+        @Test
+        void throttleShouldHandleLargeFluxes() {
+            int windowMaxSize = 2;
+            Duration windowDuration = Duration.ofMillis(1);
+
+            Flux<Integer> originalFlux = Flux.range(0, 10000);
+
+            originalFlux
+                .transform(ReactorUtils.<Integer, Integer>throttle()
+                    .elements(windowMaxSize)
+                    .per(windowDuration)
+                    .forOperation(Mono::just))
+                .blockLast();
+        }
+
+        @Test
+        void throttleShouldGenerateSmallerWindowsWhenUpstreamIsSlow() {
+            int windowMaxSize = 3;
+            Duration windowDuration = Duration.ofMillis(20);
+            Stopwatch stopwatch = Stopwatch.createUnstarted();
+
+            Flux<Long> originalFlux = Flux.interval(Duration.ofMillis(10));
+
+            ImmutableList<Long> perWindowCount = originalFlux
+                .transform(ReactorUtils.<Long, Long>throttle()
+                    .elements(windowMaxSize)
+                    .per(windowDuration)
+                    .forOperation(i -> Mono.fromCallable(() -> stopwatch.elapsed(TimeUnit.MILLISECONDS))))
+                .map(i -> i / 20)
+                .doOnSubscribe(signal -> stopwatch.start())
+                .take(10)
+                .groupBy(Function.identity())
+                .flatMap(Flux::count)
+                .collect(Guavate.toImmutableList())
+                .block();
+
+            // We verify that we generate 2 elements by slice and not 3
+            // (as the upstream cannot generate more than 2 element per window)
+            assertThat(perWindowCount)
+                .allSatisfy(count -> assertThat(count).isLessThanOrEqualTo(2));
+        }
+
+        @Test
+        void throttleShouldNotDropEntriesWhenUpstreamIsSlow() {
+            int windowMaxSize = 3;
+            Duration windowDuration = Duration.ofMillis(20);
+
+            Flux<Long> originalFlux = Flux.interval(Duration.ofMillis(10));
+
+            ImmutableList<Long> results = originalFlux
+                .transform(ReactorUtils.<Long, Long>throttle()
+                    .elements(windowMaxSize)
+                    .per(windowDuration)
+                    .forOperation(Mono::just))
+                .take(10)
+                .collect(Guavate.toImmutableList())
+                .block();
+
+            assertThat(results).containsExactly(0L, 1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L);
+        }
     }
 
     @Nested
