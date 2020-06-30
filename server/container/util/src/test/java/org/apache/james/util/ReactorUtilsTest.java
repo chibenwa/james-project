@@ -50,7 +50,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.primitives.Bytes;
 
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Hooks;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
@@ -339,8 +338,6 @@ class ReactorUtilsTest {
 
         @Test
         void throttleShouldTolerateManyEmptySuccessiveWindows() {
-            Hooks.onOperatorDebug();
-
             int windowMaxSize = 3;
             Duration windowDuration = Duration.ofMillis(5);
 
