@@ -273,7 +273,7 @@ class ReactorUtilsTest {
         }
 
         @Test
-        void throttleShouldCompleteWhenOriginalFluxDoNotFillAWindow() {
+        void throttleShouldCompleteWhenOriginalFluxDoesNotFillAWindow() {
             int windowMaxSize = 3;
             Duration windowDuration = Duration.ofMillis(20);
 
