@@ -181,8 +181,6 @@ class ReactorUtilsTest {
 
         @Test
         void throttleShouldNotAbortProcessingUponUpstreamError() {
-            Hooks.onOperatorDebug();
-
             int windowMaxSize = 3;
             Duration windowDuration = Duration.ofMillis(100);
 
