@@ -268,10 +268,15 @@ public class CassandraMessageDAO {
     }
 
     private PropertyBuilder getPropertyBuilder(Row row) {
-        PropertyBuilder property = new PropertyBuilder(
-            row.getList(PROPERTIES, UDTValue.class).stream()
-                .map(this::toProperty)
-                .collect(Collectors.toList()));
+        if (row.getColumnDefinitions().contains(PROPERTIES)) {
+            PropertyBuilder property = new PropertyBuilder(
+                row.getList(PROPERTIES, UDTValue.class).stream()
+                    .map(this::toProperty)
+                    .collect(Collectors.toList()));
+            property.setTextualLineCount(row.getLong(TEXTUAL_LINE_COUNT));
+            return property;
+        }
+        PropertyBuilder property = new PropertyBuilder();
         property.setTextualLineCount(row.getLong(TEXTUAL_LINE_COUNT));
         return property;
     }
