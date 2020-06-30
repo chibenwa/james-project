@@ -29,6 +29,10 @@ import org.apache.james.blob.mail.MimeMessagePartsId;
 import org.apache.james.queue.api.MailQueue;
 import org.apache.mailet.Mail;
 
+import com.github.fge.lambdas.Throwing;
+
+import reactor.core.publisher.Mono;
+
 class MailLoader {
     private final Store<MimeMessage, MimeMessagePartsId> mimeMessageStore;
     private final BlobId.Factory blobIdFactory;
@@ -38,18 +42,22 @@ class MailLoader {
         this.blobIdFactory = blobIdFactory;
     }
 
-    MailWithEnqueueId load(MailReferenceDTO dto) throws MailQueue.MailQueueException {
-        try {
-            MailReference mailReference = dto.toMailReference(blobIdFactory);
+    Mono<MailWithEnqueueId> load(MailReferenceDTO dto) {
+        return Mono.fromCallable(() -> dto.toMailReference(blobIdFactory))
+            .flatMap(mailReference -> buildMail(mailReference)
+                .map(mail -> new MailWithEnqueueId(mailReference.getEnqueueId(), mail)));
+    }
 
-            Mail mail = mailReference.getMail();
-            MimeMessage mimeMessage = mimeMessageStore.read(mailReference.getPartsId()).block();
-            mail.setMessage(mimeMessage);
-            return new MailWithEnqueueId(mailReference.getEnqueueId(), mail);
-        } catch (AddressException e) {
-            throw new MailQueue.MailQueueException("Failed to parse mail address", e);
-        } catch (MessagingException e) {
-            throw new MailQueue.MailQueueException("Failed to generate mime message", e);
-        }
+    private Mono<Mail> buildMail(MailReference mailReference) {
+        return mimeMessageStore.read(mailReference.getPartsId())
+            .flatMap(mimeMessage -> buildMailWithMessageReference(mailReference, mimeMessage));
+    }
+
+    private Mono<Mail> buildMailWithMessageReference(MailReference mailReference, MimeMessage mimeMessage) {
+        return Mono.just(mailReference.getMail())
+            .flatMap(mail -> Mono.fromRunnable(Throwing.runnable(() -> mail.setMessage(mimeMessage)).sneakyThrow())
+                .thenReturn(mail))
+            .onErrorResume(AddressException.class, e -> Mono.error(new MailQueue.MailQueueException("Failed to parse mail address", e)))
+            .onErrorResume(MessagingException.class, e -> Mono.error(new MailQueue.MailQueueException("Failed to generate mime message", e)));
     }
 }
