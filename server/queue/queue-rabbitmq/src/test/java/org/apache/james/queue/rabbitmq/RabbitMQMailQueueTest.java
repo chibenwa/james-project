@@ -20,6 +20,9 @@
 package org.apache.james.queue.rabbitmq;
 
 import static java.time.temporal.ChronoUnit.HOURS;
+import static org.apache.james.backends.cassandra.Scenario.Builder.executeNormally;
+import static org.apache.james.backends.cassandra.Scenario.Builder.fail;
+import static org.apache.james.backends.cassandra.Scenario.Builder.returnEmpty;
 import static org.apache.james.queue.api.Mails.defaultMail;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -27,9 +30,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.function.Function;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -59,6 +64,7 @@ import org.apache.james.queue.rabbitmq.view.cassandra.configuration.CassandraMai
 import org.apache.james.util.streams.Iterators;
 import org.apache.james.utils.UpdatableTickingClock;
 import org.apache.mailet.Mail;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
@@ -71,6 +77,8 @@ import com.github.fge.lambdas.Throwing;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
+import reactor.rabbitmq.OutboundMessage;
 
 class RabbitMQMailQueueTest {
     private static final HashBlobId.Factory BLOB_ID_FACTORY = new HashBlobId.Factory();
@@ -295,6 +303,159 @@ class RabbitMQMailQueueTest {
                     return mailQueueItem;
                 }))
                 .blockLast();
+        }
+
+        @Test
+        void dequeueShouldRetryLoadingErrors(CassandraCluster cassandra) throws Exception {
+            String name1 = "myMail1";
+            String name2 = "myMail2";
+            String name3 = "myMail3";
+
+            getMailQueue().enQueue(defaultMail()
+                .name(name1)
+                .build());
+
+            getMailQueue().enQueue(defaultMail()
+                .name(name2)
+                .build());
+
+            getMailQueue().enQueue(defaultMail()
+                .name(name3)
+                .build());
+
+            cassandra.getConf().registerScenario(fail()
+                .times(1)
+                .whenQueryStartsWith("SELECT * FROM blobs WHERE id=:id;"));
+
+            List<MailQueue.MailQueueItem> items =  Flux.from(getMailQueue().deQueue())
+                .take(3)
+                .collectList()
+                .block(Duration.ofSeconds(10));
+
+            assertThat(items)
+                .extracting(item -> item.getMail().getName())
+                .containsOnly(name1, name2, name3);
+        }
+
+        @Test
+        void dequeueShouldNotRetryWhenBlobIsMissing(CassandraCluster cassandra) throws Exception {
+            String name1 = "myMail1";
+            String name2 = "myMail2";
+            String name3 = "myMail3";
+
+            getMailQueue().enQueue(defaultMail()
+                .name(name1)
+                .build());
+
+            getMailQueue().enQueue(defaultMail()
+                .name(name2)
+                .build());
+
+            getMailQueue().enQueue(defaultMail()
+                .name(name3)
+                .build());
+
+            cassandra.getConf().registerScenario(returnEmpty()
+                .forever()
+                .whenQueryStartsWith("SELECT * FROM blobs WHERE id=:id;"));
+
+            ConcurrentLinkedDeque<String> dequeuedNames = new ConcurrentLinkedDeque<>();
+            Flux.from(getMailQueue().deQueue())
+                .take(3)
+                .doOnNext(item -> dequeuedNames.add(item.getMail().getName()))
+                .doOnNext(Throwing.consumer(item -> item.done(true)))
+                .subscribeOn(Schedulers.elastic())
+                .subscribe();
+
+            // One second should be enough to attempt dequeues while we fail to load blobs
+            Thread.sleep(1000);
+
+            // Restore normal behaviour
+            cassandra.getConf().registerScenario(executeNormally()
+                .forever()
+                .whenQueryStartsWith("SELECT * FROM blobs WHERE id=:id;"));
+
+            // Let one second to check if the queue is empty
+            Thread.sleep(1000);
+
+            // We expect content missing blob references to be purged from the queue
+            assertThat(dequeuedNames).isEmpty();
+        }
+
+        @Test
+        void dequeueShouldNotAbortProcessingUponSerializationIssuesErrors() throws Exception {
+            String name1 = "myMail1";
+            String name2 = "myMail2";
+            String name3 = "myMail3";
+
+            String emptyRoutingKey = "";
+            rabbitMQExtension.getSender()
+                .send(Mono.just(new OutboundMessage("JamesMailQueue-exchange-spool",
+                    emptyRoutingKey,
+                    "BAD_PAYLOAD!".getBytes(StandardCharsets.UTF_8))))
+                .block();
+
+            getMailQueue().enQueue(defaultMail()
+                .name(name1)
+                .build());
+
+            getMailQueue().enQueue(defaultMail()
+                .name(name2)
+                .build());
+
+            getMailQueue().enQueue(defaultMail()
+                .name(name3)
+                .build());
+
+            ConcurrentLinkedDeque<String> dequeuedMailNames = new ConcurrentLinkedDeque<>();
+
+            Flux.from(getMailQueue().deQueue())
+                .doOnNext(item -> dequeuedMailNames.add(item.getMail().getName()))
+                .doOnNext(Throwing.consumer(item -> item.done(true)))
+                .subscribe();
+
+            Awaitility.await().atMost(org.awaitility.Duration.TEN_SECONDS)
+                .untilAsserted(() -> assertThat(dequeuedMailNames)
+                    .containsExactly(name1, name2, name3));
+        }
+
+        @Test
+        void manyInvalidMessagesShouldNotAbortProcessing() throws Exception {
+            String name1 = "myMail1";
+            String name2 = "myMail2";
+            String name3 = "myMail3";
+
+            String emptyRoutingKey = "";
+
+            IntStream.range(0, 100)
+                .forEach(i -> rabbitMQExtension.getSender()
+                    .send(Mono.just(new OutboundMessage("JamesMailQueue-exchange-spool",
+                        emptyRoutingKey,
+                        ("BAD_PAYLOAD " + i).getBytes(StandardCharsets.UTF_8))))
+                    .block());
+
+            getMailQueue().enQueue(defaultMail()
+                .name(name1)
+                .build());
+
+            getMailQueue().enQueue(defaultMail()
+                .name(name2)
+                .build());
+
+            getMailQueue().enQueue(defaultMail()
+                .name(name3)
+                .build());
+
+            ConcurrentLinkedDeque<String> dequeuedMailNames = new ConcurrentLinkedDeque<>();
+
+            Flux.from(getMailQueue().deQueue())
+                .doOnNext(item -> dequeuedMailNames.add(item.getMail().getName()))
+                .doOnNext(Throwing.consumer(item -> item.done(true)))
+                .subscribe();
+
+            Awaitility.await().atMost(org.awaitility.Duration.TEN_SECONDS)
+                .untilAsserted(() -> assertThat(dequeuedMailNames)
+                    .containsExactly(name1, name2, name3));
         }
     }
 

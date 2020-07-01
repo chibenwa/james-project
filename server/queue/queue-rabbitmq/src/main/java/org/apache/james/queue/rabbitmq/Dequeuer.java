@@ -22,10 +22,10 @@ package org.apache.james.queue.rabbitmq;
 import static org.apache.james.queue.api.MailQueue.DEQUEUED_METRIC_NAME_PREFIX;
 
 import java.io.Closeable;
-import java.io.IOException;
 import java.util.function.Consumer;
 
 import org.apache.james.backends.rabbitmq.ReceiverProvider;
+import org.apache.james.blob.api.ObjectNotFoundException;
 import org.apache.james.metrics.api.Metric;
 import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.queue.api.MailQueue;
@@ -33,10 +33,11 @@ import org.apache.james.queue.api.MailQueueFactory;
 import org.apache.james.queue.rabbitmq.view.api.DeleteCondition;
 import org.apache.james.queue.rabbitmq.view.api.MailQueueView;
 import org.apache.mailet.Mail;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.github.fge.lambdas.Throwing;
 import com.github.fge.lambdas.consumers.ThrowingConsumer;
-import com.rabbitmq.client.Delivery;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -46,6 +47,7 @@ import reactor.rabbitmq.ConsumeOptions;
 import reactor.rabbitmq.Receiver;
 
 class Dequeuer implements Closeable {
+    private static final Logger LOGGER = LoggerFactory.getLogger(Dequeuer.class);
     private static final boolean REQUEUE = true;
 
     private static class RabbitMQMailQueueItem implements MailQueue.MailQueueItem {
@@ -136,15 +138,29 @@ class Dequeuer implements Closeable {
         };
     }
 
-    private Mono<MailWithEnqueueId> loadMail(Delivery response) {
-        return toMailReference(response)
-            .flatMap(mailLoader::load);
+    private Mono<MailWithEnqueueId> loadMail(AcknowledgableDelivery delivery) {
+        return toMailReference(delivery)
+            .flatMap(reference -> mailLoader.load(reference)
+                .onErrorResume(ObjectNotFoundException.class, e -> {
+                    LOGGER.error("Fail to load mail {} with enqueueId {} as underlying blobs do not exist. Discarding this message to prevent an infinite loop.", reference.getName(), reference.getEnqueueId(), e);
+                    delivery.nack(!REQUEUE);
+                    return Mono.empty();
+                })
+                .onErrorResume(e -> {
+                    LOGGER.error("Fail to load mail {} with enqueueId {}", reference.getName(), reference.getEnqueueId(), e);
+                    delivery.nack(REQUEUE);
+                    return Mono.empty();
+                }));
     }
 
-    private Mono<MailReferenceDTO> toMailReference(Delivery getResponse) {
-        return Mono.fromCallable(getResponse::getBody)
+    private Mono<MailReferenceDTO> toMailReference(AcknowledgableDelivery delivery) {
+        return Mono.fromCallable(delivery::getBody)
             .map(Throwing.function(mailReferenceSerializer::read).sneakyThrow())
-            .onErrorResume(IOException.class, e -> Mono.error(new MailQueue.MailQueueException("Failed to parse DTO", e)));
+            .onErrorResume(e -> {
+                LOGGER.error("Fail to deserialize MailReferenceDTO. Discarding this message to prevent an infinite loop.", e);
+                delivery.nack(!REQUEUE);
+                return Mono.empty();
+            });
     }
 
 }
