@@ -33,12 +33,11 @@ import static org.awaitility.Duration.ONE_HUNDRED_MILLISECONDS;
 import java.util.List;
 
 import org.apache.james.CassandraExtension;
-import org.apache.james.CassandraRabbitMQJamesConfiguration;
 import org.apache.james.CassandraRabbitMQJamesServerMain;
 import org.apache.james.DockerElasticSearchExtension;
 import org.apache.james.GuiceJamesServer;
-import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
+import org.apache.james.TestingDistributedJamesServerBuilder;
 import org.apache.james.jmap.AccessToken;
 import org.apache.james.jmap.LocalHostURIBuilder;
 import org.apache.james.jmap.draft.JmapGuiceProbe;
@@ -82,12 +81,8 @@ class RabbitMQReindexingWithEventDeadLettersTest {
         new DockerElasticSearchExtension().withRequestTimeout(java.time.Duration.ofSeconds(5));
 
     @RegisterExtension
-    static JamesServerExtension testExtension = new JamesServerBuilder<CassandraRabbitMQJamesConfiguration>(tmpDir ->
-        CassandraRabbitMQJamesConfiguration.builder()
-            .workingDirectory(tmpDir)
-            .configurationFromClasspath()
-            .blobStore(BlobStoreConfiguration.objectStorage().disableCache())
-            .build())
+    static JamesServerExtension testExtension = TestingDistributedJamesServerBuilder
+        .withBlobStore(BlobStoreConfiguration.objectStorage().disableCache())
         .extension(dockerElasticSearch)
         .extension(new CassandraExtension())
         .extension(new RabbitMQExtension())

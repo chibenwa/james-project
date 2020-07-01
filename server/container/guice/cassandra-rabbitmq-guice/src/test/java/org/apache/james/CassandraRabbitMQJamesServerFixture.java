@@ -36,12 +36,8 @@ public class CassandraRabbitMQJamesServerFixture {
     }
 
     public static JamesServerBuilder<CassandraRabbitMQJamesConfiguration> baseExtensionBuilder(RabbitMQExtension rabbitMQExtension) {
-        return new JamesServerBuilder<CassandraRabbitMQJamesConfiguration>(tmpDir ->
-            CassandraRabbitMQJamesConfiguration.builder()
-                .workingDirectory(tmpDir)
-                .configurationFromClasspath()
-                .blobStore(BlobStoreConfiguration.objectStorage().disableCache())
-                .build())
+        return TestingDistributedJamesServerBuilder
+            .withBlobStore(BlobStoreConfiguration.objectStorage().disableCache())
             .extension(new DockerElasticSearchExtension())
             .extension(new CassandraExtension())
             .extension(rabbitMQExtension)

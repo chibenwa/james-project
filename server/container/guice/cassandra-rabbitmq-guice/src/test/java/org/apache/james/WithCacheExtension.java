@@ -38,12 +38,8 @@ public class WithCacheExtension implements BeforeAllCallback, AfterAllCallback, 
     private final JamesServerExtension jamesServerExtension;
 
     WithCacheExtension() {
-        jamesServerExtension = new JamesServerBuilder<CassandraRabbitMQJamesConfiguration>(tmpDir ->
-            CassandraRabbitMQJamesConfiguration.builder()
-                .workingDirectory(tmpDir)
-                .configurationFromClasspath()
-                .blobStore(BlobStoreConfiguration.objectStorage().enableCache())
-                .build())
+        jamesServerExtension = TestingDistributedJamesServerBuilder.forConfiguration(
+                configuration -> configuration.blobStore(BlobStoreConfiguration.objectStorage().enableCache()))
             .extension(new DockerElasticSearchExtension())
             .extension(new CassandraExtension())
             .extension(new RabbitMQExtension())

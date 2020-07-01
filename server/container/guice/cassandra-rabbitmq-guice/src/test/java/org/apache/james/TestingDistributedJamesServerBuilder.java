@@ -17,30 +17,25 @@
  * under the License.                                           *
  ****************************************************************/
 
-package org.apache.james.jmap.rfc8621.distributed;
+package org.apache.james;
 
-import org.apache.james.CassandraExtension;
-import org.apache.james.CassandraRabbitMQJamesServerMain;
-import org.apache.james.DockerElasticSearchExtension;
-import org.apache.james.JamesServerExtension;
-import org.apache.james.TestingDistributedJamesServerBuilder;
-import org.apache.james.jmap.rfc8621.contract.EchoMethodContract;
-import org.apache.james.modules.AwsS3BlobStoreExtension;
-import org.apache.james.modules.RabbitMQExtension;
-import org.apache.james.modules.TestJMAPServerModule;
 import org.apache.james.modules.blobstore.BlobStoreConfiguration;
-import org.junit.jupiter.api.extension.RegisterExtension;
 
-public class DistributedEchoMethodTest implements EchoMethodContract {
+public class TestingDistributedJamesServerBuilder {
+    @FunctionalInterface
+    interface ConfigurationSpecification {
+        CassandraRabbitMQJamesConfiguration.Builder customize(CassandraRabbitMQJamesConfiguration.Builder configuration);
+    }
 
-    @RegisterExtension
-    static JamesServerExtension testExtension = TestingDistributedJamesServerBuilder
-        .withBlobStore(BlobStoreConfiguration.objectStorage().disableCache())
-        .extension(new DockerElasticSearchExtension())
-        .extension(new CassandraExtension())
-        .extension(new RabbitMQExtension())
-        .extension(new AwsS3BlobStoreExtension())
-        .server(configuration -> CassandraRabbitMQJamesServerMain.createServer(configuration)
-            .overrideWith(new TestJMAPServerModule()))
-        .build();
+    public static JamesServerBuilder<CassandraRabbitMQJamesConfiguration> forConfiguration(ConfigurationSpecification configurationSpecification) {
+        return new JamesServerBuilder<>(tmpDir ->
+            configurationSpecification.customize(CassandraRabbitMQJamesConfiguration.builder()
+                .workingDirectory(tmpDir)
+                .configurationFromClasspath())
+                .build());
+    }
+
+    public static JamesServerBuilder<CassandraRabbitMQJamesConfiguration> withBlobStore(BlobStoreConfiguration blobStoreConfiguration) {
+        return forConfiguration(configuration -> configuration.blobStore(blobStoreConfiguration));
+    }
 }

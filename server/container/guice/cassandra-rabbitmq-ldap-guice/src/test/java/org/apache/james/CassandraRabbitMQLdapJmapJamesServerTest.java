@@ -80,12 +80,8 @@ class CassandraRabbitMQLdapJmapJamesServerTest {
     }
 
     JamesServerBuilder baseJamesServerExtensionBuilder(BlobStoreConfiguration blobStoreConfiguration) {
-        return new JamesServerBuilder<CassandraRabbitMQJamesConfiguration>(tmpDir ->
-            CassandraRabbitMQJamesConfiguration.builder()
-                .workingDirectory(tmpDir)
-                .configurationFromClasspath()
-                .blobStore(blobStoreConfiguration)
-                .build())
+        return TestingDistributedJamesServerBuilder
+            .withBlobStore(blobStoreConfiguration)
             .extension(new DockerElasticSearchExtension())
             .extension(new CassandraExtension())
             .extension(new RabbitMQExtension())
