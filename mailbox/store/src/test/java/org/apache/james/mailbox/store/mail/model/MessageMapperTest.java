@@ -384,7 +384,7 @@ public abstract class MessageMapperTest {
     }
 
     @Test
-    void deleteMessagesShouldCorrectlyUpdateMailboxCounters() throws MailboxException {
+    void deleteMessagesShouldDecrementUnseenToOneWhenDeletingTwoUnseenMessagesOutOfThree() throws MailboxException {
         saveMessages();
         FlagsUpdateCalculator setSeen = new FlagsUpdateCalculator(new Flags(Flag.SEEN), FlagsUpdateMode.REPLACE);
         messageMapper.updateFlags(benwaInboxMailbox, message2.getUid(), setSeen);
