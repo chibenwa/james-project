@@ -69,20 +69,14 @@ public interface MessageMapper extends Mapper {
             throws MailboxException;
 
     default Flux<ComposedMessageIdWithMetaData> listMessagesMetadata(Mailbox mailbox, MessageRange set) {
-        try {
-            Iterator<MailboxMessage> messages = findInMailbox(mailbox, set, FetchType.Metadata, UNLIMITED);
-
-            return Iterators.toFlux(messages)
-                .map(message -> new ComposedMessageIdWithMetaData(
-                    new ComposedMessageId(
-                        message.getMailboxId(),
-                        message.getMessageId(),
-                        message.getUid()),
-                    message.createFlags(),
-                    message.getModSeq()));
-        } catch (MailboxException e) {
-            return Flux.error(e);
-        }
+        return findInMailboxReactive(mailbox, set, FetchType.Metadata, UNLIMITED)
+            .map(message -> new ComposedMessageIdWithMetaData(
+                new ComposedMessageId(
+                    message.getMailboxId(),
+                    message.getMessageId(),
+                    message.getUid()),
+                message.createFlags(),
+                message.getModSeq()));
     }
 
     default Flux<MailboxMessage> findInMailboxReactive(Mailbox mailbox, MessageRange set, FetchType type, int limit) {
