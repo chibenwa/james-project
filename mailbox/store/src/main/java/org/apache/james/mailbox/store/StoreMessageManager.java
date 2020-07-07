@@ -654,9 +654,9 @@ public class StoreMessageManager implements MessageManager {
     }
 
     @Override
-    public Publisher<ComposedMessageIdWithMetaData> getFlags(MessageRange set, MailboxSession session) {
+    public Publisher<ComposedMessageIdWithMetaData> listMessagesMetadata(MessageRange set, MailboxSession session) {
         MessageMapper messageMapper = mapperFactory.getMessageMapper(session);
-        return messageMapper.getFlags(mailbox, set);
+        return messageMapper.listMessagesMetadata(mailbox, set);
     }
 
     /**

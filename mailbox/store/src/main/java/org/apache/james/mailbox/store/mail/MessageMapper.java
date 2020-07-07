@@ -68,7 +68,7 @@ public interface MessageMapper extends Mapper {
     Iterator<MailboxMessage> findInMailbox(Mailbox mailbox, MessageRange set, FetchType type, int limit)
             throws MailboxException;
 
-    default Flux<ComposedMessageIdWithMetaData> getFlags(Mailbox mailbox, MessageRange set) {
+    default Flux<ComposedMessageIdWithMetaData> listMessagesMetadata(Mailbox mailbox, MessageRange set) {
         try {
             Iterator<MailboxMessage> messages = findInMailbox(mailbox, set, FetchType.Metadata, UNLIMITED);
 

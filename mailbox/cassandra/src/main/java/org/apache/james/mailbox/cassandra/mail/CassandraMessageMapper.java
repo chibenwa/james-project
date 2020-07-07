@@ -174,7 +174,7 @@ public class CassandraMessageMapper implements MessageMapper {
     }
 
     @Override
-    public Flux<ComposedMessageIdWithMetaData> getFlags(Mailbox mailbox, MessageRange set) {
+    public Flux<ComposedMessageIdWithMetaData> listMessagesMetadata(Mailbox mailbox, MessageRange set) {
         CassandraId mailboxId = (CassandraId) mailbox.getMailboxId();
         return messageIdDAO.retrieveMessages(mailboxId, set, Limit.unlimited());
     }

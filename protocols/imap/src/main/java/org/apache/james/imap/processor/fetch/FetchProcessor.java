@@ -145,7 +145,7 @@ public class FetchProcessor extends AbstractMailboxProcessor<FetchRequest> {
 
         for (MessageRange range : ranges) {
             if (fetch.isOnlyFlags()) {
-                processFlagsRange(session, mailbox, fetch, mailboxSession, responder, builder, range);
+                processMessageRangeForFlags(session, mailbox, fetch, mailboxSession, responder, builder, range);
             } else {
                 processMessageRange(session, mailbox, fetch, useUids, mailboxSession, responder, builder, resultToFetch, range);
             }
@@ -153,8 +153,8 @@ public class FetchProcessor extends AbstractMailboxProcessor<FetchRequest> {
 
     }
 
-    private void processFlagsRange(ImapSession session, MessageManager mailbox, FetchData fetch, MailboxSession mailboxSession, Responder responder, FetchResponseBuilder builder, MessageRange range) {
-        Iterator<ComposedMessageIdWithMetaData> results = Flux.from(mailbox.getFlags(range, mailboxSession))
+    private void processMessageRangeForFlags(ImapSession session, MessageManager mailbox, FetchData fetch, MailboxSession mailboxSession, Responder responder, FetchResponseBuilder builder, MessageRange range) {
+        Iterator<ComposedMessageIdWithMetaData> results = Flux.from(mailbox.listMessagesMetadata(range, mailboxSession))
             .filter(ids -> !fetch.contains(Item.MODSEQ) || ids.getModSeq().asLong() > fetch.getChangedSince())
             .toStream()
             .iterator();

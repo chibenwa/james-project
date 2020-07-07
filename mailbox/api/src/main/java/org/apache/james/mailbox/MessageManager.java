@@ -323,7 +323,7 @@ public interface MessageManager {
      */
     MessageResultIterator getMessages(MessageRange set, FetchGroup fetchGroup, MailboxSession mailboxSession) throws MailboxException;
 
-    Publisher<ComposedMessageIdWithMetaData> getFlags(MessageRange set, MailboxSession session);
+    Publisher<ComposedMessageIdWithMetaData> listMessagesMetadata(MessageRange set, MailboxSession session);
 
     /**
      * Return the underlying {@link Mailbox}
