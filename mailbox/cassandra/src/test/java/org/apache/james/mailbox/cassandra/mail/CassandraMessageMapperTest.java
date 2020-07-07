@@ -64,7 +64,7 @@ class CassandraMessageMapperTest extends MessageMapperTest {
     @Nested
     class StatementLimitationTests {
         @Test
-        void upDateFlagsShouldNotRetryFailedDeletes(CassandraCluster cassandra) throws MailboxException {
+        void updateFlagsShouldNotRetryOnDeletedMessages(CassandraCluster cassandra) throws MailboxException {
             saveMessages();
 
             cassandra.getConf().printStatements();
