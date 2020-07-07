@@ -31,6 +31,8 @@ import org.apache.james.mailbox.MessageManager.FlagsUpdateMode;
 import org.apache.james.mailbox.MessageUid;
 import org.apache.james.mailbox.ModSeq;
 import org.apache.james.mailbox.exception.MailboxException;
+import org.apache.james.mailbox.model.ComposedMessageId;
+import org.apache.james.mailbox.model.ComposedMessageIdWithMetaData;
 import org.apache.james.mailbox.model.Mailbox;
 import org.apache.james.mailbox.model.MailboxCounters;
 import org.apache.james.mailbox.model.MessageMetaData;
@@ -52,6 +54,7 @@ import reactor.core.publisher.Mono;
  * to the end of the request.
  */
 public interface MessageMapper extends Mapper {
+    int UNLIMITED = -1;
 
     /**
      * Return a {@link Iterator} which holds the messages for the given criterias
@@ -64,6 +67,23 @@ public interface MessageMapper extends Mapper {
      */
     Iterator<MailboxMessage> findInMailbox(Mailbox mailbox, MessageRange set, FetchType type, int limit)
             throws MailboxException;
+
+    default Flux<ComposedMessageIdWithMetaData> getFlags(Mailbox mailbox, MessageRange set) {
+        try {
+            Iterator<MailboxMessage> messages = findInMailbox(mailbox, set, FetchType.Metadata, UNLIMITED);
+
+            return Iterators.toFlux(messages)
+                .map(message -> new ComposedMessageIdWithMetaData(
+                    new ComposedMessageId(
+                        message.getMailboxId(),
+                        message.getMessageId(),
+                        message.getUid()),
+                    message.createFlags(),
+                    message.getModSeq()));
+        } catch (MailboxException e) {
+            return Flux.error(e);
+        }
+    }
 
     default Flux<MailboxMessage> findInMailboxReactive(Mailbox mailbox, MessageRange set, FetchType type, int limit) {
         try {
