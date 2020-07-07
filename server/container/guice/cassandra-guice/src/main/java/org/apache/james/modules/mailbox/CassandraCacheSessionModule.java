@@ -19,16 +19,24 @@
 
 package org.apache.james.modules.mailbox;
 
+import java.io.FileNotFoundException;
 import java.util.Set;
 
+import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.backends.cassandra.components.CassandraModule;
 import org.apache.james.backends.cassandra.init.KeyspaceFactory;
+import org.apache.james.backends.cassandra.init.ResilientClusterProvider;
 import org.apache.james.backends.cassandra.init.SessionWithInitializedTablesFactory;
 import org.apache.james.backends.cassandra.init.configuration.ClusterConfiguration;
 import org.apache.james.backends.cassandra.init.configuration.InjectionNames;
 import org.apache.james.backends.cassandra.init.configuration.KeyspaceConfiguration;
+import org.apache.james.util.Host;
+import org.apache.james.utils.PropertiesProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.datastax.driver.core.Cluster;
+import com.datastax.driver.core.PoolingOptions;
 import com.datastax.driver.core.Session;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
@@ -40,6 +48,13 @@ import com.google.inject.name.Named;
 import com.google.inject.name.Names;
 
 public class CassandraCacheSessionModule extends AbstractModule {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(CassandraSessionModule.class);
+
+    private static final String LOCALHOST = "127.0.0.1";
+    private static final String CASSANDRA_FILE_NAME = "cassandra";
+    private static final int CASSANDRA_PORT = 9042;
+
     @Override
     protected void configure() {
         bind(InitializedCacheCluster.class).in(Scopes.SINGLETON);
@@ -62,6 +77,33 @@ public class CassandraCacheSessionModule extends AbstractModule {
         return new SessionWithInitializedTablesFactory(keyspaceConfiguration, cluster.cluster, module).get();
     }
 
+    @Singleton
+    @Named(InjectionNames.CACHE)
+    @Provides
+    Cluster provideCluster(@Named(InjectionNames.CACHE) ClusterConfiguration clusterConfiguration) {
+        PoolingOptions cachingPoolingOptions = clusterConfiguration.getPoolingOptions()
+            .orElse(new PoolingOptions());
+        cachingPoolingOptions.setMaxQueueSize(0);
+
+        return new ResilientClusterProvider(ClusterConfiguration.Builder.from(clusterConfiguration)
+            .poolingOptions(cachingPoolingOptions)
+            .build())
+            .get();
+    }
+
+    @Provides
+    @Named(InjectionNames.CACHE)
+    @Singleton
+    ClusterConfiguration provideClusterConfiguration(PropertiesProvider propertiesProvider) throws ConfigurationException {
+        try {
+            return ClusterConfiguration.from(propertiesProvider.getConfiguration(CASSANDRA_FILE_NAME));
+        } catch (FileNotFoundException e) {
+            return ClusterConfiguration.builder()
+                .host(Host.from(LOCALHOST, CASSANDRA_PORT))
+                .build();
+        }
+    }
+
     @Named(InjectionNames.CACHE)
     @Provides
     @Singleton
@@ -73,7 +115,7 @@ public class CassandraCacheSessionModule extends AbstractModule {
         private final Cluster cluster;
 
         @Inject
-        private InitializedCacheCluster(Cluster cluster, ClusterConfiguration clusterConfiguration, KeyspacesConfiguration keyspacesConfiguration) {
+        private InitializedCacheCluster(@Named(InjectionNames.CACHE) Cluster cluster, ClusterConfiguration clusterConfiguration, KeyspacesConfiguration keyspacesConfiguration) {
             this.cluster = cluster;
 
             if (clusterConfiguration.shouldCreateKeyspace()) {

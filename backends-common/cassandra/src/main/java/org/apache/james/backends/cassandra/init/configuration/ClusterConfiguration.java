@@ -36,6 +36,21 @@ import com.google.common.collect.ImmutableList;
 public class ClusterConfiguration {
 
     public static class Builder {
+        public static Builder from(ClusterConfiguration clusterConfiguration) {
+            return builder()
+                .hosts(clusterConfiguration.getHosts())
+                .createKeyspace(clusterConfiguration.shouldCreateKeyspace())
+                .minDelay(clusterConfiguration.getMinDelay())
+                .maxRetry(clusterConfiguration.getMaxRetry())
+                .poolingOptions(clusterConfiguration.getPoolingOptions())
+                .queryLoggerConfiguration(clusterConfiguration.getQueryLoggerConfiguration())
+                .readTimeoutMillis(clusterConfiguration.getReadTimeoutMillis())
+                .connectTimeoutMillis(clusterConfiguration.getConnectTimeoutMillis())
+                .useSsl(clusterConfiguration.useSsl())
+                .username(clusterConfiguration.getUsername())
+                .password(clusterConfiguration.getPassword());
+        }
+
         private ImmutableList.Builder<Host> hosts;
         private boolean createKeyspace;
         private Optional<Integer> minDelay;
@@ -82,6 +97,11 @@ public class ClusterConfiguration {
             return this;
         }
 
+        public Builder createKeyspace(boolean createKeyspace) {
+            this.createKeyspace = createKeyspace;
+            return this;
+        }
+
         public Builder minDelay(Optional<Integer> minDelay) {
             this.minDelay = minDelay;
             return this;
@@ -101,7 +121,11 @@ public class ClusterConfiguration {
         }
 
         public Builder queryLoggerConfiguration(QueryLoggerConfiguration queryLoggerConfiguration) {
-            this.queryLoggerConfiguration = Optional.of(queryLoggerConfiguration);
+            return queryLoggerConfiguration(Optional.of(queryLoggerConfiguration));
+        }
+
+        public Builder queryLoggerConfiguration(Optional<QueryLoggerConfiguration> queryLoggerConfiguration) {
+            this.queryLoggerConfiguration = queryLoggerConfiguration;
             return this;
         }
 
