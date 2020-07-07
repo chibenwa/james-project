@@ -2743,7 +2743,6 @@ public abstract class MailboxManagerTest<T extends MailboxManager> {
                 .doesNotThrowAnyException();
         }
 
-
         @Test
         void hasRightShouldThrowOnDeletedMailbox() throws Exception {
             MailboxId id = mailboxManager.createMailbox(MailboxPath.forUser(USER_1, "deleted"), session).get();
@@ -2760,6 +2759,15 @@ public abstract class MailboxManagerTest<T extends MailboxManager> {
 
             assertThatThrownBy(() -> Mono.from(mailboxManager.myRights(id, session)).blockOptional())
                 .hasCauseInstanceOf(MailboxNotFoundException.class);
+        }
+
+        @Test
+        void setRightsShouldThrowOnDeletedMailbox() throws Exception {
+            MailboxId id = mailboxManager.createMailbox(MailboxPath.forUser(USER_1, "deleted"), session).get();
+            mailboxManager.deleteMailbox(id, session);
+
+            assertThatThrownBy(() -> mailboxManager.setRights(id, MailboxACL.EMPTY, session))
+                .isInstanceOf(MailboxNotFoundException.class);
         }
     }
 }
