@@ -2684,7 +2684,8 @@ public abstract class MailboxManagerTest<T extends MailboxManager> {
                     .collectList().block())
                 .hasSize(1)
                 .allSatisfy(ids -> SoftAssertions.assertSoftly(softly -> {
-                    softly.assertThat(ids.getComposedMessageId()).isEqualTo(composeId);
+                    softly.assertThat(ids.getComposedMessageId().getMailboxId()).isEqualTo(composeId.getMailboxId());
+                    softly.assertThat(ids.getComposedMessageId().getUid()).isEqualTo(composeId.getUid());
                     softly.assertThat(ids.getFlags()).isEqualTo(flags);
                 }));
         }
@@ -2702,7 +2703,8 @@ public abstract class MailboxManagerTest<T extends MailboxManager> {
                     .collectList().block())
                 .hasSize(1)
                 .allSatisfy(ids -> SoftAssertions.assertSoftly(softly -> {
-                    softly.assertThat(ids.getComposedMessageId()).isEqualTo(composeId);
+                    softly.assertThat(ids.getComposedMessageId().getMailboxId()).isEqualTo(composeId.getMailboxId());
+                    softly.assertThat(ids.getComposedMessageId().getUid()).isEqualTo(composeId.getUid());
                     softly.assertThat(ids.getFlags()).isEqualTo(flags);
                 }));
         }
