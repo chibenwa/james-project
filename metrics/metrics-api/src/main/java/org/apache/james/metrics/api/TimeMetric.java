@@ -27,6 +27,10 @@ public interface TimeMetric {
 
         Duration elasped();
 
+        boolean exceedP99();
+
+        boolean exceedP50();
+
         ExecutionResult logWhenExceedP99(Duration thresholdInNanoSeconds);
     }
 

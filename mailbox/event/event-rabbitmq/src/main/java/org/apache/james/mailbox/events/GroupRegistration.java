@@ -30,15 +30,19 @@ import static org.apache.james.mailbox.events.RabbitMQEventBus.MAILBOX_EVENT_EXC
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 
 import org.apache.james.backends.rabbitmq.ReceiverProvider;
 import org.apache.james.event.json.EventSerializer;
+import org.apache.james.metrics.api.TimeMetric.ExecutionResult;
 import org.apache.james.util.MDCBuilder;
+import org.reactivestreams.Subscription;
 
 import com.google.common.base.Preconditions;
 
 import reactor.core.Disposable;
+import reactor.core.publisher.BaseSubscriber;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -105,12 +109,11 @@ class GroupRegistration implements Registration {
     }
 
     GroupRegistration start() {
-        receiverSubscriber = Optional
-            .of(createGroupWorkQueue()
-                .then(retryHandler.createRetryExchange(queueName))
-                .then(Mono.fromCallable(() -> this.consumeWorkQueue()))
-                .retryWhen(Retry.backoff(retryBackoff.getMaxRetries(), retryBackoff.getFirstBackoff()).jitter(retryBackoff.getJitterFactor()).scheduler(Schedulers.elastic()))
-                .block());
+        createGroupWorkQueue()
+            .then(retryHandler.createRetryExchange(queueName))
+            .retryWhen(Retry.backoff(retryBackoff.getMaxRetries(), retryBackoff.getFirstBackoff()).jitter(retryBackoff.getJitterFactor()).scheduler(Schedulers.elastic()))
+            .block();
+        receiverSubscriber = Optional.of(consumeWorkQueue());
         return this;
     }
 
@@ -129,29 +132,76 @@ class GroupRegistration implements Registration {
     }
 
     private Disposable consumeWorkQueue() {
-        return receiver.consumeManualAck(queueName.asString(), new ConsumeOptions().qos(EventBus.EXECUTION_RATE))
+        BaseSubscriber<ExecutionResult> actual = backPressureAwareSubscriber();
+        receiver.consumeManualAck(queueName.asString(), new ConsumeOptions().qos(EventBus.EXECUTION_RATE))
             .publishOn(Schedulers.parallel())
             .filter(delivery -> Objects.nonNull(delivery.getBody()))
             .flatMap(this::deliver)
-            .subscribe();
+            .subscribe(actual);
+        return actual;
     }
 
-    private Mono<Void> deliver(AcknowledgableDelivery acknowledgableDelivery) {
+    private BaseSubscriber<ExecutionResult> backPressureAwareSubscriber() {
+        AtomicInteger currentRate = new AtomicInteger(EventBus.EXECUTION_RATE);
+        return new BaseSubscriber<>() {
+            @Override
+            protected void hookOnNext(ExecutionResult value) {
+                boolean exceedP99 = value.exceedP99();
+                boolean exceedP50 = value.exceedP50();
+                synchronized (currentRate) {
+                    if (exceedP99) {
+                        if (currentRate.get() == 1) {
+                            // if we hold the last registration keep it
+                            request(1);
+                            System.out.println("Keep going");
+                        } else {
+                            // Avoid resubscribing when p99 is exceeded
+                            currentRate.decrementAndGet();
+                            System.out.println("Slow down");
+                        }
+                    } else if (!exceedP50) {
+                        if (currentRate.get() < EventBus.EXECUTION_RATE) {
+                            // We are consuming less than the maximum allowed rate
+                            // And as execution timings are below p50 we likely recovered from slow execution
+                            currentRate.incrementAndGet();
+                            request(2);
+                            System.out.println("SpeedUp");
+                        } else {
+                            // We hold the maximum number of subscriptions, we cannot speedup
+                            request(1);
+                            System.out.println("Keep going");
+                        }
+                    } else {
+                        request(1);
+                        System.out.println("Keep going");
+                    }
+                }
+            }
+
+            @Override
+            protected void hookOnSubscribe(Subscription subscription) {
+                subscription.request(EventBus.EXECUTION_RATE);
+            }
+        };
+    }
+
+    private Mono<ExecutionResult> deliver(AcknowledgableDelivery acknowledgableDelivery) {
         byte[] eventAsBytes = acknowledgableDelivery.getBody();
         Event event = eventSerializer.fromJson(new String(eventAsBytes, StandardCharsets.UTF_8)).get();
         int currentRetryCount = getRetryCount(acknowledgableDelivery);
 
         return delayGenerator.delayIfHaveTo(currentRetryCount)
-            .flatMap(any -> runListener(event))
-            .onErrorResume(throwable -> retryHandler.handleRetry(event, currentRetryCount, throwable))
-            .then(Mono.fromRunnable(acknowledgableDelivery::ack));
+            .flatMap(any -> runListener(event)
+                .onErrorResume(throwable -> retryHandler.handleRetry(event, currentRetryCount, throwable)
+                    .then(Mono.empty())))
+            .doFinally(any -> acknowledgableDelivery.ack());
     }
 
     Mono<Void> reDeliver(Event event) {
         return retryHandler.retryOrStoreToDeadLetter(event, DEFAULT_RETRY_COUNT);
     }
 
-    private Mono<Void> runListener(Event event) {
+    private Mono<ExecutionResult> runListener(Event event) {
         return mailboxListenerExecutor.execute(
             mailboxListener,
             MDCBuilder.create()

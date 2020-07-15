@@ -25,6 +25,7 @@ import org.apache.james.metrics.api.TimeMetric;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.codahale.metrics.Snapshot;
 import com.codahale.metrics.Timer;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
@@ -37,8 +38,11 @@ public class DropWizardTimeMetric implements TimeMetric {
         private final String name;
         private final Duration elasped;
         private final Duration p99;
+        private final Duration p50;
 
-        DropWizardExecutionResult(String name, Duration elasped, Duration p99) {
+        DropWizardExecutionResult(String name, Duration elasped,
+                                  Duration p99,
+                                  Duration p50) {
             Preconditions.checkNotNull(elasped);
             Preconditions.checkNotNull(p99);
             Preconditions.checkNotNull(name);
@@ -46,6 +50,17 @@ public class DropWizardTimeMetric implements TimeMetric {
             this.name = name;
             this.elasped = elasped;
             this.p99 = p99;
+            this.p50 = p50;
+        }
+
+        @Override
+        public boolean exceedP99() {
+            return elasped.compareTo(p99) > 0;
+        }
+
+        @Override
+        public boolean exceedP50() {
+            return elasped.compareTo(p50) > 0;
         }
 
         @Override
@@ -91,6 +106,10 @@ public class DropWizardTimeMetric implements TimeMetric {
 
     @Override
     public ExecutionResult stopAndPublish() {
-        return new DropWizardExecutionResult(name, Duration.ofNanos(context.stop()), Duration.ofNanos(Math.round(timer.getSnapshot().get999thPercentile())));
+        Snapshot snapshot = timer.getSnapshot();
+        return new DropWizardExecutionResult(name,
+            Duration.ofNanos(context.stop()),
+            Duration.ofNanos(Math.round(snapshot.get99thPercentile())),
+            Duration.ofNanos(Math.round(snapshot.getMedian())));
     }
 }

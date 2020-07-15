@@ -39,6 +39,16 @@ public class DefaultTimeMetric implements TimeMetric {
         }
 
         @Override
+        public boolean exceedP99() {
+            return false;
+        }
+
+        @Override
+        public boolean exceedP50() {
+            return false;
+        }
+
+        @Override
         public ExecutionResult logWhenExceedP99(Duration thresholdInNanoSeconds) {
             return this;
         }

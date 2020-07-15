@@ -36,6 +36,18 @@ public class RecordingTimeMetric implements TimeMetric {
         }
 
         @Override
+        public boolean exceedP99() {
+            return false;
+        }
+
+        @Override
+        public boolean exceedP50() {
+            return false;
+        }
+
+        @Override
+
+
         public Duration elasped() {
             return elasped;
         }

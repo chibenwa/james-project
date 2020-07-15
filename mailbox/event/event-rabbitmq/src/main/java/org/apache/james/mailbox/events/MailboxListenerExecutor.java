@@ -22,6 +22,7 @@ package org.apache.james.mailbox.events;
 import static org.apache.james.mailbox.events.EventBus.Metrics.timerName;
 
 import org.apache.james.metrics.api.MetricFactory;
+import org.apache.james.metrics.api.TimeMetric;
 import org.apache.james.util.MDCBuilder;
 import org.apache.james.util.ReactorUtils;
 
@@ -34,11 +35,12 @@ class MailboxListenerExecutor {
         this.metricFactory = metricFactory;
     }
 
-    Mono<Void> execute(MailboxListener.ReactiveMailboxListener listener, MDCBuilder mdcBuilder, Event event) {
+    Mono<TimeMetric.ExecutionResult> execute(MailboxListener.ReactiveMailboxListener listener, MDCBuilder mdcBuilder, Event event) {
         if (listener.isHandling(event)) {
-            return Mono.from(metricFactory.decoratePublisherWithTimerMetric(timerName(listener),
-                Mono.from(listener.reactiveEvent(event))
-                    .subscriberContext(ReactorUtils.context("MailboxListenerExecutor", mdc(listener, mdcBuilder, event)))));
+            TimeMetric timer = metricFactory.timer(timerName(listener));
+            return Mono.from(listener.reactiveEvent(event))
+                .then(Mono.defer(() -> Mono.just(timer.stopAndPublish())))
+                .subscriberContext(ReactorUtils.context("MailboxListenerExecutor", mdc(listener, mdcBuilder, event)));
         }
         return Mono.empty();
     }

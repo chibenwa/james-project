@@ -52,7 +52,11 @@ import static org.mockito.Mockito.when;
 import java.io.Closeable;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Collection;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import org.apache.james.backends.rabbitmq.RabbitMQExtension;
@@ -68,9 +72,10 @@ import org.apache.james.mailbox.model.TestId;
 import org.apache.james.mailbox.model.TestMessageId;
 import org.apache.james.mailbox.store.quota.DefaultUserQuotaRootResolver;
 import org.apache.james.mailbox.util.EventCollector;
-import org.apache.james.metrics.tests.RecordingMetricFactory;
+import org.apache.james.metrics.dropwizard.DropWizardMetricFactory;
 import org.apache.james.util.concurrency.ConcurrentTestRunner;
 import org.assertj.core.data.Percentage;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
@@ -79,6 +84,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.mockito.stubbing.Answer;
 
+import com.codahale.metrics.MetricRegistry;
+import com.github.steveash.guavate.Guavate;
+import com.google.common.base.Stopwatch;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 
 import reactor.core.publisher.Mono;
@@ -146,7 +155,8 @@ class RabbitMQEventBusTest implements GroupContract.SingleEventBusGroupContract,
     }
 
     private RabbitMQEventBus newEventBus(Sender sender, ReceiverProvider receiverProvider) {
-        return new RabbitMQEventBus(sender, receiverProvider, eventSerializer, RetryBackoffConfiguration.DEFAULT, routingKeyConverter, memoryEventDeadLetters, new RecordingMetricFactory());
+        return new RabbitMQEventBus(sender, receiverProvider, eventSerializer, RetryBackoffConfiguration.DEFAULT, routingKeyConverter, memoryEventDeadLetters,
+            new DropWizardMetricFactory(new MetricRegistry()));
     }
 
     @Override
@@ -169,6 +179,47 @@ class RabbitMQEventBusTest implements GroupContract.SingleEventBusGroupContract,
     @Disabled("This test is failing by design as the different registration keys are handled by distinct messages")
     public void dispatchShouldCallListenerOnceWhenSeveralKeysMatching() {
 
+    }
+
+    @Test
+    void test() throws Exception {
+        int processingTimeInMS = 1;
+        int longProcessingTimeInMS = 10;
+        int eventCount = 50000;
+        Stopwatch stopwatch = Stopwatch.createStarted();
+        ConcurrentLinkedDeque<Long> executionWindows = new ConcurrentLinkedDeque<>();
+        MailboxListener mailboxListener = newListener();
+        AtomicInteger j = new AtomicInteger();
+        doAnswer(invocation -> {
+            if (j.incrementAndGet() / 1000 == 12) {
+                Thread.sleep(longProcessingTimeInMS);
+            } else {
+                Thread.sleep(processingTimeInMS);
+            }
+            long window = stopwatch.elapsed(TimeUnit.MILLISECONDS) / processingTimeInMS;
+            executionWindows.add(window);
+            return null;
+        }).when(mailboxListener).event(any());
+
+        eventBus().register(mailboxListener, GROUP_A);
+
+        IntStream.range(0, eventCount).forEach(i -> eventBus().dispatch(EVENT, NO_KEYS).block());
+
+        Awaitility.await()
+            .atMost(org.awaitility.Duration.ONE_MINUTE)
+            .untilAsserted(() -> assertThat(executionWindows).hasSize(eventCount));
+
+        Stream<Integer> executionsPerWindow = executionWindows.stream()
+            .collect(Guavate.toImmutableListMultimap(
+                i -> i,
+                i -> i))
+            .asMap()
+            .values()
+            .stream()
+            .map(Collection::size);
+        System.out.println(ImmutableList.copyOf(executionWindows));
+        assertThat(executionsPerWindow)
+            .allSatisfy(size -> assertThat(size).isLessThanOrEqualTo(EventBus.EXECUTION_RATE));
     }
 
     @Test

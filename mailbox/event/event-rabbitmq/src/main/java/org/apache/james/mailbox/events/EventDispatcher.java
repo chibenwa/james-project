@@ -113,6 +113,7 @@ public class EventDispatcher {
                     MDCBuilder.create()
                         .addContext(EventBus.StructuredLoggingFields.REGISTRATION_KEY, registrationKey),
                     event)
+            .then()
             .onErrorResume(e -> {
                 structuredLogger(event, ImmutableSet.of(registrationKey))
                     .log(logger -> logger.error("Exception happens when dispatching event", e));
