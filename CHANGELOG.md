@@ -43,7 +43,7 @@ of tasks being currently executed.
 - JAMES-2760 mailqueue.size.metricsEnabled should be false by default
 - JAMES-3252 DomainList autoDetection should be turned off by default. Operators relying on implicit values for enabling DomainList autoDetection now needs to explicitly configure it.
 - JAMES-3295 Multiple IMAP performance enhancements for the Distributed Server. Some enhancement might transfer to other servers as well.
-- JAMES-3184 Throttling mechanism allow an admin to specify the throughput desired for a given WebAdmin task
+- JAMES-3184 Throttling mechanism allows an admin to specify the throughput desired for a given WebAdmin task
 - JAMES-3224 Configuration for Cassandra ConsistencyLevel.{QUORUM, SERIAL} (for multi-dc configuration)
 - JAMES-3263 Optimize RecipientRewriteTable::getMappingsForType
 - JAMES-3176 Rewritte MDN parsing with Parboiled scala (avoid asm library dependency clash within the Distributed Server)
