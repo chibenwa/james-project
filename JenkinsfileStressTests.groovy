@@ -45,7 +45,7 @@ pipeline {
                             sh 'wget -O dockerfiles/run/guice/cassandra-rabbitmq/destination/glowroot.zip https://github.com/glowroot/glowroot/releases/download/v0.13.4/glowroot-0.13.4-dist.zip && unzip -u dockerfiles/run/guice/cassandra-rabbitmq/destination/glowroot.zip -d dockerfiles/run/guice/cassandra-rabbitmq/destination'
 
                             if (params.PROFILE in ["s3", "swift"]) {
-                                sh 'cp benchmarks/' + params.PROFILE + '.properties dockerfiles/run/guice/cassandra-rabbitmq/destination/conf/blob.properties'
+                                sh 'cp benchmarks/' + params.PROFILE + '.properties dockerfiles/run/guice/cassandra-rabbitmq/destination/conf/blobstore.properties'
                             }
 
                             sh 'docker build -t james_run dockerfiles/run/guice/cassandra-rabbitmq'
