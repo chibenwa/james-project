@@ -29,6 +29,7 @@ import org.apache.commons.io.IOUtils
 import org.apache.james.blob.api.{BlobId, BlobStore, BucketName, DumbBlobStore}
 import org.reactivestreams.Publisher
 import reactor.core.publisher.Mono
+import reactor.core.scala.publisher.SMono
 import reactor.util.function.{Tuple2, Tuples}
 
 object DeDuplicationBlobStore {
