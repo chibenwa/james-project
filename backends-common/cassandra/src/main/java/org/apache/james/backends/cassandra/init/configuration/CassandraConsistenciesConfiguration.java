@@ -25,7 +25,7 @@ import com.datastax.driver.core.ConsistencyLevel;
 import com.google.common.base.MoreObjects;
 
 public class CassandraConsistenciesConfiguration {
-    public static CassandraConsistenciesConfiguration DEFAULT = new CassandraConsistenciesConfiguration(ConsistencyLevel.QUORUM, ConsistencyLevel.SERIAL);
+    public static final CassandraConsistenciesConfiguration DEFAULT = new CassandraConsistenciesConfiguration(ConsistencyLevel.QUORUM, ConsistencyLevel.SERIAL);
 
     public static ConsistencyLevel fromString(String value) {
         switch (value) {
