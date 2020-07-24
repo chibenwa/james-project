@@ -19,17 +19,18 @@
 
 package org.apache.james.modules.blobstore.validation;
 
-import org.apache.james.eventsourcing.Command;
-import org.apache.james.server.blob.deduplication.StorageStrategy;
+import org.apache.james.eventsourcing.eventstore.cassandra.dto.EventDTOModule;
 
-public class RegisterStorageStrategy implements Command {
-    private final StorageStrategy storageStrategy;
+public interface StorageStrategyModule {
 
-    public RegisterStorageStrategy(StorageStrategy storageStrategy) {
-        this.storageStrategy = storageStrategy;
-    }
+    String TYPE_NAME = "storage-strategy-changed";
 
-    public StorageStrategy getStorageStrategy() {
-        return storageStrategy;
-    }
+    EventDTOModule<StorageStrategyChanged, StorageStrategyChangedDTO> STORAGE_STRATEGY =
+        EventDTOModule
+            .forEvent(StorageStrategyChanged.class)
+            .convertToDTO(StorageStrategyChangedDTO.class)
+            .toDomainObjectConverter(StorageStrategyChangedDTO::toEvent)
+            .toDTOConverter(StorageStrategyChangedDTO::from)
+            .typeName(TYPE_NAME)
+            .withFactory(EventDTOModule::new);
 }

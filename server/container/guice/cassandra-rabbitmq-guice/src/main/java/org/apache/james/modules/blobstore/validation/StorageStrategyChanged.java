@@ -22,7 +22,7 @@ package org.apache.james.modules.blobstore.validation;
 import org.apache.james.eventsourcing.AggregateId;
 import org.apache.james.eventsourcing.Event;
 import org.apache.james.eventsourcing.EventId;
-import org.apache.james.modules.blobstore.BlobStoreConfiguration.StorageStrategy;
+import org.apache.james.server.blob.deduplication.StorageStrategy;
 
 public class StorageStrategyChanged implements Event {
     private final EventId eventId;

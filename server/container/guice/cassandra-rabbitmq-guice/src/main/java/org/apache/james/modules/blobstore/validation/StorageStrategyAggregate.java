@@ -19,8 +19,8 @@
 
 package org.apache.james.modules.blobstore.validation;
 
-import static org.apache.james.modules.blobstore.BlobStoreConfiguration.StorageStrategy.DEDUPLICATION;
-import static org.apache.james.modules.blobstore.BlobStoreConfiguration.StorageStrategy.PASSTHROUGH;
+import static org.apache.james.server.blob.deduplication.StorageStrategy.DEDUPLICATION;
+import static org.apache.james.server.blob.deduplication.StorageStrategy.PASSTHROUGH;
 
 import java.util.List;
 import java.util.Optional;
@@ -28,7 +28,7 @@ import java.util.Optional;
 import org.apache.james.eventsourcing.AggregateId;
 import org.apache.james.eventsourcing.Event;
 import org.apache.james.eventsourcing.eventstore.History;
-import org.apache.james.modules.blobstore.BlobStoreConfiguration.StorageStrategy;
+import org.apache.james.server.blob.deduplication.StorageStrategy;
 
 import com.google.common.collect.ImmutableList;
 

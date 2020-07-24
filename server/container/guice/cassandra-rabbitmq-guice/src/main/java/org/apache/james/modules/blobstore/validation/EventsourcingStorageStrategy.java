@@ -19,17 +19,35 @@
 
 package org.apache.james.modules.blobstore.validation;
 
-import org.apache.james.eventsourcing.Command;
+import javax.inject.Inject;
+
+import org.apache.james.eventsourcing.EventSourcingSystem;
+import org.apache.james.eventsourcing.Subscriber;
+import org.apache.james.eventsourcing.eventstore.EventStore;
 import org.apache.james.server.blob.deduplication.StorageStrategy;
 
-public class RegisterStorageStrategy implements Command {
-    private final StorageStrategy storageStrategy;
+import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableSet;
 
-    public RegisterStorageStrategy(StorageStrategy storageStrategy) {
-        this.storageStrategy = storageStrategy;
+import reactor.core.publisher.Mono;
+
+public class EventsourcingStorageStrategy {
+
+    private static final ImmutableSet<Subscriber> NO_SUBSCRIBER = ImmutableSet.of();
+
+    private final EventSourcingSystem eventSourcingSystem;
+
+    @Inject
+    public EventsourcingStorageStrategy(EventStore eventStore) {
+        this.eventSourcingSystem = EventSourcingSystem.fromJava(
+            ImmutableSet.of(new RegisterStorageStrategyCommandHandler(eventStore)),
+            NO_SUBSCRIBER,
+            eventStore);
     }
 
-    public StorageStrategy getStorageStrategy() {
-        return storageStrategy;
+    public void registerStorageStrategy(StorageStrategy newStorageStrategy) {
+        Preconditions.checkNotNull(newStorageStrategy);
+
+        Mono.from(eventSourcingSystem.dispatch(new RegisterStorageStrategy(newStorageStrategy))).block();
     }
 }

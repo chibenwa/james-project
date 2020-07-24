@@ -31,7 +31,7 @@ import reactor.core.publisher.Mono;
 
 public class RegisterStorageStrategyCommandHandler implements CommandHandler<RegisterStorageStrategy> {
     static final String STORAGE_STRATEGY_CONFIGURATION_AGGREGATE_KEY = "BlobStoreStorageStrategyConfiguration";
-    static final AggregateId AGGREGATE_ID = () -> STORAGE_STRATEGY_CONFIGURATION_AGGREGATE_KEY;
+    public static final AggregateId AGGREGATE_ID = () -> STORAGE_STRATEGY_CONFIGURATION_AGGREGATE_KEY;
 
     private final EventStore eventStore;
 
