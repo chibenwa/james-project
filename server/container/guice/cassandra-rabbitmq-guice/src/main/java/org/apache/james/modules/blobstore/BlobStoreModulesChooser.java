@@ -42,6 +42,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.inject.AbstractModule;
 import com.google.inject.Module;
+import com.google.inject.Scopes;
 import com.google.inject.TypeLiteral;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.name.Names;
@@ -80,7 +81,7 @@ public class BlobStoreModulesChooser {
             eventDTOModuleBinder.addBinding().toInstance(StorageStrategyModule.STORAGE_STRATEGY);
 
             bind(BlobStoreConfiguration.class).toInstance(choosingConfiguration);
-            bind(EventsourcingStorageStrategy.class).asEagerSingleton();
+            bind(EventsourcingStorageStrategy.class).in(Scopes.SINGLETON);
 
             Multibinder.newSetBinder(binder(), StartUpCheck.class)
                 .addBinding()
