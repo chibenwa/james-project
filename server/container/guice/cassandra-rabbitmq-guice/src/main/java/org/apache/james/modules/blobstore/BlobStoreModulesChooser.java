@@ -26,6 +26,7 @@ import org.apache.james.blob.api.DumbBlobStore;
 import org.apache.james.blob.cassandra.CassandraDumbBlobStore;
 import org.apache.james.blob.cassandra.cache.CachedBlobStore;
 import org.apache.james.blob.objectstorage.aws.S3BlobStore;
+import org.apache.james.blob.objectstorage.aws.S3DumbBlobStore;
 import org.apache.james.eventsourcing.Event;
 import org.apache.james.eventsourcing.eventstore.cassandra.dto.EventDTO;
 import org.apache.james.eventsourcing.eventstore.cassandra.dto.EventDTOModule;
@@ -61,6 +62,9 @@ public class BlobStoreModulesChooser {
         @Override
         protected void configure() {
             install(new S3BlobStoreModule());
+
+            bind(DumbBlobStore.class).to(S3DumbBlobStore.class);
+
             bind(BlobStore.class)
                 .annotatedWith(Names.named(CachedBlobStore.BACKEND))
                 .to(S3BlobStore.class);
