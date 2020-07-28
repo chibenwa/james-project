@@ -113,4 +113,31 @@
             <artifactId>subethasmtp</artifactId>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>com.google.cloud.tools</groupId>
+                <artifactId>jib-maven-plugin</artifactId>
+                <configuration>
+                    <from>
+                        <image>openjdk:8u222-jre</image>
+                    </from>
+                    <to>
+                        <image>linagora/mock-smtp-server</image>
+                        <tags>
+                            <tag>latest</tag>
+                        </tags>
+                    </to>
+                    <container>
+                        <mainClass>org.apache.james.mock.smtp.server.MockSMTPServerMain</mainClass>
+                        <ports>
+                            <port>25</port>
+                            <port>8000</port>
+                        </ports>
+                    </container>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>
