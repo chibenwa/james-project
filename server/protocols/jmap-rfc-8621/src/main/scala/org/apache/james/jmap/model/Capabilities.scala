@@ -43,9 +43,9 @@ object DefaultCapabilities {
     )
   )
 
-  val SUPPORTED = Capabilities(CORE_CAPABILITY, MAIL_CAPABILITY)
+  val SUPPORTED = Capabilities(CORE_CAPABILITY, MAIL_CAPABILITY, QuotaCapability())
 }
 
-case class Capabilities(coreCapability: CoreCapability, mailCapability: MailCapability) {
-  def toSet : Set[Capability] = Set(coreCapability, mailCapability)
+case class Capabilities(coreCapability: CoreCapability, mailCapability: MailCapability, quotaCapability: QuotaCapability) {
+  def toSet : Set[Capability] = Set(coreCapability, mailCapability, quotaCapability)
 }

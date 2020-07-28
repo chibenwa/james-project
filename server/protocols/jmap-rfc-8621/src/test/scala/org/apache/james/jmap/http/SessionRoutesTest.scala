@@ -102,6 +102,8 @@ class SessionRoutesTest extends AnyFlatSpec with BeforeAndAfter with Matchers {
         .getBody
         .asString()
 
+    println(sessionJson)
+
     Json.parse(sessionJson) should equal(expected_session_object_json)
   }
 }

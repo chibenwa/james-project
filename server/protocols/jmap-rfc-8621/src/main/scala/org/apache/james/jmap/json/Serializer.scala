@@ -99,16 +99,15 @@ class Serializer @Inject() (mailboxIdFactory: MailboxId.Factory) {
     (set: Set[_ <: Capability]) => {
       set.foldLeft(JsObject.empty)((jsObject, capability) => {
         capability match {
-          case capability: CoreCapability => (
-            jsObject.+(capability.identifier.value, corePropertiesWriter.writes(capability.properties)))
-          case capability: MailCapability => (
-            jsObject.+(capability.identifier.value, mailCapabilityWrites.writes(capability.properties)))
+          case capability: CoreCapability => jsObject.+(capability.identifier.value, corePropertiesWriter.writes(capability.properties))
+          case capability: MailCapability => jsObject.+(capability.identifier.value, mailCapabilityWrites.writes(capability.properties))
+          case capability: QuotaCapability => jsObject.+(capability.identifier.value, JsObject.empty)
           case _ => jsObject
         }
       })
     }
 
-  private implicit val capabilitiesWrites: Writes[Capabilities] = capabilities => setCapabilityWrites.writes(Set(capabilities.coreCapability, capabilities.mailCapability))
+  private implicit val capabilitiesWrites: Writes[Capabilities] = capabilities => setCapabilityWrites.writes(capabilities.toSet)
 
   private implicit val accountIdWrites: Format[AccountId] = Json.valueFormat[AccountId]
   private implicit def identifierMapWrite[Any](implicit idWriter: Writes[AccountId]): Writes[Map[CapabilityIdentifier, Any]] =
