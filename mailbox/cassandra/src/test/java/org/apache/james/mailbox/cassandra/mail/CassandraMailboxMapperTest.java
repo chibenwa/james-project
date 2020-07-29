@@ -36,6 +36,7 @@ import org.apache.james.backends.cassandra.utils.CassandraUtils;
 import org.apache.james.backends.cassandra.versions.CassandraSchemaVersionDAO;
 import org.apache.james.backends.cassandra.versions.CassandraSchemaVersionManager;
 import org.apache.james.backends.cassandra.versions.CassandraSchemaVersionModule;
+import org.apache.james.backends.cassandra.versions.SchemaVersion;
 import org.apache.james.core.Username;
 import org.apache.james.mailbox.cassandra.ids.CassandraId;
 import org.apache.james.mailbox.cassandra.modules.CassandraAclModule;
@@ -84,7 +85,9 @@ class CassandraMailboxMapperTest {
     private CassandraMailboxDAO mailboxDAO;
     private CassandraMailboxPathDAOImpl mailboxPathDAO;
     private CassandraMailboxPathV2DAO mailboxPathV2DAO;
+    private CassandraMailboxPathV3DAO mailboxPathV3DAO;
     private CassandraMailboxMapper testee;
+    private CassandraSchemaVersionDAO versionDAO;
 
     @BeforeEach
     void setUp() {
@@ -92,19 +95,27 @@ class CassandraMailboxMapperTest {
         mailboxDAO = new CassandraMailboxDAO(cassandra.getConf(), cassandra.getTypesProvider(), cassandraCluster.getCassandraConsistenciesConfiguration());
         mailboxPathDAO = new CassandraMailboxPathDAOImpl(cassandra.getConf(), cassandra.getTypesProvider(), cassandraCluster.getCassandraConsistenciesConfiguration());
         mailboxPathV2DAO = new CassandraMailboxPathV2DAO(cassandra.getConf(), CassandraUtils.WITH_DEFAULT_CONFIGURATION, cassandraCluster.getCassandraConsistenciesConfiguration());
+        mailboxPathV3DAO = new CassandraMailboxPathV3DAO(cassandra.getConf(), CassandraUtils.WITH_DEFAULT_CONFIGURATION, cassandraCluster.getCassandraConsistenciesConfiguration());
         CassandraUserMailboxRightsDAO userMailboxRightsDAO = new CassandraUserMailboxRightsDAO(cassandra.getConf(), CassandraUtils.WITH_DEFAULT_CONFIGURATION);
         CassandraACLMapper aclMapper = new CassandraACLMapper(
             cassandra.getConf(),
             new CassandraUserMailboxRightsDAO(cassandra.getConf(), CassandraUtils.WITH_DEFAULT_CONFIGURATION),
             CassandraConfiguration.DEFAULT_CONFIGURATION,
             cassandraCluster.getCassandraConsistenciesConfiguration());
+        versionDAO = new CassandraSchemaVersionDAO(cassandra.getConf());
+
+        versionDAO.truncateVersion()
+            .then(versionDAO.updateVersion(new SchemaVersion(7)))
+            .block();
+
         testee = new CassandraMailboxMapper(
             mailboxDAO,
             mailboxPathDAO,
             mailboxPathV2DAO,
+            mailboxPathV3DAO,
             userMailboxRightsDAO,
             aclMapper,
-            new CassandraSchemaVersionManager(new CassandraSchemaVersionDAO(cassandra.getConf())));
+            new CassandraSchemaVersionManager(versionDAO));
     }
 
     @Nested
@@ -242,6 +253,9 @@ class CassandraMailboxMapperTest {
             }
         }
 
+        @Disabled("In order to be more performant mailboxPath V3 table includes the UID_VALIDITY." +
+            "Reading paths no longer requires reading the mailbox by id but this of course has a " +
+            "consistency cost.")
         @Test
         void createShouldBeConsistentWhenFailToPersistMailbox(CassandraCluster cassandra) {
             cassandra.getConf()
@@ -348,7 +362,7 @@ class CassandraMailboxMapperTest {
             cassandra.getConf()
                 .registerScenario(fail()
                     .times(TRY_COUNT_BEFORE_FAILURE)
-                    .whenQueryStartsWith("DELETE FROM mailboxPathV2 WHERE namespace=:namespace AND user=:user AND mailboxName=:mailboxName IF EXISTS;"));
+                    .whenQueryStartsWith("DELETE FROM mailboxPathV3 WHERE namespace=:namespace AND user=:user AND mailboxName=:mailboxName IF EXISTS;"));
 
             doQuietly(() -> testee.rename(inboxRenamed).block());
 
@@ -377,7 +391,7 @@ class CassandraMailboxMapperTest {
             cassandra.getConf()
                 .registerScenario(fail()
                     .times(TRY_COUNT_BEFORE_FAILURE)
-                    .whenQueryStartsWith("DELETE FROM mailboxPathV2 WHERE namespace=:namespace AND user=:user AND mailboxName=:mailboxName IF EXISTS;"));
+                    .whenQueryStartsWith("DELETE FROM mailboxPathV3 WHERE namespace=:namespace AND user=:user AND mailboxName=:mailboxName IF EXISTS;"));
 
             doQuietly(() -> testee.rename(inboxRenamed).block());
 
@@ -399,7 +413,7 @@ class CassandraMailboxMapperTest {
             cassandra.getConf()
                 .registerScenario(fail()
                     .times(TRY_COUNT_BEFORE_FAILURE)
-                    .whenQueryStartsWith("DELETE FROM mailboxPathV2 WHERE namespace=:namespace AND user=:user AND mailboxName=:mailboxName IF EXISTS;"));
+                    .whenQueryStartsWith("DELETE FROM mailboxPathV3 WHERE namespace=:namespace AND user=:user AND mailboxName=:mailboxName IF EXISTS;"));
 
             doQuietly(() -> testee.rename(inboxRenamed).block());
 
@@ -450,7 +464,7 @@ class CassandraMailboxMapperTest {
             CassandraId inboxId = (CassandraId) inbox.getMailboxId();
             // simulate mailbox old data has not been migrated to v2
             mailboxPathDAO.save(inboxPath, inboxId).block();
-            mailboxPathV2DAO.delete(inboxPath).block();
+            mailboxPathV3DAO.delete(inboxPath).block();
 
             // on current v2 generation, save a new mailbox with the exactly name
             // => two mailboxes with same name but different ids
@@ -598,7 +612,7 @@ class CassandraMailboxMapperTest {
             cassandra.getConf()
                 .registerScenario(fail()
                     .times(TRY_COUNT_BEFORE_FAILURE)
-                    .whenQueryStartsWith("DELETE FROM mailboxPathV2 WHERE namespace=:namespace AND user=:user AND mailboxName=:mailboxName IF EXISTS;"));
+                    .whenQueryStartsWith("DELETE FROM mailboxPathV3 WHERE namespace=:namespace AND user=:user AND mailboxName=:mailboxName IF EXISTS;"));
 
             doQuietly(() -> testee.rename(inboxRenamed).block());
 
@@ -651,7 +665,7 @@ class CassandraMailboxMapperTest {
         assertThatThrownBy(() -> testee.rename(newMailbox).block())
             .isInstanceOf(TooLongMailboxNameException.class);
 
-        assertThat(mailboxPathV2DAO.retrieveId(MAILBOX_PATH).blockOptional())
+        assertThat(mailboxPathV3DAO.retrieve(MAILBOX_PATH).blockOptional())
             .isPresent();
     }
 
@@ -686,6 +700,36 @@ class CassandraMailboxMapperTest {
     }
 
     @Test
+    void deleteShouldDeleteMailboxAndMailboxPathFromV3Table() {
+        mailboxDAO.save(MAILBOX)
+            .block();
+        mailboxPathV3DAO.save(MAILBOX)
+            .block();
+
+        testee.delete(MAILBOX).block();
+
+        assertThat(testee.findMailboxByPath(MAILBOX_PATH).blockOptional())
+            .isEmpty();
+    }
+
+    @Test
+    void deleteShouldDeleteMailboxAndMailboxPathFromAllTables() {
+        mailboxDAO.save(MAILBOX)
+            .block();
+        mailboxPathDAO.save(MAILBOX_PATH, MAILBOX_ID)
+            .block();
+        mailboxPathV2DAO.save(MAILBOX_PATH, MAILBOX_ID)
+            .block();
+        mailboxPathV3DAO.save(MAILBOX)
+            .block();
+
+        testee.delete(MAILBOX).block();
+
+        assertThat(testee.findMailboxByPath(MAILBOX_PATH).blockOptional())
+            .isEmpty();
+    }
+
+    @Test
     void findMailboxByPathShouldReturnMailboxWhenExistsInV1Table() {
         mailboxDAO.save(MAILBOX)
             .block();
@@ -710,12 +754,10 @@ class CassandraMailboxMapperTest {
     }
 
     @Test
-    void findMailboxByPathShouldReturnMailboxWhenExistsInBothTables() {
+    void findMailboxByPathShouldReturnMailboxWhenExistsInV3Table() {
         mailboxDAO.save(MAILBOX)
             .block();
-        mailboxPathDAO.save(MAILBOX_PATH, MAILBOX_ID)
-            .block();
-        mailboxPathV2DAO.save(MAILBOX_PATH, MAILBOX_ID)
+        mailboxPathV3DAO.save(MAILBOX)
             .block();
 
         Mailbox mailbox = testee.findMailboxByPath(MAILBOX_PATH).block();
@@ -724,12 +766,30 @@ class CassandraMailboxMapperTest {
     }
 
     @Test
-    void deleteShouldRemoveMailboxWhenInBothTables() {
+    void findMailboxByPathShouldReturnMailboxWhenExistsInAllTables() {
         mailboxDAO.save(MAILBOX)
             .block();
         mailboxPathDAO.save(MAILBOX_PATH, MAILBOX_ID)
             .block();
         mailboxPathV2DAO.save(MAILBOX_PATH, MAILBOX_ID)
+            .block();
+        mailboxPathV3DAO.save(MAILBOX)
+            .block();
+
+        Mailbox mailbox = testee.findMailboxByPath(MAILBOX_PATH).block();
+
+        assertThat(mailbox.generateAssociatedPath()).isEqualTo(MAILBOX_PATH);
+    }
+
+    @Test
+    void deleteShouldRemoveMailboxWhenInAllTables() {
+        mailboxDAO.save(MAILBOX)
+            .block();
+        mailboxPathDAO.save(MAILBOX_PATH, MAILBOX_ID)
+            .block();
+        mailboxPathV2DAO.save(MAILBOX_PATH, MAILBOX_ID)
+            .block();
+        mailboxPathV3DAO.save(MAILBOX)
             .block();
 
         testee.delete(MAILBOX).block();
@@ -830,6 +890,25 @@ class CassandraMailboxMapperTest {
     }
 
     @Test
+    void findMailboxWithPathLikeShouldReturnMailboxesWhenExistsInV3Table() {
+        mailboxDAO.save(MAILBOX)
+            .block();
+        mailboxPathV3DAO.save(MAILBOX)
+            .block();
+
+        List<Mailbox> mailboxes = testee.findMailboxWithPathLike(MailboxQuery.builder()
+            .privateNamespace()
+            .username(USER)
+            .expression(Wildcard.INSTANCE)
+            .build()
+            .asUserBound())
+            .collectList()
+            .block();
+
+        assertThat(mailboxes).containsOnly(MAILBOX);
+    }
+
+    @Test
     void hasChildrenShouldReturnChildWhenExistsInV1Table() {
         mailboxDAO.save(MAILBOX)
             .block();
@@ -889,9 +968,28 @@ class CassandraMailboxMapperTest {
     }
 
     @Test
-    void findMailboxWithPathLikeShouldRemoveDuplicatesAndKeepV2() {
+    void hasChildrenShouldReturnChildWhenExistsInV3Table() {
+        mailboxDAO.save(MAILBOX)
+            .block();
+        mailboxPathV3DAO.save(MAILBOX)
+            .block();
+        CassandraId childMailboxId = CassandraId.timeBased();
+        MailboxPath childMailboxPath = MailboxPath.forUser(USER, "name.child");
+        Mailbox childMailbox = new Mailbox(childMailboxPath, UID_VALIDITY, childMailboxId);
+        mailboxDAO.save(childMailbox)
+            .block();
+        mailboxPathV3DAO.save(childMailbox)
+            .block();
+
+        boolean hasChildren = testee.hasChildren(MAILBOX, '.').block();
+
+        assertThat(hasChildren).isTrue();
+    }
+
+    @Test
+    void findMailboxWithPathLikeShouldRemoveDuplicatesAndKeepV3() {
         mailboxDAO.save(MAILBOX).block();
-        mailboxPathV2DAO.save(MAILBOX_PATH, MAILBOX_ID).block();
+        mailboxPathV3DAO.save(MAILBOX).block();
 
         mailboxDAO.save(MAILBOX_BIS).block();
         mailboxPathDAO.save(MAILBOX_PATH, MAILBOX_ID_2).block();

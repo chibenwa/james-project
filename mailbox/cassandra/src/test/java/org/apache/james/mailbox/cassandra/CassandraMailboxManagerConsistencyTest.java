@@ -79,6 +79,7 @@ class CassandraMailboxManagerConsistencyTest {
     @Nested
     class FailuresDuringCreation {
 
+        @Disabled("For performance reasons we don't validate path reads against mailbox table")
         @Test
         void createMailboxShouldBeConsistentWhenMailboxDaoFails(CassandraCluster cassandra) {
             cassandra.getConf().registerScenario(fail()
@@ -101,7 +102,7 @@ class CassandraMailboxManagerConsistencyTest {
         void createMailboxShouldBeConsistentWhenMailboxPathDaoFails(CassandraCluster cassandra) {
             cassandra.getConf().registerScenario(fail()
                 .times(TRY_COUNT_BEFORE_FAILURE)
-                .whenQueryStartsWith("INSERT INTO mailboxPathV2"));
+                .whenQueryStartsWith("INSERT INTO mailboxPathV3"));
 
             doQuietly(() -> testee.createMailbox(inboxPath, mailboxSession));
 
@@ -132,7 +133,7 @@ class CassandraMailboxManagerConsistencyTest {
         void createMailboxAfterAFailedCreationShouldCreateTheMailboxWhenMailboxPathDaoFails(CassandraCluster cassandra) throws Exception {
             cassandra.getConf().registerScenario(fail()
                 .times(TRY_COUNT_BEFORE_FAILURE)
-                .whenQueryStartsWith("INSERT INTO mailboxPathV2"));
+                .whenQueryStartsWith("INSERT INTO mailboxPathV3"));
 
             doQuietly(() -> testee.createMailbox(inboxPath, mailboxSession));
 
@@ -199,6 +200,7 @@ class CassandraMailboxManagerConsistencyTest {
     @Nested
     class FailuresDuringRenaming {
 
+        @Disabled("For performance reasons we don't validate path reads against mailbox table")
         @Test
         void renameShouldBeConsistentWhenMailboxDaoFails(CassandraCluster cassandra) throws Exception {
             MailboxId inboxId = testee.createMailbox(inboxPath, mailboxSession)
@@ -230,7 +232,7 @@ class CassandraMailboxManagerConsistencyTest {
 
             cassandra.getConf().registerScenario(fail()
                 .times(TRY_COUNT_BEFORE_FAILURE)
-                .whenQueryStartsWith("INSERT INTO mailboxPathV2"));
+                .whenQueryStartsWith("INSERT INTO mailboxPathV3"));
 
             doQuietly(() -> testee.renameMailbox(inboxPath, inboxPathRenamed, mailboxSession));
 
@@ -287,7 +289,7 @@ class CassandraMailboxManagerConsistencyTest {
 
             cassandra.getConf().registerScenario(fail()
                 .times(TRY_COUNT_BEFORE_FAILURE)
-                .whenQueryStartsWith("INSERT INTO mailboxPathV2"));
+                .whenQueryStartsWith("INSERT INTO mailboxPathV3"));
 
             doQuietly(() -> testee.renameMailbox(inboxPath, inboxPathRenamed, mailboxSession));
 
@@ -422,7 +424,7 @@ class CassandraMailboxManagerConsistencyTest {
 
                 cassandra.getConf().registerScenario(fail()
                     .times(TRY_COUNT_BEFORE_FAILURE)
-                    .whenQueryStartsWith("DELETE FROM mailboxPathV2"));
+                    .whenQueryStartsWith("DELETE FROM mailboxPathV3"));
 
                 doQuietly(() -> testee.deleteMailbox(inboxPath, mailboxSession));
 
@@ -446,7 +448,7 @@ class CassandraMailboxManagerConsistencyTest {
 
                 cassandra.getConf().registerScenario(fail()
                     .times(TRY_COUNT_BEFORE_FAILURE)
-                    .whenQueryStartsWith("DELETE FROM mailboxPathV2"));
+                    .whenQueryStartsWith("DELETE FROM mailboxPathV3"));
 
                 doQuietly(() -> testee.deleteMailbox(inboxId, mailboxSession));
 
@@ -631,7 +633,7 @@ class CassandraMailboxManagerConsistencyTest {
 
                 cassandra.getConf().registerScenario(fail()
                     .times(TRY_COUNT_BEFORE_FAILURE)
-                    .whenQueryStartsWith("DELETE FROM mailboxPathV2"));
+                    .whenQueryStartsWith("DELETE FROM mailboxPathV3"));
 
                 doQuietly(() -> testee.deleteMailbox(inboxPath, mailboxSession));
 
