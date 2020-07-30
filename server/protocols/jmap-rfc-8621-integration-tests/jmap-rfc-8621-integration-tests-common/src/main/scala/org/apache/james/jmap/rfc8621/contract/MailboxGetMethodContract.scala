@@ -718,7 +718,7 @@ trait MailboxGetMethodContract {
 
   @Test
   @Tag(CategoryTags.BASIC_FEATURE)
-  def getMailboxShouldReturnNotFoundWhenSharedMailboxAndNoExtension(server: GuiceJamesServer): Unit = {
+  def getMailboxesShouldReturnNotFoundWhenSharedMailboxAndNoExtension(server: GuiceJamesServer): Unit = {
     val sharedMailboxName = "AndreShared"
     val andreMailboxPath = MailboxPath.forUser(ANDRE, sharedMailboxName)
     val mailboxId: String = server.getProbe(classOf[MailboxProbeImpl])
