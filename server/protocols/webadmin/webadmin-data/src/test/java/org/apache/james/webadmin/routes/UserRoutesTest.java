@@ -362,7 +362,7 @@ class UserRoutesTest {
                     Arguments.of(")"),
                     Arguments.of(","),
                     Arguments.of(":"),
-                    Arguments.of(";"),
+//                    Arguments.of(";"),
                     Arguments.of("<"),
                     Arguments.of(">"),
                     Arguments.of("@"),
