@@ -47,7 +47,7 @@ public class DockerRabbitMQ {
     private static final Logger LOGGER = LoggerFactory.getLogger(DockerRabbitMQ.class);
 
     private static final int MAX_THREE_RETRIES = 3;
-    private static final int MIN_DELAY_OF_ONE_TEN_MILLISECONDS = 10;
+    private static final int MIN_DELAY_OF_TEN_MILLISECONDS = 10;
     private static final int CONNECTION_TIMEOUT_OF_ONE_HUNDRED_MILLISECOND = 100;
     private static final int CHANNEL_RPC_TIMEOUT_OF_ONE_HUNDRED_MILLISECOND = 100;
     private static final int HANDSHAKE_TIMEOUT_OF_ONE_HUNDRED_MILLISECOND = 100;
@@ -259,7 +259,7 @@ public class DockerRabbitMQ {
             .managementUri(managementUri())
             .managementCredentials(DEFAULT_MANAGEMENT_CREDENTIAL)
             .maxRetries(MAX_THREE_RETRIES)
-            .minDelayInMs(MIN_DELAY_OF_ONE_TEN_MILLISECONDS)
+            .minDelayInMs(MIN_DELAY_OF_TEN_MILLISECONDS)
             .connectionTimeoutInMs(CONNECTION_TIMEOUT_OF_ONE_HUNDRED_MILLISECOND)
             .channelRpcTimeoutInMs(CHANNEL_RPC_TIMEOUT_OF_ONE_HUNDRED_MILLISECOND)
             .handshakeTimeoutInMs(HANDSHAKE_TIMEOUT_OF_ONE_HUNDRED_MILLISECOND)
