@@ -25,24 +25,21 @@ import org.apache.james.modules.TestJMAPServerModule;
 import org.apache.james.modules.blobstore.BlobStoreConfiguration;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-public class WithCassandraBlobStoreImmutableTest implements JmapJamesServerContract, JamesServerContract {
+public class WithCassandraPassThroughBlobStoreImmutableTest implements JmapJamesServerContract, JamesServerContract {
     @RegisterExtension
-    static JamesServerExtension jamesServerExtension = baseExtensionBuilder()
+    static JamesServerExtension jamesServerExtension = new JamesServerBuilder<CassandraRabbitMQJamesConfiguration>(tmpDir ->
+        CassandraRabbitMQJamesConfiguration.builder()
+        .workingDirectory(tmpDir)
+                .configurationFromClasspath()
+                .blobStore(BlobStoreConfiguration.cassandra()
+                    .passthrough())
+        .searchConfiguration(SearchConfiguration.elasticSearch())
+        .build())
+        .server(configuration -> CassandraRabbitMQJamesServerMain.createServer(configuration)
+        .overrideWith(new TestJMAPServerModule()))
+        .extension(new DockerElasticSearchExtension())
+        .extension(new CassandraExtension())
+        .extension(new RabbitMQExtension())
         .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
-
-    static JamesServerBuilder<CassandraRabbitMQJamesConfiguration> baseExtensionBuilder() {
-        return new JamesServerBuilder<CassandraRabbitMQJamesConfiguration>(tmpDir ->
-            CassandraRabbitMQJamesConfiguration.builder()
-                .workingDirectory(tmpDir)
-                .configurationFromClasspath()
-                .blobStore(BlobStoreConfiguration.cassandra())
-                .searchConfiguration(SearchConfiguration.elasticSearch())
-                .build())
-            .server(configuration -> CassandraRabbitMQJamesServerMain.createServer(configuration)
-                .overrideWith(new TestJMAPServerModule()))
-            .extension(new DockerElasticSearchExtension())
-            .extension(new CassandraExtension())
-            .extension(new RabbitMQExtension());
-    }
 }
