@@ -19,6 +19,8 @@
 
 package org.apache.james;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.apache.james.blob.objectstorage.AESPayloadCodec;
 import org.apache.james.blob.objectstorage.PayloadCodec;
 import org.apache.james.jmap.draft.JmapJamesServerContract;
