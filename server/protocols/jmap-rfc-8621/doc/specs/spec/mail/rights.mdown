@@ -37,7 +37,7 @@ The following `Right`s are defined:
  - `"r"` Read: the user can read the content of this mailbox, and see the assiociated Email and Thread counts.
  - `"t"` DeleteMessages: the user can delete Email in this Mailbox
  - `"w"` Write: the user can alter the Keywords of messages contained in this Mailbox, except the `$Seen` keyword
- - `"s"` Seen: the user can alter the `$Seen` Keywords of messages contained in this Mailbox
+ - `"s"` Seen: the user can alter the `$Seen` keyword of messages contained in this Mailbox
  - `"e"` Expunge: the user can mark Email as Expunged in this Mailbox. This action is not achievable using JMAP.
 
 `UserRights` is an array of `Right`, representing the actions a user can perform on a mailbox.
