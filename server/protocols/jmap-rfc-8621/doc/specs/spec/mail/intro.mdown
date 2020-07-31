@@ -131,7 +131,7 @@ This represents support for the VacationResponse data type and associated API me
 
 ### urn:apache:james:params:jmap:mail:shares extension
 
-<aside class="warning">
+<aside class="notice">
   Implemented
 </aside>
 
@@ -139,7 +139,7 @@ This extension is specific to the Apache James server as it relies on a common s
 
 This extension to the JMAP specification enables to:
 
- - Grant access on mailboxes, and the email they contain to other users.
+ - Grant access on mailboxes, and the emails they contain to other users.
  - Enable display of shared mailboxes, and shared messages as part of the main user account, making effectively account sharing transparent from a client perspective.
 
 ## Data Type Support in Different Accounts

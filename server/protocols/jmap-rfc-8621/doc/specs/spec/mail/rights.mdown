@@ -1,6 +1,6 @@
 # urn:apache:james:params:jmap:mail:shares extension
 
-<aside class="warning">
+<aside class="notice">
   Implemented
 </aside>
 
@@ -19,13 +19,13 @@ This extension defines both behavioral changes and additional fields for the Mai
 
 If specified, behavioral changes and additional fields defined hereafter MUST apply.
 
-If unspecified no additional fiel to Mailbox object are returned, and the behaviour need to be exactly the one of `urn:ietf:params:jmap:mail`.
+If unspecified no additional fields to the Mailbox object are returned, and the behaviour needs to be exactly the one of `urn:ietf:params:jmap:mail`.
 
 ## Addition to existing data types
 
-The following data type are defined:
+The following data types are defined:
 
-`Username` of type `String` correspond to a username.
+`Username` of type `String` corresponds to a username.
 
 `Right` of type `String` defines an action that can be carried out on a mailbox or its content.
 
@@ -52,7 +52,7 @@ The following additional properties are defined for the `Mailbox` object :
 
  - `namespace` of type `String` (server set) provides information about mailbox ownership.
    - `"Personal"` value indicates that the Mailbox belongs to the current user.
-   - `"Delegated[.*]"` indicates that the Mailbox had been delegated to the owner of this account. The user owning the delegated account is held as a value of the `"Delegated"` property, enclosed with `[]` characters.
+   - `"Delegated[.*]"` indicates that the Mailbox has been delegated to the owner of this account. The user owning the delegated account is held as a value of the `"Delegated"` property, enclosed with `[]` characters.
  - `rights` of type `Rights`. The owner can see the full rights, but sharee MUST only see their rights if they do not have the administer right on the mailbox. Sharee without administer right MUST NOT be able to see another SHAREE rights.
 
 ## Behavioral changes
@@ -61,12 +61,12 @@ When `urn:apache:james:params:jmap:mail:shares` is specified, access to delegate
 
 Namely:
 
- - `Mailbox/get`, `Mailbox/query`, `Mailbox/queryChanges`, `Mailbox/changes` needs to accept or return delegated.
+ - `Mailbox/get`, `Mailbox/query`, `Mailbox/queryChanges`, `Mailbox/changes` need to accept or return delegated.
  - `Thread/get`, `Thread/changes` need to accept of return Threads in mailboxes the account user can access.
  - `Email/get`, `Email/set`, `Email/query`, `Email/changes`, `Email/queryChanges`, `Email/copy`, `Email/import`, `Email/import` need to accept or return matching Emails in delegated mailboxes the account user can access.
- - `SearchSnippet/get` need to accept delegated Emails as a valid input.
+ - `SearchSnippet/get` needs to accept delegated Emails as a valid input.
 
-Sharee MUST not be able to modified a shared mailbox via `Mailbox/set`.
+Sharee MUST not be able to modify a shared mailbox via `Mailbox/set`.
 
 ## Examples
 
