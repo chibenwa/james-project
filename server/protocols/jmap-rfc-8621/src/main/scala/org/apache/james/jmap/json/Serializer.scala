@@ -27,7 +27,7 @@ import eu.timepit.refined.auto._
 import javax.inject.Inject
 
 import org.apache.james.core.{Domain, Username}
-import org.apache.james.jmap.mail.MailboxSetRequest.MailboxCreationId
+import org.apache.james.jmap.mail.MailboxSetRequest.{MailboxCreationId, UnparsedMailboxId}
 import org.apache.james.jmap.mail.{DelegatedNamespace, Ids, IsSubscribed, Mailbox, MailboxCreationRequest, MailboxCreationResponse, MailboxGetRequest, MailboxGetResponse, MailboxNamespace, MailboxPatchObject, MailboxRights, MailboxSetError, MailboxSetRequest, MailboxSetResponse, MailboxUpdateResponse, MayAddItems, MayCreateChild, MayDelete, MayReadItems, MayRemoveItems, MayRename, MaySetKeywords, MaySetSeen, MaySubmit, NotFound, PersonalNamespace, Properties, Quota, QuotaId, QuotaRoot, Quotas, RemoveEmailsOnDestroy, Right, Rights, SetErrorDescription, SortOrder, TotalEmails, TotalThreads, UnreadEmails, UnreadThreads, Value}
 import org.apache.james.jmap.model
 import org.apache.james.jmap.model.CapabilityIdentifier.CapabilityIdentifier
@@ -252,7 +252,7 @@ class Serializer @Inject() (mailboxIdFactory: MailboxId.Factory) {
 
   private implicit val mailboxSetRequestReads: Reads[MailboxSetRequest] = Json.reads[MailboxSetRequest]
 
-  private implicit def notFoundWrites(implicit mailboxIdWrites: Writes[MailboxId]): Writes[NotFound] =
+  private implicit def notFoundWrites(implicit mailboxIdWrites: Writes[UnparsedMailboxId]): Writes[NotFound] =
     notFound => JsArray(notFound.value.toList.map(mailboxIdWrites.writes))
 
   private implicit def mailboxGetResponseWrites(implicit mailboxWrites: Writes[Mailbox]): Writes[MailboxGetResponse] = Json.writes[MailboxGetResponse]
@@ -282,6 +282,13 @@ class Serializer @Inject() (mailboxIdFactory: MailboxId.Factory) {
       m.foldLeft(JsObject.empty)((jsObject, kv) => {
         val (mailboxId: MailboxId, mailboxSetError: MailboxSetError) = kv
         jsObject.+(mailboxId.serialize(), mailboxSetErrorWrites.writes(mailboxSetError))
+      })
+    }
+  private implicit def mailboxMapSetErrorWritesByClientId: Writes[Map[ClientId, MailboxSetError]] =
+    (m: Map[ClientId, MailboxSetError]) => {
+      m.foldLeft(JsObject.empty)((jsObject, kv) => {
+        val (clientId: ClientId, mailboxSetError: MailboxSetError) = kv
+        jsObject.+(clientId.value, mailboxSetErrorWrites.writes(mailboxSetError))
       })
     }
 
