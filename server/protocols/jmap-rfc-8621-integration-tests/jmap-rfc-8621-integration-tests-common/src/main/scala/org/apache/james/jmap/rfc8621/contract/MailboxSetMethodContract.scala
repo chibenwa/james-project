@@ -38,6 +38,7 @@ import org.apache.james.mime4j.dom.Message
 import org.apache.james.modules.{ACLProbeImpl, MailboxProbeImpl}
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions
+import org.assertj.core.api.Assertions.assertThat
 import org.hamcrest.Matchers.{equalTo, hasSize}
 import org.junit.jupiter.api.{BeforeEach, Disabled, Test}
 
@@ -2165,6 +2166,48 @@ trait MailboxSetMethodContract {
          |}""".stripMargin)
   }
 
+  @Disabled("TODO implementmailbox/set creation subscription support and enable upon rebase")
+  @Test
+  def updateShouldRenameSubscriptions(server: GuiceJamesServer): Unit = {
+    val request =
+      s"""
+        |{
+        |   "using": [ "urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail" ],
+        |   "methodCalls": [
+        |       ["Mailbox/set",
+        |           {
+        |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+        |                "create": {
+        |                    "C43": {
+        |                      "name": "mailbox"
+        |                    }
+        |                }
+        |           },
+        |    "c1"],
+        |      ["Mailbox/set",
+        |          {
+        |               "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+        |               "update": {
+        |                 "#C43" : {
+        |                   "/name": "newName"
+        |                 }
+        |               }
+        |          },
+        |     "c2"]
+        |   ]
+        |}
+        |""".stripMargin
+
+    `with`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+      .post
+
+    assertThat(server.getProbe(classOf[MailboxProbeImpl]).listSubscriptions(BOB.asString()))
+      .contains("newName")
+      .doesNotContain("mailbox")
+  }
+
   @Test
   def updateShouldFailWhenTargetMailboxAlreadyExist(server: GuiceJamesServer): Unit = {
     val mailboxId1: MailboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.forUser(BOB, "previousName"))
@@ -2278,6 +2321,5 @@ trait MailboxSetMethodContract {
 
   // TODO invalid path handling (unknown property, invalid name)
   // TODO disable destroy / rename of system mailbox
-  // TODO test that renames keeps subscriptions
   // TODO renaming delegated mailboxes is not allowed
 }
