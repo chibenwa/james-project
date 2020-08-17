@@ -391,7 +391,7 @@ trait MailboxSetMethodContract {
 
   @Test
   def mailboxSetCreationShouldHandleRights(server: GuiceJamesServer): Unit = {
-    val request=
+    val request =
       s"""
         |{
         |   "using": [ "urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "urn:apache:james:params:jmap:mail:shares" ],
@@ -502,8 +502,8 @@ trait MailboxSetMethodContract {
   }
 
   @Test
-  def mailboxSetCreationShouldValidateRights(server: GuiceJamesServer): Unit = {
-    val request=
+  def mailboxSetCreationShouldValidateRights(): Unit = {
+    val request =
       s"""
         |{
         |   "using": [ "urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "urn:apache:james:params:jmap:mail:shares" ],
@@ -560,7 +560,7 @@ trait MailboxSetMethodContract {
 
   @Test
   def mailboxSetCreationShouldValidateRightsWhenWrongValue(): Unit = {
-    val request=
+    val request =
       s"""
         |{
         |   "using": [ "urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "urn:apache:james:params:jmap:mail:shares" ],
