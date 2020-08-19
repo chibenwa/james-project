@@ -2166,7 +2166,6 @@ trait MailboxSetMethodContract {
          |}""".stripMargin)
   }
 
-  @Disabled("TODO implementmailbox/set creation subscription support and enable upon rebase")
   @Test
   def updateShouldRenameSubscriptions(server: GuiceJamesServer): Unit = {
     val request =
