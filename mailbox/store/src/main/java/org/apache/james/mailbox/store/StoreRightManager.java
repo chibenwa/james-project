@@ -153,13 +153,13 @@ public class StoreRightManager implements RightManager {
                 assertHaveAccessTo(mailbox, session);
 
                 return mapper.updateACL(mailbox, mailboxACLCommand)
-                .flatMap(aclDiff -> eventBus.dispatch(EventFactory.aclUpdated()
-                        .randomEventId()
-                        .mailboxSession(session)
-                        .mailbox(mailbox)
-                        .aclDiff(aclDiff)
-                        .build(),
-                    new MailboxIdRegistrationKey(mailbox.getMailboxId())));
+                    .flatMap(aclDiff -> eventBus.dispatch(EventFactory.aclUpdated()
+                            .randomEventId()
+                            .mailboxSession(session)
+                            .mailbox(mailbox)
+                            .aclDiff(aclDiff)
+                            .build(),
+                        new MailboxIdRegistrationKey(mailbox.getMailboxId())));
             }).sneakyThrow()));
     }
 
