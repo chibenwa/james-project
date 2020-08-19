@@ -2727,6 +2727,8 @@ public abstract class MailboxManagerTest<T extends MailboxManager> {
 
         @BeforeEach
         void setUp() {
+            assumeTrue(mailboxManager.hasCapability(MailboxCapabilities.ACL));
+
             session = mailboxManager.createSystemSession(USER_1);
             session2 = mailboxManager.createSystemSession(USER_2);
         }
