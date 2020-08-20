@@ -134,7 +134,7 @@ case class MailboxCreationResponse(id: MailboxId,
                                    unreadThreads: UnreadThreads,
                                    myRights: MailboxRights,
                                    quotas: Option[Quotas],
-                                   isSubscribed: IsSubscribed)
+                                   isSubscribed: Option[IsSubscribed])
 
 object MailboxSetResponse {
   def empty: MailboxUpdateResponse = MailboxUpdateResponse(JsObject(Map[String, JsValue]()))
