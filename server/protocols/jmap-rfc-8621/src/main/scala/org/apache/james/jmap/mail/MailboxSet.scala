@@ -110,7 +110,7 @@ case class MailboxSetError(`type`: SetErrorType, description: Option[SetErrorDes
 
 
 object MailboxCreationResponse {
-  def allProperties: Set[String] = Set("id", "role", "totalEmails", "unreadEmails",
+  def allProperties: Set[String] = Set("id", "sortOrder", "role", "totalEmails", "unreadEmails",
     "totalThreads", "unreadThreads", "myRights", "isSubscribed", "quotas")
 
   def propertiesFiltered(allowedCapabilities : Set[CapabilityIdentifier]) : Set[String] = {
