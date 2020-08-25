@@ -50,19 +50,6 @@ import reactor.core.publisher.Mono;
 
 public class DeletedMessageVaultHook implements PreDeletionHook {
     static class DeletedMessageMailboxContext {
-        private static DeletedMessageMailboxContext combine(DeletedMessageMailboxContext first, DeletedMessageMailboxContext second) {
-            Preconditions.checkArgument(first.messageId.equals(second.getMessageId()));
-            Preconditions.checkArgument(first.owner.equals(second.getOwner()));
-
-            return new DeletedMessageMailboxContext(
-                first.messageId,
-                first.owner,
-                ImmutableList.<MailboxId>builder()
-                    .addAll(first.ownerMailboxes)
-                    .addAll(second.ownerMailboxes)
-                    .build());
-        }
-
         private final MessageId messageId;
         private final Username owner;
         private final List<MailboxId> ownerMailboxes;
