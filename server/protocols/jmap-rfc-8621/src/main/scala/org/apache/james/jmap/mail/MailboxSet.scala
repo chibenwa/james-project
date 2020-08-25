@@ -65,22 +65,18 @@ object MailboxCreationRequest {
   private val assignableProperties = Set("name", "parentId", "isSubscribed", "rights")
   private val knownProperties = assignableProperties ++ serverSetProperty
 
-  def validateProperties(jsObject: JsObject): Either[MailboxCreationParseException, JsObject] = {
-    val specifiedServerSetProperties = jsObject.keys.intersect(serverSetProperty)
-    val unknwonProperties = jsObject.keys.diff(knownProperties)
-
-    if (unknwonProperties.nonEmpty) {
-      return Left(MailboxCreationParseException(MailboxSetError.invalidArgument(
-        Some(SetErrorDescription("Some unknown properties were specified")),
-        Some(toProperties(unknwonProperties.toList)))))
+  def validateProperties(jsObject: JsObject): Either[MailboxCreationParseException, JsObject] =
+    (jsObject.keys.intersect(serverSetProperty), jsObject.keys.diff(knownProperties)) match {
+      case (_, unknownProperties) if unknownProperties.nonEmpty =>
+        Left(MailboxCreationParseException(MailboxSetError.invalidArgument(
+          Some(SetErrorDescription("Some unknown properties were specified")),
+          Some(toProperties(unknownProperties.toList)))))
+      case (specifiedServerSetProperties, _) if specifiedServerSetProperties.nonEmpty =>
+        Left(MailboxCreationParseException(MailboxSetError.invalidArgument(
+          Some(SetErrorDescription("Some server-set properties were specified")),
+          Some(toProperties(specifiedServerSetProperties.toList)))))
+      case _ => scala.Right(jsObject)
     }
-    if (specifiedServerSetProperties.nonEmpty) {
-      return Left(MailboxCreationParseException(MailboxSetError.invalidArgument(
-        Some(SetErrorDescription("Some server-set properties were specified")),
-        Some(toProperties(specifiedServerSetProperties.toList)))))
-    }
-    return scala.Right(jsObject)
-  }
 
   private def toProperties(strings: List[String]): Properties = Properties(strings
     .flatMap(string => {
