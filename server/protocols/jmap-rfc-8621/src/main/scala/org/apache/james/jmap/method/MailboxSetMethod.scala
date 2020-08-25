@@ -23,7 +23,7 @@ import eu.timepit.refined.auto._
 import javax.inject.Inject
 import org.apache.james.jmap.json.Serializer
 import org.apache.james.jmap.mail.MailboxSetRequest.{MailboxCreationId, UnparsedMailboxId}
-import org.apache.james.jmap.mail.{InvalidPatchException, InvalidPropertyException, InvalidUpdateException, IsSubscribed, IsSubscribedUpdate, MailboxCreationRequest, MailboxCreationResponse, MailboxPatchObject, MailboxRights, MailboxSetError, MailboxSetRequest, MailboxSetResponse, MailboxUpdateResponse, NameUpdate, PatchUpdateValidationException, Properties, RemoveEmailsOnDestroy, ServerSetPropertyException, SetErrorDescription, SharedWithPartialUpdate, SharedWithResetUpdate, SortOrder, TotalEmails, TotalThreads, UnreadEmails, UnreadThreads, UnsupportedPropertyUpdatedException, ValidatedMailboxPathObject}
+import org.apache.james.jmap.mail.{InvalidPatchException, InvalidPropertyException, InvalidUpdateException, IsSubscribed, MailboxCreationRequest, MailboxCreationResponse, MailboxPatchObject, MailboxRights, MailboxSetError, MailboxSetRequest, MailboxSetResponse, MailboxUpdateResponse, NameUpdate, Properties, RemoveEmailsOnDestroy, ServerSetPropertyException, SetErrorDescription, SortOrder, TotalEmails, TotalThreads, UnreadEmails, UnreadThreads, UnsupportedPropertyUpdatedException, ValidatedMailboxPathObject}
 import org.apache.james.jmap.model.CapabilityIdentifier.CapabilityIdentifier
 import org.apache.james.jmap.model.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.model.{ClientId, Id, Invocation, ServerId, State}
@@ -324,10 +324,11 @@ class MailboxSetMethod @Inject()(serializer: Serializer,
   }
 
   private def parseCreate(jsObject: JsObject): Either[MailboxCreationParseException, MailboxCreationRequest] =
-    Json.fromJson(jsObject)(serializer.mailboxCreationRequest) match {
-      case JsSuccess(creationRequest, _) => Right(creationRequest)
-      case JsError(errors) => Left(MailboxCreationParseException(mailboxSetError(errors)))
-    }
+    MailboxCreationRequest.validateProperties(jsObject)
+      .flatMap(validJsObject => Json.fromJson(validJsObject)(serializer.mailboxCreationRequest) match {
+        case JsSuccess(creationRequest, _) => Right(creationRequest)
+        case JsError(errors) => Left(MailboxCreationParseException(mailboxSetError(errors)))
+      })
 
   private def mailboxSetError(errors: collection.Seq[(JsPath, collection.Seq[JsonValidationError])]): MailboxSetError =
     errors.head match {

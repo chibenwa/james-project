@@ -26,11 +26,13 @@ import eu.timepit.refined.boolean.And
 import eu.timepit.refined.collection.NonEmpty
 import eu.timepit.refined.refineV
 import eu.timepit.refined.string.StartsWith
+import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.james.core.Username
 import org.apache.james.jmap.json.Serializer
 import org.apache.james.jmap.mail.MailboxName.MailboxName
 import org.apache.james.jmap.mail.MailboxPatchObject.MailboxPatchObjectKey
 import org.apache.james.jmap.mail.MailboxSetRequest.{MailboxCreationId, UnparsedMailboxId}
+import org.apache.james.jmap.method.MailboxCreationParseException
 import org.apache.james.jmap.model.CapabilityIdentifier.CapabilityIdentifier
 import org.apache.james.jmap.model.State.State
 import org.apache.james.jmap.model.{AccountId, CapabilityIdentifier}
@@ -57,6 +59,36 @@ object MailboxSetRequest {
 }
 
 case class RemoveEmailsOnDestroy(value: Boolean) extends AnyVal
+
+object MailboxCreationRequest {
+  private val serverSetProperty = Set("id", "sortOrder", "role", "totalEmails", "totalThreads", "unreadEmails", "unreadThreads", "myRights")
+  private val assignableProperties = Set("name", "parentId", "isSubscribed", "rights")
+  private val knownProperties = assignableProperties ++ serverSetProperty
+
+  def validateProperties(jsObject: JsObject): Either[MailboxCreationParseException, JsObject] = {
+    val specifiedServerSetProperties = jsObject.keys.intersect(serverSetProperty)
+    val unknwonProperties = jsObject.keys.diff(knownProperties)
+
+    if (unknwonProperties.nonEmpty) {
+      return Left(MailboxCreationParseException(MailboxSetError.invalidArgument(
+        Some(SetErrorDescription("Some unknown properties were specified")),
+        Some(toProperties(unknwonProperties.toList)))))
+    }
+    if (specifiedServerSetProperties.nonEmpty) {
+      return Left(MailboxCreationParseException(MailboxSetError.invalidArgument(
+        Some(SetErrorDescription("Some server-set properties were specified")),
+        Some(toProperties(specifiedServerSetProperties.toList)))))
+    }
+    return scala.Right(jsObject)
+  }
+
+  private def toProperties(strings: List[String]): Properties = Properties(strings
+    .flatMap(string => {
+      val refinedValue: Either[String, NonEmptyString] = refineV[NonEmpty](string)
+      refinedValue.fold(_ => None,  Some(_))
+    }))
+}
+
 case class MailboxCreationRequest(name: MailboxName,
                                   parentId: Option[UnparsedMailboxId],
                                   isSubscribed: Option[IsSubscribed],
