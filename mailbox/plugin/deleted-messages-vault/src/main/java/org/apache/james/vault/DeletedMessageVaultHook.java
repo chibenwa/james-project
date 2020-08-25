@@ -146,19 +146,13 @@ public class DeletedMessageVaultHook implements PreDeletionHook {
     private Flux<DeletedMessageMailboxContext> groupMetadataByOwnerAndMessageId(DeleteOperation deleteOperation) {
         return Flux.fromIterable(deleteOperation.getDeletionMetadataList())
             .groupBy(MetadataWithMailboxId::getMailboxId)
-            .flatMap(this::addOwnerToMetadata)
-            .groupBy(this::toMessageIdUserPair)
-            .flatMap(groupFlux -> groupFlux.reduce(DeletedMessageMailboxContext::combine));
+            .flatMap(this::addOwnerToMetadata);
     }
 
     private Flux<DeletedMessageMailboxContext> addOwnerToMetadata(GroupedFlux<MailboxId, MetadataWithMailboxId> groupedFlux) {
         return retrieveMailboxUser(groupedFlux.key())
             .flatMapMany(owner -> groupedFlux.map(metadata ->
                 new DeletedMessageMailboxContext(metadata.getMessageMetaData().getMessageId(), owner, ImmutableList.of(metadata.getMailboxId()))));
-    }
-
-    private Pair<MessageId, Username> toMessageIdUserPair(DeletedMessageMailboxContext deletedMessageMetadata) {
-        return Pair.of(deletedMessageMetadata.getMessageId(), deletedMessageMetadata.getOwner());
     }
 
     private Mono<Username> retrieveMailboxUser(MailboxId mailboxId) {
