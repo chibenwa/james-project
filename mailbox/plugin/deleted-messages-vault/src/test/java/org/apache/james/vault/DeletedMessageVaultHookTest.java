@@ -167,7 +167,7 @@ class DeletedMessageVaultHookTest {
     }
 
     @Test
-    void deletingManyMessagesSHouldSucceed() throws Exception {
+    void deletingManyMessagesShouldSucceed() throws Exception {
         MailboxId aliceMailbox = mailboxManager.createMailbox(MAILBOX_ALICE_ONE, aliceSession).get();
         MessageManager messageManager = mailboxManager.getMailbox(aliceMailbox, aliceSession);
 
