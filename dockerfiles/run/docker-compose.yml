@@ -10,7 +10,8 @@ services:
       - rabbitmq
       - s3
     entrypoint: bash -c "java -Dworking.directory=/root/ -Dlogback.configurationFile=/root/conf/logback.xml -jar james-server.jar"
-    image: linagora/james-rabbitmq-project:latest
+#    image: linagora/james-rabbitmq-project:latest
+    image: james_run
     container_name: james
     hostname: james.local
     ports:
@@ -43,6 +44,12 @@ services:
       - "15672:15672"
 
   s3:
-    image: scality/s3server:6018536a
-    ports:
-      - "8080:8000"
+    image: zenko/cloudserver:8.2.6
+    container_name: s3.docker.test
+    environment:
+      - SCALITY_ACCESS_KEY_ID=accessKey1
+      - SCALITY_SECRET_ACCESS_KEY=secretKey1
+      - S3BACKEND=mem
+      - LOG_LEVEL=trace
+      - REMOTE_MANAGEMENT_DISABLE=1
+
