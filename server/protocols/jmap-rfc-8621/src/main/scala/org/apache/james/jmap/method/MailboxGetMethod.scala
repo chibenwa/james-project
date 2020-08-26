@@ -61,7 +61,7 @@ class MailboxGetMethod @Inject() (serializer: Serializer,
   override def process(capabilities: Set[CapabilityIdentifier],
                        invocation: Invocation,
                        mailboxSession: MailboxSession,
-                       processingContext: ProcessingContext): Publisher[Invocation] = {
+                       processingContext: ProcessingContext): Publisher[(Invocation, ProcessingContext)] = {
     metricFactory.decoratePublisherWithTimerMetricLogP99(JMAP_RFC8621_PREFIX + methodName.value,
       asMailboxGetRequest(invocation.arguments)
         .flatMap(mailboxGetRequest => {
@@ -82,8 +82,8 @@ class MailboxGetMethod @Inject() (serializer: Serializer,
                 arguments = Arguments(serializer.serialize(mailboxGetResponse, mailboxGetRequest.properties, capabilities).as[JsObject]),
                 methodCallId = invocation.methodCallId))
           }
-        }
-        ))
+        })
+        .map((_, processingContext)))
   }
 
   private def asMailboxGetRequest(arguments: Arguments): SMono[MailboxGetRequest] = {
