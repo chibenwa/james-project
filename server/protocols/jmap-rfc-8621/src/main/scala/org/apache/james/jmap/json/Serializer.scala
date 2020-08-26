@@ -21,6 +21,8 @@ package org.apache.james.jmap.json
 
 import java.io.InputStream
 import java.net.URL
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 
 import eu.timepit.refined._
 import eu.timepit.refined.auto._
@@ -32,6 +34,7 @@ import org.apache.james.jmap.model
 import org.apache.james.jmap.model.CapabilityIdentifier.CapabilityIdentifier
 import org.apache.james.jmap.model.Invocation.{Arguments, MethodCallId, MethodName}
 import org.apache.james.jmap.model.{Account, Invocation, Session, _}
+import org.apache.james.jmap.vacation.{FromDate, IsEnabled, ToDate, UTCDate, VacationResponseId, VacationResponsePatchObject, VacationResponseSetError, VacationResponseSetRequest, VacationResponseSetResponse, VacationResponseUpdateResponse}
 import org.apache.james.mailbox.Role
 import org.apache.james.mailbox.model.MailboxACL.{Right => JavaRight}
 import org.apache.james.mailbox.model.{MailboxACL, MailboxId}
@@ -292,6 +295,28 @@ class Serializer @Inject() (mailboxIdFactory: MailboxId.Factory) {
 
   private implicit val mailboxSetRequestReads: Reads[MailboxSetRequest] = Json.reads[MailboxSetRequest]
 
+  private implicit val vacationResponseIdReads: Reads[VacationResponseId] = Json.valueReads[VacationResponseId]
+
+  private implicit val UTCDateReads: Reads[UTCDate] = {
+    case JsString(value) =>
+      try {
+        JsSuccess(UTCDate(ZonedDateTime.parse(value, DateTimeFormatter.ISO_DATE_TIME)))
+      } catch {
+        case e: Throwable => JsError(e.getMessage)
+      }
+    case _ => JsError("Expecting js string to represent UTC Date")
+  }
+
+  private implicit val UTCDateWrites: Writes[UTCDate] = date => JsString(DateTimeFormatter.ISO_DATE_TIME.format(date.value))
+  private implicit val fromDateFormat: Format[FromDate] = Json.valueFormat[FromDate]
+  private implicit val toDateFormat: Format[ToDate] = Json.valueFormat[ToDate]
+  private implicit val isEnabledFormat: Format[IsEnabled] = Json.valueFormat[IsEnabled]
+  private implicit val vacationResponsePatchObjectReads: Reads[VacationResponsePatchObject] = {
+    case jsObject: JsObject => JsSuccess(VacationResponsePatchObject(jsObject))
+    case _ => JsError("VacationResponsePatchObject needs to be represented by a JsObject")
+  }
+  private implicit val vacationResponseSetRequestReads: Reads[VacationResponseSetRequest] = Json.reads[VacationResponseSetRequest]
+
   private implicit def notFoundWrites(implicit mailboxIdWrites: Writes[UnparsedMailboxId]): Writes[NotFound] =
     notFound => JsArray(notFound.value.toList.map(mailboxIdWrites.writes))
 
@@ -306,6 +331,12 @@ class Serializer @Inject() (mailboxIdFactory: MailboxId.Factory) {
   private implicit val setErrorDescriptionWrites: Writes[SetErrorDescription] = Json.valueWrites[SetErrorDescription]
 
   private implicit val mailboxSetErrorWrites: Writes[MailboxSetError] = Json.writes[MailboxSetError]
+
+  private implicit val vacationResponseSetUpdateResponseWrites: Writes[VacationResponseUpdateResponse] = Json.valueWrites[VacationResponseUpdateResponse]
+
+  private implicit val vacationResponseSetErrorWrites: Writes[VacationResponseSetError] = Json.writes[VacationResponseSetError]
+
+  private implicit val vacationResponseSetResponseWrites: Writes[VacationResponseSetResponse] = Json.writes[VacationResponseSetResponse]
 
   private implicit def mailboxMapSetErrorForCreationWrites: Writes[Map[MailboxCreationId, MailboxSetError]] =
     (m: Map[MailboxCreationId, MailboxSetError]) => {
@@ -397,6 +428,8 @@ class Serializer @Inject() (mailboxIdFactory: MailboxId.Factory) {
 
   def serialize(errors: JsError): JsValue = Json.toJson(errors)
 
+  def serialize(vacationResponseSetResponse: VacationResponseSetResponse): JsValue = Json.toJson(vacationResponseSetResponse)
+
   def deserializeRequestObject(input: String): JsResult[RequestObject] = Json.parse(input).validate[RequestObject]
 
   def deserializeRequestObject(input: InputStream): JsResult[RequestObject] = Json.parse(input).validate[RequestObject]
@@ -412,4 +445,6 @@ class Serializer @Inject() (mailboxIdFactory: MailboxId.Factory) {
   def deserializeRights(input: JsValue): JsResult[Rights] = Json.fromJson[Rights](input)
 
   def deserializeRfc4314Rights(input: JsValue): JsResult[Rfc4314Rights] = Json.fromJson[Rfc4314Rights](input)
+
+  def deserializeVacationResponseSetRequest(input: JsValue): JsResult[VacationResponseSetRequest] = Json.fromJson[VacationResponseSetRequest](input)
 }
