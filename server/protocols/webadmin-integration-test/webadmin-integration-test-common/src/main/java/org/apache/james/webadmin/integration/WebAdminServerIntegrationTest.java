@@ -119,9 +119,7 @@ public abstract class WebAdminServerIntegrationTest {
         .then()
             .statusCode(HttpStatus.OK_200)
             .body("repository", containsInAnyOrder(
-                "var/mail/error",
-                "var/mail/relay-denied",
-                "var/mail/address-error"));
+                "var/mail/error"));
     }
 
     @Test
@@ -134,9 +132,7 @@ public abstract class WebAdminServerIntegrationTest {
         .then()
             .statusCode(HttpStatus.OK_200)
             .body("repository", containsInAnyOrder(
-                "var/mail/error",
-                "var/mail/relay-denied",
-                "var/mail/address-error"));
+                "var/mail/error"));
     }
 
     @Test

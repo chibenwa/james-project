@@ -32,15 +32,12 @@
 
     <processors>
         <processor state="root" enableJmx="false">
-            <mailet match="All" class="PostmasterAlias"/>
-            <mailet match="RelayLimit=30" class="Null"/>
             <mailet match="All" class="ToProcessor">
                 <processor>transport</processor>
             </mailet>
         </processor>
 
         <processor state="error" enableJmx="false">
-            <mailet match="All" class="Bounce"/>
             <mailet match="All" class="ToRepository">
                 <repositoryPath>cassandra://var/mail/error/</repositoryPath>
             </mailet>
@@ -60,11 +57,10 @@
             </mailet>
             <mailet match="All" class="RecipientRewriteTable" />
             <mailet match="RecipientIsLocal" class="org.apache.james.jmap.mailet.VacationMailet"/>
-            <mailet match="RecipientIsLocal" class="Sieve"/>
             <mailet match="RecipientIsLocal" class="org.apache.james.jmap.mailet.filter.JMAPFiltering"/>
             <mailet match="RecipientIsLocal" class="LocalDelivery"/>
             <mailet match="HostIsLocal" class="ToProcessor">
-                <processor>local-address-error</processor>
+                <processor>error</processor>
                 <notice>550 - Requested action not taken: no such user here</notice>
             </mailet>
 
@@ -75,35 +71,10 @@
                 <maxDnsProblemRetries>0</maxDnsProblemRetries>
                 <deliveryThreads>10</deliveryThreads>
                 <sendpartial>true</sendpartial>
-                <bounceProcessor>bounces</bounceProcessor>
+                <bounceProcessor>error</bounceProcessor>
             </mailet>
             <mailet match="All" class="ToProcessor">
-                <processor>relay-denied</processor>
-            </mailet>
-        </processor>
-
-        <processor state="local-address-error" enableJmx="false">
-            <mailet match="All" class="Bounce">
-                <attachment>none</attachment>
-            </mailet>
-            <mailet match="All" class="ToRepository">
-                <repositoryPath>cassandra://var/mail/address-error/</repositoryPath>
-            </mailet>
-        </processor>
-
-        <processor state="relay-denied" enableJmx="false">
-            <mailet match="All" class="Bounce">
-                <attachment>none</attachment>
-            </mailet>
-            <mailet match="All" class="ToRepository">
-                <repositoryPath>cassandra://var/mail/relay-denied/</repositoryPath>
-                <notice>Warning: You are sending an e-mail to a remote server. You must be authentified to perform such an operation</notice>
-            </mailet>
-        </processor>
-
-        <processor state="bounces" enableJmx="false">
-            <mailet match="All" class="DSNBounce">
-                <passThrough>false</passThrough>
+                <processor>error</processor>
             </mailet>
         </processor>
 
