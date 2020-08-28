@@ -3036,7 +3036,7 @@ trait MailboxSetMethodContract {
         |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
         |                "update": {
         |                    "${mailboxId1.serialize()}": {
-        |                      "/unknown": "newValue"
+        |                      "unknown": "newValue"
         |                    }
         |                }
         |           },
@@ -3067,8 +3067,61 @@ trait MailboxSetMethodContract {
          |      "notUpdated": {
          |        "${mailboxId1.serialize()}": {
          |          "type": "invalidArguments",
-         |          "description": "/unknown property do not exist thus cannot be updated",
-         |          "properties": ["/unknown"]
+         |          "description": "unknown property do not exist thus cannot be updated",
+         |          "properties": ["unknown"]
+         |        }
+         |      }
+         |    }, "c1"]
+         |  ]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def updateShouldFailWhenPropertyStartWithImplicitSlash(server: GuiceJamesServer): Unit = {
+    val mailboxId1: MailboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.forUser(BOB, "previousName"))
+    val request =
+      s"""
+        |{
+        |   "using": [ "urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail" ],
+        |   "methodCalls": [
+        |       ["Mailbox/set",
+        |           {
+        |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+        |                "update": {
+        |                    "${mailboxId1.serialize()}": {
+        |                      "/name": "newValue"
+        |                    }
+        |                }
+        |           },
+        |    "c1"]]
+        |}
+        |""".stripMargin
+
+    val response = `given`
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when
+      .post
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response).isEqualTo(
+      s"""{
+         |  "sessionState": "75128aab4b1b",
+         |  "methodResponses": [
+         |    ["Mailbox/set", {
+         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "newState": "000001",
+         |      "notUpdated": {
+         |        "${mailboxId1.serialize()}": {
+         |          "type": "invalidArguments",
+         |          "description": "/name property do not exist thus cannot be updated",
+         |          "properties": ["/name"]
          |        }
          |      }
          |    }, "c1"]
