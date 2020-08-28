@@ -297,7 +297,7 @@ class Serializer @Inject() (mailboxIdFactory: MailboxId.Factory) {
   private implicit def mailboxMapSetErrorWrites: Writes[Map[MailboxId, SetError]] =
     mapWrites[MailboxId, SetError](_.serialize(), mailboxSetErrorWrites)
   private implicit def mailboxMapSetErrorWritesByClientId: Writes[Map[ClientId, SetError]] =
-    mapWrites[ClientId, SetError](_.value, mailboxSetErrorWrites)
+    mapWrites[ClientId, SetError](_.value.value, mailboxSetErrorWrites)
   private implicit def mailboxMapCreationResponseWrites(implicit mailboxSetCreationResponseWrites: Writes[MailboxCreationResponse]): Writes[Map[MailboxCreationId, MailboxCreationResponse]] =
     mapWrites[MailboxCreationId, MailboxCreationResponse](_.value, mailboxSetCreationResponseWrites)
   private implicit def mailboxMapUpdateResponseWrites: Writes[Map[MailboxId, MailboxUpdateResponse]] =
