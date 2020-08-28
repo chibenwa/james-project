@@ -113,9 +113,10 @@ case class ProcessingContext(private val creationIds: Map[ClientId, ServerId], p
   }
 
   private def resolveBackReferences(serializer: Serializer, array: collection.IndexedSeq[JsValue]): JsResult[JsValue] = {
-    val seq: Seq[JsResult[JsValue]] = array.map(a => backReferenceResolver(serializer).reads(a)).toSeq
-    seq.find(res => res.isError)
-      .getOrElse(JsSuccess(JsArray(seq.map(res => res.get))))
+    val resolver: Reads[JsValue] = backReferenceResolver(serializer)
+    val results: Seq[JsResult[JsValue]] = array.map(resolver.reads).toSeq
+    results.find(_.isError)
+      .getOrElse(JsSuccess(JsArray(results.map(_.get))))
   }
 
   private def resolveBackReference(serializer: Serializer, underlying: collection.Map[String, JsValue]): JsResult[JsObject] = {
