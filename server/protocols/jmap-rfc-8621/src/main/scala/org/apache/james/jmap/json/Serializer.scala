@@ -34,7 +34,7 @@ import org.apache.james.jmap.model
 import org.apache.james.jmap.model.CapabilityIdentifier.CapabilityIdentifier
 import org.apache.james.jmap.model.Invocation.{Arguments, MethodCallId, MethodName}
 import org.apache.james.jmap.model.{Account, Invocation, Session, _}
-import org.apache.james.jmap.vacation.{FromDate, IsEnabled, ToDate, UTCDate, VacationResponseId, VacationResponsePatchObject, VacationResponseSetError, VacationResponseSetRequest, VacationResponseSetResponse, VacationResponseUpdateResponse}
+import org.apache.james.jmap.vacation.{FromDate, IsEnabled, ToDate, UTCDate, VacationResponsePatchObject, VacationResponseSetError, VacationResponseSetRequest, VacationResponseSetResponse, VacationResponseUpdateResponse}
 import org.apache.james.mailbox.Role
 import org.apache.james.mailbox.model.MailboxACL.{Right => JavaRight}
 import org.apache.james.mailbox.model.{MailboxACL, MailboxId}
@@ -294,8 +294,6 @@ class Serializer @Inject() (mailboxIdFactory: MailboxId.Factory) {
     })
 
   private implicit val mailboxSetRequestReads: Reads[MailboxSetRequest] = Json.reads[MailboxSetRequest]
-
-  private implicit val vacationResponseIdReads: Reads[VacationResponseId] = Json.valueReads[VacationResponseId]
 
   private implicit val UTCDateReads: Reads[UTCDate] = {
     case JsString(value) =>
