@@ -31,23 +31,15 @@ import org.apache.james.util.ValuePatch
 import play.api.libs.json.{JsBoolean, JsNull, JsObject, JsString, JsValue}
 
 case class VacationResponseSetRequest(accountId: AccountId,
-                               update: Map[String, VacationResponsePatchObject]) {
-  def parsePatch(): Either[IllegalArgumentException, VacationResponsePatchObject] = {
-    if(update.isEmpty) {
-      return Left(new IllegalArgumentException("Patch object must be present"))
-    }
-
-    if(update.size > 1) {
-      return Left(new IllegalArgumentException("Only one patch object is allowed"))
-    }
-
-    update.map({
-      case (id, patch) => id match {
-        case "singleton" => Right(patch)
-        case _ => Left(new IllegalArgumentException("id must be singleton"))
-      }
-    }).head
-  }
+                                      update: Option[Map[String, VacationResponsePatchObject]],
+                                      create: Option[Map[String, JsObject]],
+                                      destroy: Option[Seq[String]]) {
+  def parsePatch(): Map[String, Either[IllegalArgumentException, VacationResponsePatchObject]] =
+    update.getOrElse(Map())
+    .map({
+      case (id, patch) if id.equals("singleton") => (id, Right(patch))
+      case (id, _) => (id, Left(new IllegalArgumentException(s"id $id must be singleton")))
+    })
 }
 
 case class IsEnabled(value: Boolean) extends AnyVal
@@ -115,7 +107,9 @@ case class VacationResponsePatchObject(jsObject: JsObject) {
 case class VacationResponseSetResponse(accountId: AccountId,
                                        newState: State,
                                        updated: Option[Map[String, VacationResponseUpdateResponse]],
-                                       notUpdated: Option[Map[String, VacationResponseSetError]])
+                                       notUpdated: Option[Map[String, VacationResponseSetError]],
+                                       notCreated: Option[Map[String, VacationResponseSetError]],
+                                       notDestroyed: Option[Map[String, VacationResponseSetError]])
 
 object VacationResponseSetError {
   def invalidArgument(description: Option[SetErrorDescription]) = VacationResponseSetError(invalidArgumentValue, description)
