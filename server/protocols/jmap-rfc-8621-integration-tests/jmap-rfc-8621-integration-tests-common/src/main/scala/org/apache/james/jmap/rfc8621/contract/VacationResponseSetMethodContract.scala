@@ -653,7 +653,7 @@ trait VacationResponseSetMethodContract {
          |				"notUpdated": {
          |					"singleton": {
          |						"type": "invalidArguments",
-         |						"description": "id must be singleton"
+         |						"description": "id singleton2 must be singleton"
          |					}
          |				}
          |			},
