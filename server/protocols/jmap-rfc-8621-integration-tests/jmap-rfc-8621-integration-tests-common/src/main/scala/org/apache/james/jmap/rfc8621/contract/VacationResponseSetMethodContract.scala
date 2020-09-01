@@ -760,7 +760,7 @@ trait VacationResponseSetMethodContract {
          |				"notDestroyed": {
          |					"singleton": {
          |						"type": "invalidArguments",
-         |						"description": "'destroy' is not supported on singletong objects"
+         |						"description": "'destroy' is not supported on singleton objects"
          |					}
          |				}
          |			},
