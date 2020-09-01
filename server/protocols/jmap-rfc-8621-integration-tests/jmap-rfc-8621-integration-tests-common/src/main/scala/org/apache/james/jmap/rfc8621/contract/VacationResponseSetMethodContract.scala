@@ -707,7 +707,7 @@ trait VacationResponseSetMethodContract {
          |				"notCreated": {
          |					"singleton": {
          |						"type": "invalidArguments",
-         |						"description": "'create' is not supported on singletong objects"
+         |						"description": "'create' is not supported on singleton objects"
          |					}
          |				}
          |			},
