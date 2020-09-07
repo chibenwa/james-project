@@ -29,6 +29,7 @@ import eu.timepit.refined.numeric.NonNegative
 import eu.timepit.refined.refineV
 import org.apache.james.jmap.mail.Email.Size
 import org.apache.james.jmap.mail.PartId.PartIdValue
+import org.apache.james.jmap.model.Properties
 import org.apache.james.mailbox.model.MessageId
 import org.apache.james.mime4j.dom.{Entity, Message, Multipart}
 import org.apache.james.mime4j.message.DefaultMessageWriter
@@ -50,6 +51,9 @@ case class PartId(value: PartIdValue) {
 }
 
 object EmailBodyPart {
+  val defaultProperties: Properties = Properties("partId", "blobId", "size", "name", "type", "charset", "disposition", "cid", "language", "location")
+  val allowedProperties: Properties = defaultProperties ++ Properties("subParts", "headers")
+
   def of(messageId: MessageId, message: Message): Try[EmailBodyPart] =
     of(messageId, PartId(1), message).map(_._1)
 
