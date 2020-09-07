@@ -43,7 +43,7 @@ object Email {
   type UnparsedEmailId = String Refined UnparsedEmailIdConstraint
 
   val defaultProperties: Properties = Properties("id", "size")
-  val allowedProperties: Properties = Properties("id", "size", "bodyStructure", "textBody", "htmlBody")
+  val allowedProperties: Properties = Properties("id", "size", "bodyStructure", "textBody", "htmlBody", "attachments")
   val idProperty: Properties = Properties("id")
 
   def asUnparsed(messageId: MessageId): Try[UnparsedEmailId] =
@@ -79,7 +79,8 @@ object Email {
       size = sanitizeSize(firstMessage.getSize),
       bodyStructure = bodyStructure,
       textBody = bodyStructure.textBody,
-      htmlBody = bodyStructure.htmlBody))
+      htmlBody = bodyStructure.htmlBody,
+      attachments = bodyStructure.attachments))
   }
 }
 
@@ -87,4 +88,5 @@ case class Email(id: MessageId,
                  size: Size,
                  bodyStructure: EmailBodyPart,
                  textBody: List[EmailBodyPart],
-                 htmlBody: List[EmailBodyPart])
+                 htmlBody: List[EmailBodyPart],
+                 attachments: List[EmailBodyPart])
