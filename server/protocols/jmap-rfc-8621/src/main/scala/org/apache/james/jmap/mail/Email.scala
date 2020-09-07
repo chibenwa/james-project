@@ -43,7 +43,7 @@ object Email {
   type UnparsedEmailId = String Refined UnparsedEmailIdConstraint
 
   val defaultProperties: Properties = Properties("id", "size")
-  val allowedProperties: Properties = Properties("id", "size", "bodyStructure")
+  val allowedProperties: Properties = Properties("id", "size", "bodyStructure", "textBody", "htmlBody")
   val idProperty: Properties = Properties("id")
 
   def asUnparsed(messageId: MessageId): Try[UnparsedEmailId] =
@@ -74,11 +74,17 @@ object Email {
     val messageId: MessageId = message._1
     val bodyStructureTry = EmailBodyPart.of(messageId, mime4JMessage)
 
-
-    bodyStructureTry.map(bodyStructure => Email(messageId, sanitizeSize(firstMessage.getSize), bodyStructure))
+    bodyStructureTry.map(bodyStructure => Email(
+      id = messageId,
+      size = sanitizeSize(firstMessage.getSize),
+      bodyStructure = bodyStructure,
+      textBody = bodyStructure.textBody,
+      htmlBody = bodyStructure.htmlBody))
   }
 }
 
 case class Email(id: MessageId,
                  size: Size,
-                 bodyStructure: EmailBodyPart)
+                 bodyStructure: EmailBodyPart,
+                 textBody: List[EmailBodyPart],
+                 htmlBody: List[EmailBodyPart])
