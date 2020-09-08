@@ -21,7 +21,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <properties>
-        <s3-sdk.version>2.10.64</s3-sdk.version>
+        <s3-sdk.version>2.10.91</s3-sdk.version>
     </properties>
 
     <parent>
