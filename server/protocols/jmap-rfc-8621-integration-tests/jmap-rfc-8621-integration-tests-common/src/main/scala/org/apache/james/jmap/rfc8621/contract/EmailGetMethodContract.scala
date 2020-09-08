@@ -2220,7 +2220,7 @@ trait EmailGetMethodContract {
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .body(request)
     .when
-      .post.prettyPeek()
+      .post
     .`then`
       .statusCode(SC_OK)
       .contentType(JSON)
@@ -2267,6 +2267,81 @@ trait EmailGetMethodContract {
   }
 
   @Test
+  def bodyValueShouldBeTruncatedIfNeeded(server: GuiceJamesServer): Unit = {
+    val path = MailboxPath.inbox(BOB)
+    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(path)
+    val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
+      .appendMessage(BOB.asString, path, AppendCommand.from(
+        ClassLoader.getSystemResourceAsStream("eml/multipart_simple.eml")))
+      .getMessageId
+
+    val request =
+      s"""{
+         |  "using": [
+         |    "urn:ietf:params:jmap:core",
+         |    "urn:ietf:params:jmap:mail"],
+         |  "methodCalls": [[
+         |    "Email/get",
+         |    {
+         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "ids": ["${messageId.serialize()}"],
+         |      "properties":["bodyValues"],
+         |      "fetchAllBodyValues": true,
+         |      "maxBodyValueBytes": 32
+         |    },
+         |    "c1"]]
+         |}""".stripMargin
+    val response = `given`
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response).isEqualTo(
+      s"""{
+         |    "sessionState": "75128aab4b1b",
+         |    "methodResponses": [
+         |        [
+         |            "Email/get",
+         |            {
+         |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |                "state": "000001",
+         |                "list": [
+         |                    {
+         |                        "id": "1",
+         |                        "bodyValues": {
+         |                            "2": {
+         |                                "value": "Send\\n\\n",
+         |                                "isEncodingProblem": false,
+         |                                "isTruncated": false
+         |                            },
+         |                            "3": {
+         |                                "value": "-----BEGIN RSA PRIVATE KEY-----\\n",
+         |                                "isEncodingProblem": false,
+         |                                "isTruncated": true
+         |                            },
+         |                            "5": {
+         |                                "value": "|1|oS75OgL3vF2Gdl99CJDbEpaJ3yE=|",
+         |                                "isEncodingProblem": false,
+         |                                "isTruncated": true
+         |                            }
+         |                        }
+         |                    }
+         |                ],
+         |                "notFound": []
+         |            },
+         |            "c1"
+         |        ]]
+         |}""".stripMargin)
+  }
+
+  @Test
   def allBodyValuesForComplexMultipart(server: GuiceJamesServer): Unit = {
     val path = MailboxPath.inbox(BOB)
     server.getProbe(classOf[MailboxProbeImpl]).createMailbox(path)
@@ -2294,7 +2369,7 @@ trait EmailGetMethodContract {
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .body(request)
     .when
-      .post.prettyPeek()
+      .post
     .`then`
       .statusCode(SC_OK)
       .contentType(JSON)

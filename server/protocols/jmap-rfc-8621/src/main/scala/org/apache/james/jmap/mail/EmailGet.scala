@@ -22,7 +22,11 @@ package org.apache.james.jmap.mail
 import java.nio.charset.StandardCharsets.US_ASCII
 
 import cats.implicits._
+import eu.timepit.refined.api.Refined
+import eu.timepit.refined.auto._
+import eu.timepit.refined.numeric.NonNegative
 import org.apache.james.jmap.mail.Email.{UnparsedEmailId, sanitizeSize}
+import org.apache.james.jmap.mail.EmailGetRequest.MaxBodyValueBytes
 import org.apache.james.jmap.model.State.State
 import org.apache.james.jmap.model.{AccountId, Properties}
 import org.apache.james.mailbox.model.{MessageId, MessageResult}
@@ -36,11 +40,18 @@ import scala.util.{Failure, Success, Try}
 
 case class EmailIds(value: List[UnparsedEmailId])
 
+object EmailGetRequest {
+  type MaxBodyValueBytes = Int Refined NonNegative
+
+  val ZERO: MaxBodyValueBytes = 0
+}
+
 case class EmailGetRequest(accountId: AccountId,
                            ids: Option[EmailIds],
                            fetchAllBodyValues: Option[Boolean],
                            fetchTextBodyValues: Option[Boolean],
                            fetchHTMLBodyValues: Option[Boolean],
+                           maxBodyValueBytes: Option[MaxBodyValueBytes],
                            properties: Option[Properties],
                            bodyProperties: Option[Properties]) {
   def toEmail(message: (MessageId, Seq[MessageResult])): Try[Email] = {
@@ -83,7 +94,7 @@ case class EmailGetRequest(accountId: AccountId,
   private def extractBodyValues(parts: List[EmailBodyPart], shouldFetch: Boolean): Try[List[(PartId, EmailBodyValue)]] =
     if (shouldFetch) {
       parts
-        .map(part => part.bodyContent.map(bodyValue => bodyValue.map(b => (part.partId, b))))
+        .map(part => part.bodyContent.map(bodyValue => bodyValue.map(b => (part.partId, b.truncate(maxBodyValueBytes)))))
         .sequence
         .map(list => list.flatten)
     } else {
