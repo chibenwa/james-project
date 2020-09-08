@@ -19,15 +19,25 @@
 
 package org.apache.james.blob.objectstorage.aws;
 
+import static org.apache.james.blob.api.BlobStore.StoragePolicy.LOW_COST;
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+
 import org.apache.james.blob.api.BlobId;
 import org.apache.james.blob.api.BlobStore;
 import org.apache.james.blob.api.BlobStoreContract;
+import org.apache.james.blob.api.BucketName;
 import org.apache.james.blob.api.HashBlobId;
 import org.apache.james.server.blob.deduplication.BlobStoreFactory;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.extension.ExtendWith;
+
+import reactor.core.publisher.Mono;
 
 @ExtendWith(DockerAwsS3Extension.class)
 class S3DeDuplicationBlobStoreTest implements BlobStoreContract {
@@ -69,6 +79,19 @@ class S3DeDuplicationBlobStoreTest implements BlobStoreContract {
     @Override
     public BlobId.Factory blobIdFactory() {
         return new HashBlobId.Factory();
+    }
+
+    @RepeatedTest(100)
+    void toto() {
+        BlobStore store = testee();
+        BucketName defaultBucketName = store.getDefaultBucketName();
+
+        // 12 MB of text
+        BlobId blobId = Mono.from(store.save(defaultBucketName, TWELVE_MEGABYTES, LOW_COST)).block();
+
+        InputStream read = store.read(defaultBucketName, blobId);
+
+        assertThat(read).hasSameContentAs(new ByteArrayInputStream(TWELVE_MEGABYTES));
     }
 
 }

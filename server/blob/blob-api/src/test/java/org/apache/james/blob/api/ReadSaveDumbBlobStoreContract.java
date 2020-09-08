@@ -40,6 +40,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.stream.Stream;
 
 import org.apache.james.util.concurrency.ConcurrentTestRunner;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -158,7 +159,7 @@ public interface ReadSaveDumbBlobStoreContract {
         assertThat(bytes).isEqualTo(ELEVEN_KILOBYTES);
     }
 
-    @Test
+    @RepeatedTest(100)
     default void readBytesShouldReturnBigSavedData() {
         DumbBlobStore store = testee();
 

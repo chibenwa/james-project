@@ -38,6 +38,7 @@ import org.apache.james.blob.api.ObjectNotFoundException;
 import org.apache.james.blob.api.ObjectStoreIOException;
 import org.apache.james.util.DataChunker;
 import org.apache.james.util.ReactorUtils;
+import org.reactivestreams.Publisher;
 
 import com.github.fge.lambdas.Throwing;
 import com.github.steveash.guavate.Guavate;
@@ -73,6 +74,30 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Object;
 
 public class S3DumbBlobStore implements DumbBlobStore, Closeable {
+    public static class ByteBufferSdkPublisherAsyncResponseTransformer implements AsyncResponseTransformer<GetObjectResponse, Publisher<ByteBuffer>> {
+        private volatile CompletableFuture<Publisher<ByteBuffer>> cf;
+
+        @Override
+        public CompletableFuture<Publisher<ByteBuffer>> prepare() {
+            cf = new CompletableFuture<>();
+            return cf;
+        }
+
+        @Override
+        public void onResponse(GetObjectResponse response) {
+
+        }
+
+        @Override
+        public void onStream(SdkPublisher<ByteBuffer> publisher) {
+            cf.complete(publisher);
+        }
+
+        @Override
+        public void exceptionOccurred(Throwable error) {
+            cf.completeExceptionally(error);
+        }
+    }
 
     private static final int CHUNK_SIZE = 1024 * 1024;
     private static final int EMPTY_BUCKET_BATCH_SIZE = 1000;
@@ -109,49 +134,18 @@ public class S3DumbBlobStore implements DumbBlobStore, Closeable {
 
     @Override
     public InputStream read(BucketName bucketName, BlobId blobId) throws ObjectStoreIOException, ObjectNotFoundException {
-        return getObject(bucketName, blobId)
-            .map(response -> ReactorUtils.toInputStream(response.flux))
-            .onErrorMap(NoSuchBucketException.class, e -> new ObjectNotFoundException("Bucket not found " + bucketName, e))
-            .onErrorMap(NoSuchKeyException.class, e -> new ObjectNotFoundException("Blob not found " + bucketName, e))
-            .block();
+        Preconditions.checkNotNull(bucketName);
+        return ReactorUtils.toInputStream(getObject(bucketName, blobId));
     }
 
-    private static class FluxResponse {
-        final CompletableFuture<FluxResponse> supportingCompletableFuture = new CompletableFuture<>();
-        GetObjectResponse sdkResponse;
-        Flux<ByteBuffer> flux;
-    }
-
-    private Mono<FluxResponse> getObject(BucketName bucketName, BlobId blobId) {
+    private Flux<ByteBuffer> getObject(BucketName bucketName, BlobId blobId) {
         return Mono.fromFuture(() ->
             client.getObject(
                 builder -> builder.bucket(bucketName.asString()).key(blobId.asString()),
-                new AsyncResponseTransformer<GetObjectResponse, FluxResponse>() {
-
-                    FluxResponse response;
-
-                    @Override
-                    public CompletableFuture<FluxResponse> prepare() {
-                        response = new FluxResponse();
-                        return response.supportingCompletableFuture;
-                    }
-
-                    @Override
-                    public void onResponse(GetObjectResponse response) {
-                        this.response.sdkResponse = response;
-                    }
-
-                    @Override
-                    public void exceptionOccurred(Throwable error) {
-                        this.response.supportingCompletableFuture.completeExceptionally(error);
-                    }
-
-                    @Override
-                    public void onStream(SdkPublisher<ByteBuffer> publisher) {
-                        response.flux = Flux.from(publisher);
-                        response.supportingCompletableFuture.complete(response);
-                    }
-                }));
+                new ByteBufferSdkPublisherAsyncResponseTransformer()))
+            .flatMapMany(x -> x)
+            .onErrorMap(NoSuchBucketException.class, e -> new ObjectNotFoundException("Bucket not found " + bucketName, e))
+            .onErrorMap(NoSuchKeyException.class, e -> new ObjectNotFoundException("Blob not found " + bucketName, e));
     }
 
 
