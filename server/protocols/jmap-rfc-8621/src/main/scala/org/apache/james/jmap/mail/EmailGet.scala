@@ -38,6 +38,7 @@ case class EmailIds(value: List[UnparsedEmailId])
 
 case class EmailGetRequest(accountId: AccountId,
                            ids: Option[EmailIds],
+                           fetchAllBodyValues: Option[Boolean],
                            fetchTextBodyValues: Option[Boolean],
                            fetchHTMLBodyValues: Option[Boolean],
                            properties: Option[Properties],
@@ -72,8 +73,9 @@ case class EmailGetRequest(accountId: AccountId,
   def extractBodyValues(bodyStructure: EmailBodyPart): Try[Map[PartId, EmailBodyValue]] = for {
     textBodyValues <- extractBodyValues(bodyStructure.textBody, fetchTextBodyValues.getOrElse(false))
     htmlBodyValues <- extractBodyValues(bodyStructure.htmlBody, fetchHTMLBodyValues.getOrElse(false))
+    allBodyValues <- extractBodyValues(bodyStructure.flatten, fetchAllBodyValues.getOrElse(false))
   } yield {
-    (textBodyValues ++ htmlBodyValues)
+    (textBodyValues ++ htmlBodyValues ++ allBodyValues)
       .distinctBy(_._1)
       .toMap
   }
