@@ -2105,7 +2105,7 @@ trait EmailGetMethodContract {
          |                "state": "000001",
          |                "list": [
          |                    {
-         |                        "id": "1",
+         |                        "id": "${messageId.serialize()}",
          |                        "bodyValues": {
          |                            "3": {
          |                                "value": "/blabla/\\n*bloblo*\\n",
@@ -2239,7 +2239,7 @@ trait EmailGetMethodContract {
          |                "state": "000001",
          |                "list": [
          |                    {
-         |                        "id": "1",
+         |                        "id": "${messageId.serialize()}",
          |                        "bodyValues": {
          |                            "2": {
          |                                "value": "Send\\n\\n",
@@ -2314,7 +2314,7 @@ trait EmailGetMethodContract {
          |                "state": "000001",
          |                "list": [
          |                    {
-         |                        "id": "1",
+         |                        "id": "${messageId.serialize()}",
          |                        "bodyValues": {
          |                            "2": {
          |                                "value": "Send\\n\\n",
@@ -2387,7 +2387,7 @@ trait EmailGetMethodContract {
          |                "state": "000001",
          |                "list": [
          |                    {
-         |                        "id": "1",
+         |                        "id": "${messageId.serialize()}",
          |                        "bodyValues": {
          |                            "3": {
          |                                "value": "/blabla/\\n*bloblo*\\n",
