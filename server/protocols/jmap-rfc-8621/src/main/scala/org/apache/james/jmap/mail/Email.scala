@@ -25,6 +25,7 @@ import eu.timepit.refined.auto._
 import eu.timepit.refined.collection.NonEmpty
 import eu.timepit.refined.numeric.NonNegative
 import eu.timepit.refined.refineV
+import org.apache.james.jmap.api.model.Preview
 import org.apache.james.jmap.mail.Email.Size
 import org.apache.james.jmap.model.Properties
 import org.apache.james.mailbox.model.MessageId
@@ -39,7 +40,8 @@ object Email {
   type UnparsedEmailId = String Refined UnparsedEmailIdConstraint
 
   val defaultProperties: Properties = Properties("id", "size")
-  val allowedProperties: Properties = Properties("id", "size", "bodyStructure", "textBody", "htmlBody", "attachments", "headers", "bodyValues")
+  val allowedProperties: Properties = Properties("id", "size", "bodyStructure", "textBody", "htmlBody",
+    "attachments", "headers", "bodyValues", "preview", "hasAttachment")
   val idProperty: Properties = Properties("id")
 
   def asUnparsed(messageId: MessageId): Try[UnparsedEmailId] =
@@ -61,6 +63,8 @@ object Email {
   }
 }
 
+case class HasAttachment(value: Boolean) extends AnyVal
+
 case class Email(id: MessageId,
                  size: Size,
                  bodyStructure: EmailBodyPart,
@@ -68,4 +72,6 @@ case class Email(id: MessageId,
                  htmlBody: List[EmailBodyPart],
                  attachments: List[EmailBodyPart],
                  headers: List[EmailHeader],
-                 bodyValues: Map[PartId, EmailBodyValue])
+                 bodyValues: Map[PartId, EmailBodyValue],
+                 hasAttachment: HasAttachment,
+                 preview: Preview)

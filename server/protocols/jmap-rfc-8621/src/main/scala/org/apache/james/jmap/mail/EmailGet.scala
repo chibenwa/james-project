@@ -25,6 +25,7 @@ import cats.implicits._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.NonNegative
+import org.apache.james.jmap.api.model.Preview
 import org.apache.james.jmap.mail.Email.{UnparsedEmailId, sanitizeSize}
 import org.apache.james.jmap.mail.EmailGetRequest.MaxBodyValueBytes
 import org.apache.james.jmap.model.State.State
@@ -34,8 +35,8 @@ import org.apache.james.mime4j.codec.DecodeMonitor
 import org.apache.james.mime4j.dom.Header
 import org.apache.james.mime4j.message.DefaultMessageBuilder
 import org.apache.james.mime4j.stream.MimeConfig
-import scala.jdk.CollectionConverters._
 
+import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success, Try}
 
 case class EmailIds(value: List[UnparsedEmailId])
@@ -54,7 +55,7 @@ case class EmailGetRequest(accountId: AccountId,
                            maxBodyValueBytes: Option[MaxBodyValueBytes],
                            properties: Option[Properties],
                            bodyProperties: Option[Properties]) {
-  def toEmail(message: (MessageId, Seq[MessageResult])): Try[Email] = {
+  def toEmail(previewFactory: Preview.Factory)(message: (MessageId, Seq[MessageResult])): Try[Email] = {
     val defaultMessageBuilder = new DefaultMessageBuilder
     defaultMessageBuilder.setMimeEntityConfig(MimeConfig.PERMISSIVE)
     defaultMessageBuilder.setDecodeMonitor(DecodeMonitor.SILENT)
@@ -68,6 +69,7 @@ case class EmailGetRequest(accountId: AccountId,
       mime4JMessage <- Try(defaultMessageBuilder.parseMessage(firstMessage.getFullContent.getInputStream))
       bodyStructure <- EmailBodyPart.of(messageId, mime4JMessage)
       bodyValues <- extractBodyValues(bodyStructure)
+      preview <- Try(previewFactory.fromMessageResult(firstMessage))
     } yield {
       Email(
         id = messageId,
@@ -77,7 +79,9 @@ case class EmailGetRequest(accountId: AccountId,
         htmlBody = bodyStructure.htmlBody,
         attachments = bodyStructure.attachments,
         headers = asEmailHeaders(mime4JMessage.getHeader),
-        bodyValues = bodyValues)
+        bodyValues = bodyValues,
+        hasAttachment = HasAttachment(!firstMessage.getLoadedAttachments.isEmpty),
+        preview = preview)
     }
   }
 
