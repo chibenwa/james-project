@@ -46,11 +46,15 @@ object EmailGetRequest {
   val ZERO: MaxBodyValueBytes = 0
 }
 
+case class FetchAllBodyValues(value: Boolean) extends AnyVal
+case class FetchTextBodyValues(value: Boolean) extends AnyVal
+case class FetchHTMLBodyValues(value: Boolean) extends AnyVal
+
 case class EmailGetRequest(accountId: AccountId,
                            ids: Option[EmailIds],
-                           fetchAllBodyValues: Option[Boolean],
-                           fetchTextBodyValues: Option[Boolean],
-                           fetchHTMLBodyValues: Option[Boolean],
+                           fetchAllBodyValues: Option[FetchAllBodyValues],
+                           fetchTextBodyValues: Option[FetchTextBodyValues],
+                           fetchHTMLBodyValues: Option[FetchHTMLBodyValues],
                            maxBodyValueBytes: Option[MaxBodyValueBytes],
                            properties: Option[Properties],
                            bodyProperties: Option[Properties]) {
@@ -82,9 +86,9 @@ case class EmailGetRequest(accountId: AccountId,
   }
 
   def extractBodyValues(bodyStructure: EmailBodyPart): Try[Map[PartId, EmailBodyValue]] = for {
-    textBodyValues <- extractBodyValues(bodyStructure.textBody, fetchTextBodyValues.getOrElse(false))
-    htmlBodyValues <- extractBodyValues(bodyStructure.htmlBody, fetchHTMLBodyValues.getOrElse(false))
-    allBodyValues <- extractBodyValues(bodyStructure.flatten, fetchAllBodyValues.getOrElse(false))
+    textBodyValues <- extractBodyValues(bodyStructure.textBody, fetchTextBodyValues.exists(_.value))
+    htmlBodyValues <- extractBodyValues(bodyStructure.htmlBody, fetchHTMLBodyValues.exists(_.value))
+    allBodyValues <- extractBodyValues(bodyStructure.flatten, fetchAllBodyValues.exists(_.value))
   } yield {
     (textBodyValues ++ htmlBodyValues ++ allBodyValues)
       .distinctBy(_._1)
