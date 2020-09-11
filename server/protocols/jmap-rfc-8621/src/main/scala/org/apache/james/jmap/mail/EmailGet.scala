@@ -126,20 +126,20 @@ case class EmailGetRequest(accountId: AccountId,
 
   private def extractAddresses(mime4JMessage: Message, fieldName: String): Option[List[EmailAddress]] =
     extractLastField(mime4JMessage, fieldName)
-      .flatMap({
+      .flatMap {
         case f: AddressListField => Some(EmailAddress.from(f.getAddressList))
         case f: MailboxListField => Some(EmailAddress.from(f.getMailboxList))
         case f: MailboxField => Some(List(EmailAddress.from(f.getMailbox)))
         case _ => None
-      })
+      }
       .filter(_.nonEmpty)
 
   private def extractDate(mime4JMessage: Message, fieldName: String): Option[Date] =
     extractLastField(mime4JMessage, fieldName)
-      .flatMap({
+      .flatMap {
         case f: DateTimeField => Some(f.getDate)
         case _ => None
-      })
+      }
 
   private def extractLastField(mime4JMessage: Message, fieldName: String): Option[Field] =
     Option(mime4JMessage.getHeader.getFields(fieldName))
