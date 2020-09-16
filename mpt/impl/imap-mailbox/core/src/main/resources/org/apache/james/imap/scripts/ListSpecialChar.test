@@ -22,5 +22,6 @@ C: a3 LIST "" *
 SUB {
 S: \* LIST \(\\HasNoChildren\) \"\.\" \"INBOX\"
 S: \* LIST \(\\HasNoChildren\) \"\.\" \"projects &- abc\"
+S: \* LIST \(\\HasNoChildren\) \"\.\" \"&AOk-valuations\"
 }
 S: a3 OK LIST completed.
