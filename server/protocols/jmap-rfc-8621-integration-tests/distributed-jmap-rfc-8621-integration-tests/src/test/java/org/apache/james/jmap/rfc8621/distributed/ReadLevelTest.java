@@ -288,7 +288,7 @@ public class ReadLevelTest {
             .header(HttpHeaderNames.ACCEPT.toString(), Fixture.ACCEPT_RFC8621_VERSION_HEADER())
             .body(request)
             .post()
-            .then()
+        .then()
             .statusCode(SC_OK);
 
         StatementRecorder statementRecorder = new StatementRecorder();
