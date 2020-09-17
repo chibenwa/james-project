@@ -35,7 +35,7 @@ import scala.util.Try
 
 sealed trait JsonPathPart
 
-case class WildcardPart() extends JsonPathPart
+case object WildcardPart extends JsonPathPart
 
 case class PlainPart(name: String) extends JsonPathPart {
   def read(jsValue: JsValue): JsResult[JsValue] = jsValue match {
@@ -74,7 +74,7 @@ object JsonPath {
   def parse(string: String): JsonPath = JsonPath(string.split('/').toList
     .flatMap {
       case "" => Nil
-      case "*" => List(WildcardPart())
+      case "*" => List(WildcardPart)
       case string if ArrayElementPart.parse(string).isDefined => ArrayElementPart.parse(string)
       case part: String =>
         val arrayElementPartPosition = part.indexOf('[')
@@ -99,7 +99,7 @@ case class JsonPath(parts: List[JsonPathPart]) {
       head match {
         case part: PlainPart => part.read(jsValue).flatMap(subPart => tailAsJsonPath.evaluate(subPart))
         case part: ArrayElementPart => part.read(jsValue).flatMap(subPart => tailAsJsonPath.evaluate(subPart))
-        case _: WildcardPart => tailAsJsonPath.readWildcard(jsValue)
+        case WildcardPart => tailAsJsonPath.readWildcard(jsValue)
       }
   }
 
