@@ -79,16 +79,28 @@ object JsonPath {
       case part: String =>
         val arrayElementPartPosition = part.indexOf('[')
         if (arrayElementPartPosition < 0) {
-          List(PlainPart(part))
+          asPlainPart(part)
         } else if (arrayElementPartPosition == 0) {
-          List(ArrayElementPart.parse(string)
-            .getOrElse(PlainPart(string)))
+          asArrayElementPart(string)
         } else {
-          ArrayElementPart.parse(string.substring(arrayElementPartPosition))
-            .map(List(PlainPart(part.substring(0, arrayElementPartPosition)), _))
-            .getOrElse(List(PlainPart(part)))
+          asArrayElementInAnObject(string, part, arrayElementPartPosition)
         }
     })
+
+  private def asPlainPart(part: String): List[JsonPathPart] = {
+    List(PlainPart(part))
+  }
+
+  private def asArrayElementInAnObject(string: String, part: String, arrayElementPartPosition: Int): List[JsonPathPart] = {
+    ArrayElementPart.parse(string.substring(arrayElementPartPosition))
+      .map(List(PlainPart(part.substring(0, arrayElementPartPosition)), _))
+      .getOrElse(List(PlainPart(part)))
+  }
+
+  private def asArrayElementPart(string: String): List[JsonPathPart] = {
+    List(ArrayElementPart.parse(string)
+      .getOrElse(PlainPart(string)))
+  }
 }
 
 case class JsonPath(parts: List[JsonPathPart]) {
