@@ -24,7 +24,7 @@ import org.apache.james.jmap.model.Invocation.{MethodCallId, MethodName}
 import org.apache.james.jmap.routes.{ArrayElementPart, BackReference, JsonPath, PlainPart}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import play.api.libs.json.{JsError, JsSuccess, Json}
+import play.api.libs.json.{JsError, JsString, JsSuccess, Json}
 
 
 class BackReferenceTest extends AnyWordSpec with Matchers {
@@ -87,14 +87,14 @@ class BackReferenceTest extends AnyWordSpec with Matchers {
     "succeed when array element is present and root" in {
       val jsonPath = JsonPath.parse("[1]")
       val json = Json.parse("""["1", "2", "3"]""")
-      val expected = Json.parse(""""2"""")
+      val expected = JsString("2")
 
       jsonPath.evaluate(json) should equal(JsSuccess(expected))
     }
     "succeed when first array element is present" in {
       val jsonPath = JsonPath.parse("path[0]")
       val json = Json.parse("""{"path" : ["1", "2", "3"]}""")
-      val expected = Json.parse(""""1"""")
+      val expected = JsString("1")
 
       jsonPath.evaluate(json) should equal(JsSuccess(expected))
     }
