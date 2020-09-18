@@ -19,6 +19,7 @@
 
 package org.apache.james.jmap.rfc8621.contract
 
+import java.io.ByteArrayOutputStream
 import java.nio.charset.StandardCharsets
 import java.time.format.DateTimeFormatter
 import java.time.{Instant, ZonedDateTime}
@@ -32,14 +33,18 @@ import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
 import javax.mail.Flags
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
+import net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER
+import net.javacrumbs.jsonunit.core.internal.Options
 import org.apache.http.HttpStatus.SC_OK
 import org.apache.james.GuiceJamesServer
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.model.UTCDate
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ANDRE, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.mailbox.MessageManager.AppendCommand
+import org.apache.james.mailbox.model.MailboxPath.inbox
 import org.apache.james.mailbox.model.{MailboxPath, MessageId}
 import org.apache.james.mime4j.dom.Message
+import org.apache.james.mime4j.message.DefaultMessageWriter
 import org.apache.james.modules.MailboxProbeImpl
 import org.apache.james.utils.DataProbeImpl
 import org.awaitility.Awaitility
@@ -92,12 +97,12 @@ trait EmailQueryMethodContract {
       .setSubject("test")
       .setBody("testmail", StandardCharsets.UTF_8)
       .build
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
+    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(inbox(BOB))
     val otherMailboxPath = MailboxPath.forUser(BOB, "other")
     server.getProbe(classOf[MailboxProbeImpl]).createMailbox(otherMailboxPath)
     val requestDate = Date.from(ZonedDateTime.now().minusDays(1).toInstant)
     val messageId1: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString, MailboxPath.inbox(BOB),
+      .appendMessage(BOB.asString, inbox(BOB),
         AppendCommand.builder().withInternalDate(requestDate).build(message))
       .getMessageId
 
@@ -157,11 +162,11 @@ trait EmailQueryMethodContract {
       .setSubject("test")
       .setBody("testmail", StandardCharsets.UTF_8)
       .build
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
+    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(inbox(BOB))
     val otherMailboxPath = MailboxPath.forUser(ANDRE, "other")
     server.getProbe(classOf[MailboxProbeImpl]).createMailbox(otherMailboxPath)
     val messageId1: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString, MailboxPath.inbox(BOB), AppendCommand.from(message))
+      .appendMessage(BOB.asString, inbox(BOB), AppendCommand.from(message))
       .getMessageId
     server.getProbe(classOf[MailboxProbeImpl])
       .appendMessage(ANDRE.asString, otherMailboxPath, AppendCommand.from(message))
@@ -219,22 +224,22 @@ trait EmailQueryMethodContract {
       .setSubject("test")
       .setBody("testmail", StandardCharsets.UTF_8)
       .build
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
+    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(inbox(BOB))
     val otherMailboxPath = MailboxPath.forUser(BOB, "other")
     server.getProbe(classOf[MailboxProbeImpl]).createMailbox(otherMailboxPath)
     val requestDateMessage1 = Date.from(ZonedDateTime.now().minusDays(1).toInstant)
     val messageId1: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString, MailboxPath.inbox(BOB),
+      .appendMessage(BOB.asString, inbox(BOB),
         AppendCommand.builder().withInternalDate(requestDateMessage1).build(message))
       .getMessageId
     val requestDateMessage2 = Date.from(ZonedDateTime.now().minusDays(1).plusHours(1).toInstant)
     val messageId2 = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString, MailboxPath.inbox(BOB),
+      .appendMessage(BOB.asString, inbox(BOB),
         AppendCommand.builder().withInternalDate(requestDateMessage2).build(message))
       .getMessageId
     val requestDateMessage3 = Date.from(ZonedDateTime.now().minusDays(1).plusHours(2).toInstant)
     val messageId3 = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString, MailboxPath.inbox(BOB),
+      .appendMessage(BOB.asString, inbox(BOB),
         AppendCommand.builder().withInternalDate(requestDateMessage3).build(message))
       .getMessageId
 
@@ -277,11 +282,11 @@ trait EmailQueryMethodContract {
       .setSubject("test")
       .setBody("testmail", StandardCharsets.UTF_8)
       .build
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
+    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(inbox(BOB))
     val otherMailboxPath = MailboxPath.forUser(BOB, "other")
     server.getProbe(classOf[MailboxProbeImpl]).createMailbox(otherMailboxPath)
     server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString, MailboxPath.inbox(BOB), AppendCommand.from(message))
+      .appendMessage(BOB.asString, inbox(BOB), AppendCommand.from(message))
       .getMessageId
     server.getProbe(classOf[MailboxProbeImpl])
       .appendMessage(BOB.asString, otherMailboxPath, AppendCommand.from(message))
@@ -560,11 +565,11 @@ trait EmailQueryMethodContract {
       .setSubject("test")
       .setBody("testmail", StandardCharsets.UTF_8)
       .build
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
+    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(inbox(BOB))
     val otherMailboxPath = MailboxPath.forUser(BOB, "other")
     val otherMailboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(otherMailboxPath)
     server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString, MailboxPath.inbox(BOB), AppendCommand.from(message))
+      .appendMessage(BOB.asString, inbox(BOB), AppendCommand.from(message))
       .getMessageId
     val messageId2: MessageId = server.getProbe(classOf[MailboxProbeImpl])
       .appendMessage(BOB.asString, otherMailboxPath, AppendCommand.from(message))
@@ -661,11 +666,11 @@ trait EmailQueryMethodContract {
       .setSubject("test")
       .setBody("testmail", StandardCharsets.UTF_8)
       .build
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
+    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(inbox(BOB))
     val otherMailboxPath = MailboxPath.forUser(BOB, "other")
     val otherMailboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(otherMailboxPath)
     server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString, MailboxPath.inbox(BOB), AppendCommand.from(message))
+      .appendMessage(BOB.asString, inbox(BOB), AppendCommand.from(message))
       .getMessageId
     server.getProbe(classOf[MailboxProbeImpl])
       .appendMessage(BOB.asString, otherMailboxPath, AppendCommand.from(message))
@@ -720,17 +725,102 @@ trait EmailQueryMethodContract {
   }
 
   @Test
+  def queryShouldSupportMinSizeAndMaxSize(server: GuiceJamesServer): Unit = {
+    val message1: Message = simpleMessage("short")
+    val size1: Int = computeSize(message1)
+    // One char more than message1
+    val message2: Message = simpleMessage("short!")
+    val size2: Int = computeSize(message2)
+    // One char more than message2
+    val message3: Message = simpleMessage("short!!")
+    val size3: Int = computeSize(message3)
+    val message4: Message = simpleMessage("looooooooooooooong")
+    val size4: Int = computeSize(message4)
+    // One char more than message3
+    val message5: Message = simpleMessage("looooooooooooooong!")
+    val size5: Int = computeSize(message5)
+    // One char more than message4
+    val message6: Message = simpleMessage("looooooooooooooong!!")
+    val size6: Int = computeSize(message6)
+
+    val mailboxProbe = server.getProbe(classOf[MailboxProbeImpl])
+    mailboxProbe.createMailbox(inbox(BOB))
+    val id1 = mailboxProbe.appendMessage(BOB.asString, inbox(BOB), AppendCommand.from(message1)).getMessageId
+    val id2 = mailboxProbe.appendMessage(BOB.asString, inbox(BOB), AppendCommand.from(message2)).getMessageId
+    val id3 = mailboxProbe.appendMessage(BOB.asString, inbox(BOB), AppendCommand.from(message3)).getMessageId
+    val id4 = mailboxProbe.appendMessage(BOB.asString, inbox(BOB), AppendCommand.from(message4)).getMessageId
+    val id5 = mailboxProbe.appendMessage(BOB.asString, inbox(BOB), AppendCommand.from(message5)).getMessageId
+    val id6 = mailboxProbe.appendMessage(BOB.asString, inbox(BOB), AppendCommand.from(message6)).getMessageId
+
+    val request =
+      s"""{
+         |  "using": [
+         |    "urn:ietf:params:jmap:core",
+         |    "urn:ietf:params:jmap:mail"],
+         |  "methodCalls": [[
+         |    "Email/query",
+         |    {
+         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "filter": {
+         |        "minSize": $size2,
+         |        "maxSize": $size5
+         |      }
+         |    },
+         |    "c1"]]
+         |}""".stripMargin
+
+    awaitAtMostTenSeconds.untilAsserted { () =>
+      val response = `given`
+        .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+        .body(request)
+      .when
+        .post
+      .`then`
+        .statusCode(SC_OK)
+        .contentType(JSON)
+        .extract
+        .body
+        .asString
+
+      assertThatJson(response)
+        .withOptions(new Options(IGNORING_ARRAY_ORDER))
+        .inPath("$.methodResponses[0][1].ids")
+        .isEqualTo(
+          s"""[
+             |  "${id2.serialize()}",
+             |  "${id3.serialize()}",
+             |  "${id4.serialize()}"
+             |]""".stripMargin)
+    }
+  }
+
+  private def simpleMessage(message: String) = {
+    Message.Builder
+      .of
+      .setSubject("test")
+      .setBody(message, StandardCharsets.UTF_8)
+      .build
+  }
+
+  private def computeSize(message: Message): Int = {
+    val writer = new DefaultMessageWriter()
+    val stream = new ByteArrayOutputStream()
+    writer.writeMessage(message, stream)
+    stream.toByteArray.length
+  }
+
+  @Test
   def shouldListMailsNotInASpecificUserMailboxes(server: GuiceJamesServer): Unit = {
     val message: Message = Message.Builder
       .of
       .setSubject("test")
       .setBody("testmail", StandardCharsets.UTF_8)
       .build
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
+    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(inbox(BOB))
     val otherMailboxPath = MailboxPath.forUser(BOB, "other")
     val otherMailboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(otherMailboxPath)
     val messageId1: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString, MailboxPath.inbox(BOB), AppendCommand.from(message))
+      .appendMessage(BOB.asString, inbox(BOB), AppendCommand.from(message))
       .getMessageId
     server.getProbe(classOf[MailboxProbeImpl])
       .appendMessage(BOB.asString, otherMailboxPath, AppendCommand.from(message))
@@ -778,12 +868,12 @@ trait EmailQueryMethodContract {
       .setSubject("test")
       .setBody("testmail", StandardCharsets.UTF_8)
       .build
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
+    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(inbox(BOB))
     val otherMailboxPath = MailboxPath.forUser(BOB, "other")
     server.getProbe(classOf[MailboxProbeImpl]).createMailbox(otherMailboxPath)
     val requestDateMessage1 = Date.from(ZonedDateTime.now().minusDays(1).toInstant)
     val messageId1: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString, MailboxPath.inbox(BOB),
+      .appendMessage(BOB.asString, inbox(BOB),
         AppendCommand.builder().withInternalDate(requestDateMessage1).build(message))
       .getMessageId
     val messageId2: MessageId = server.getProbe(classOf[MailboxProbeImpl])
@@ -938,10 +1028,10 @@ trait EmailQueryMethodContract {
       .setSubject("test")
       .setBody("testmail", StandardCharsets.UTF_8)
       .build
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
+    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(inbox(BOB))
     val requestDate = ZonedDateTime.now().minusDays(1)
     val messageId1 = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString, MailboxPath.inbox(BOB), AppendCommand.builder().withInternalDate(Date.from(requestDate.toInstant)).build(message))
+      .appendMessage(BOB.asString, inbox(BOB), AppendCommand.builder().withInternalDate(Date.from(requestDate.toInstant)).build(message))
       .getMessageId
 
 
@@ -992,10 +1082,10 @@ trait EmailQueryMethodContract {
       .setSubject("test")
       .setBody("testmail", StandardCharsets.UTF_8)
       .build
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
+    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(inbox(BOB))
     val requestDate = ZonedDateTime.now().minusDays(1)
     val messageId1 = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString, MailboxPath.inbox(BOB), AppendCommand.builder().withInternalDate(Date.from(requestDate.toInstant)).build(message))
+      .appendMessage(BOB.asString, inbox(BOB), AppendCommand.builder().withInternalDate(Date.from(requestDate.toInstant)).build(message))
       .getMessageId
 
     val otherMailboxPath = MailboxPath.forUser(BOB, "other")
@@ -1046,10 +1136,10 @@ trait EmailQueryMethodContract {
       .setSubject("test")
       .setBody("testmail", StandardCharsets.UTF_8)
       .build
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
+    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(inbox(BOB))
     val receivedDateMessage1 = ZonedDateTime.now().minusDays(1)
     server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString, MailboxPath.inbox(BOB), AppendCommand.builder().withInternalDate(Date.from(receivedDateMessage1.toInstant)).build(message))
+      .appendMessage(BOB.asString, inbox(BOB), AppendCommand.builder().withInternalDate(Date.from(receivedDateMessage1.toInstant)).build(message))
       .getMessageId
 
     val otherMailboxPath = MailboxPath.forUser(BOB, "other")
@@ -1101,10 +1191,10 @@ trait EmailQueryMethodContract {
       .setSubject("test")
       .setBody("testmail", StandardCharsets.UTF_8)
       .build
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
+    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(inbox(BOB))
     val receivedDateMessage1 = ZonedDateTime.now().minusDays(1)
     server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString, MailboxPath.inbox(BOB), AppendCommand.builder().withInternalDate(Date.from(receivedDateMessage1.toInstant)).build(message))
+      .appendMessage(BOB.asString, inbox(BOB), AppendCommand.builder().withInternalDate(Date.from(receivedDateMessage1.toInstant)).build(message))
       .getMessageId
 
     val otherMailboxPath = MailboxPath.forUser(BOB, "other")
