@@ -32,7 +32,8 @@ case class FilterCondition(inMailbox: Option[MailboxId],
                            before: Option[UTCDate],
                            after: Option[UTCDate],
                            hasKeyword: Option[Keyword],
-                           notKeyword: Option[Keyword])
+                           notKeyword: Option[Keyword],
+                           hasAttachment: Option[HasAttachment])
 
 case class EmailQueryRequest(accountId: AccountId, filter: Option[FilterCondition], comparator: Option[Set[Comparator]])
 

@@ -20,13 +20,12 @@ package org.apache.james.jmap.utils.search
 
 import java.util.Date
 
-import javax.mail.Flags
 import org.apache.james.jmap.mail.EmailQueryRequest
-import org.apache.james.mailbox.model.SearchQuery.{Conjunction, ConjunctionCriterion, Criterion, DateComparator, DateOperator, DateResolution, FlagCriterion, InternalDateCriterion}
+import org.apache.james.mailbox.model.SearchQuery.DateResolution
+import org.apache.james.mailbox.model.SearchQuery.DateResolution.Second
 import org.apache.james.mailbox.model.{MultimailboxesSearchQuery, SearchQuery}
 
 import scala.jdk.CollectionConverters._
-
 
 sealed trait MailboxFilter {
   def toQuery(builder: MultimailboxesSearchQuery.Builder, request: EmailQueryRequest): MultimailboxesSearchQuery.Builder
@@ -54,36 +53,45 @@ object MailboxFilter {
       .build()
   }
 
-
   sealed trait QueryFilter {
     def toQuery(builder: SearchQuery.Builder, request: EmailQueryRequest): SearchQuery.Builder
   }
 
   object QueryFilter {
     def buildQuery(request: EmailQueryRequest): SearchQuery.Builder = {
-      List(ReceivedBefore, ReceivedAfter, HasKeyWord, NotKeyWord).foldLeft(new SearchQuery.Builder())((builder, filter) => filter.toQuery(builder, request))
+      List(ReceivedBefore, ReceivedAfter, HasAttachment, HasKeyWord, NotKeyWord)
+        .foldLeft(SearchQuery.builder())((builder, filter) => filter.toQuery(builder, request))
     }
   }
 
   case object ReceivedBefore extends QueryFilter {
     override def toQuery(builder: SearchQuery.Builder, request: EmailQueryRequest): SearchQuery.Builder =  request.filter.flatMap(_.before) match {
       case Some(before) =>
-        val strictlyBefore = new InternalDateCriterion(new DateOperator(DateComparator.BEFORE, Date.from(before.asUTC.toInstant), DateResolution.Second))
-        val sameDate = new InternalDateCriterion(new DateOperator(DateComparator.ON, Date.from(before.asUTC.toInstant), DateResolution.Second))
+        val strictlyBefore = SearchQuery.internalDateBefore(Date.from(before.asUTC.toInstant), Second)
+        val sameDate = SearchQuery.internalDateOn(Date.from(before.asUTC.toInstant), Second)
         builder
-          .andCriteria(new ConjunctionCriterion(Conjunction.OR, List[Criterion](strictlyBefore, sameDate).asJava))
+          .andCriteria(SearchQuery.or(strictlyBefore, sameDate))
       case None => builder
     }
   }
+
   case object ReceivedAfter extends QueryFilter {
-    override def toQuery(builder: SearchQuery.Builder, request: EmailQueryRequest): SearchQuery.Builder =  request.filter.flatMap(_.after) match {
-      case Some(after) => {
-        val strictlyAfter = new InternalDateCriterion(new DateOperator(DateComparator.AFTER, Date.from(after.asUTC.toInstant), DateResolution.Second))
+    override def toQuery(builder: SearchQuery.Builder, request: EmailQueryRequest): SearchQuery.Builder = request.filter.flatMap(_.after) match {
+      case Some(after) =>
+        val strictlyAfter = SearchQuery.internalDateAfter(Date.from(after.asUTC.toInstant), DateResolution.Second)
         builder
           .andCriteria(strictlyAfter)
-      }
       case None => builder
     }
+  }
+
+  case object HasAttachment extends QueryFilter {
+    override def toQuery(builder: SearchQuery.Builder, request: EmailQueryRequest): SearchQuery.Builder =
+      request.filter.flatMap(_.hasAttachment) match {
+        case Some(hasAttachment) => builder
+          .andCriteria(SearchQuery.hasAttachment(hasAttachment.value))
+        case None => builder
+      }
   }
 
   case object HasKeyWord extends QueryFilter {
