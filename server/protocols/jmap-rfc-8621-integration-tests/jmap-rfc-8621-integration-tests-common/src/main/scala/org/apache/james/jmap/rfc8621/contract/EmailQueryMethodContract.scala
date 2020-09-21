@@ -725,7 +725,7 @@ trait EmailQueryMethodContract {
   }
 
   @Test
-  def queryShouldSupportMinSizeAndMaxSize(server: GuiceJamesServer): Unit = {
+  def minSizeShouldBeInclusive(server: GuiceJamesServer): Unit = {
     val message1: Message = simpleMessage("short")
     val size1: Int = computeSize(message1)
     // One char more than message1
@@ -734,23 +734,12 @@ trait EmailQueryMethodContract {
     // One char more than message2
     val message3: Message = simpleMessage("short!!")
     val size3: Int = computeSize(message3)
-    val message4: Message = simpleMessage("looooooooooooooong")
-    val size4: Int = computeSize(message4)
-    // One char more than message3
-    val message5: Message = simpleMessage("looooooooooooooong!")
-    val size5: Int = computeSize(message5)
-    // One char more than message4
-    val message6: Message = simpleMessage("looooooooooooooong!!")
-    val size6: Int = computeSize(message6)
 
     val mailboxProbe = server.getProbe(classOf[MailboxProbeImpl])
     mailboxProbe.createMailbox(inbox(BOB))
     val id1 = mailboxProbe.appendMessage(BOB.asString, inbox(BOB), AppendCommand.from(message1)).getMessageId
     val id2 = mailboxProbe.appendMessage(BOB.asString, inbox(BOB), AppendCommand.from(message2)).getMessageId
     val id3 = mailboxProbe.appendMessage(BOB.asString, inbox(BOB), AppendCommand.from(message3)).getMessageId
-    val id4 = mailboxProbe.appendMessage(BOB.asString, inbox(BOB), AppendCommand.from(message4)).getMessageId
-    val id5 = mailboxProbe.appendMessage(BOB.asString, inbox(BOB), AppendCommand.from(message5)).getMessageId
-    val id6 = mailboxProbe.appendMessage(BOB.asString, inbox(BOB), AppendCommand.from(message6)).getMessageId
 
     val request =
       s"""{
@@ -762,8 +751,7 @@ trait EmailQueryMethodContract {
          |    {
          |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
          |      "filter": {
-         |        "minSize": $size2,
-         |        "maxSize": $size5
+         |        "minSize": $size2
          |      }
          |    },
          |    "c1"]]
@@ -788,9 +776,162 @@ trait EmailQueryMethodContract {
         .isEqualTo(
           s"""[
              |  "${id2.serialize()}",
-             |  "${id3.serialize()}",
-             |  "${id4.serialize()}"
+             |  "${id3.serialize()}"
              |]""".stripMargin)
+    }
+  }
+
+  @Test
+  def maxSizeShouldBeExclusive(server: GuiceJamesServer): Unit = {
+    val message1: Message = simpleMessage("looooooooooooooong")
+    val size1: Int = computeSize(message1)
+    // One char more than message3
+    val message2: Message = simpleMessage("looooooooooooooong!")
+    val size2: Int = computeSize(message2)
+    // One char more than message4
+    val message3: Message = simpleMessage("looooooooooooooong!!")
+    val size3: Int = computeSize(message3)
+
+    val mailboxProbe = server.getProbe(classOf[MailboxProbeImpl])
+    mailboxProbe.createMailbox(inbox(BOB))
+    val id1 = mailboxProbe.appendMessage(BOB.asString, inbox(BOB), AppendCommand.from(message1)).getMessageId
+    val id2 = mailboxProbe.appendMessage(BOB.asString, inbox(BOB), AppendCommand.from(message2)).getMessageId
+    val id3 = mailboxProbe.appendMessage(BOB.asString, inbox(BOB), AppendCommand.from(message3)).getMessageId
+
+    val request =
+      s"""{
+         |  "using": [
+         |    "urn:ietf:params:jmap:core",
+         |    "urn:ietf:params:jmap:mail"],
+         |  "methodCalls": [[
+         |    "Email/query",
+         |    {
+         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "filter": {
+         |        "maxSize": $size2
+         |      }
+         |    },
+         |    "c1"]]
+         |}""".stripMargin
+
+    awaitAtMostTenSeconds.untilAsserted { () =>
+      val response = `given`
+        .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+        .body(request)
+      .when
+        .post
+      .`then`
+        .statusCode(SC_OK)
+        .contentType(JSON)
+        .extract
+        .body
+        .asString
+
+      assertThatJson(response)
+        .withOptions(new Options(IGNORING_ARRAY_ORDER))
+        .inPath("$.methodResponses[0][1].ids")
+        .isEqualTo(
+          s"""[
+             |  "${id1.serialize()}"
+             |]""".stripMargin)
+    }
+  }
+
+  @Test
+  def maxSizeShouldRejectNegative(): Unit = {
+    val request =
+      s"""{
+         |  "using": [
+         |    "urn:ietf:params:jmap:core",
+         |    "urn:ietf:params:jmap:mail"],
+         |  "methodCalls": [[
+         |    "Email/query",
+         |    {
+         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "filter": {
+         |        "maxSize": -1
+         |      }
+         |    },
+         |    "c1"]]
+         |}""".stripMargin
+
+    awaitAtMostTenSeconds.untilAsserted { () =>
+      val response = `given`
+        .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+        .body(request)
+      .when
+        .post.prettyPeek()
+      .`then`
+        .statusCode(SC_OK)
+        .contentType(JSON)
+        .extract
+        .body
+        .asString
+
+      assertThatJson(response)
+        .isEqualTo(
+          s"""{
+             |    "sessionState": "75128aab4b1b",
+             |    "methodResponses": [
+             |        [
+             |            "error",
+             |            {
+             |                "type": "invalidArguments",
+             |                "description": "{\\"errors\\":[{\\"path\\":\\"obj.filter.maxSize\\",\\"messages\\":[\\"Predicate (-1 < 0) did not fail.\\"]}]}"
+             |            },
+             |            "c1"
+             |        ]
+             |    ]
+             |}""".stripMargin)
+    }
+  }
+
+  @Test
+  def minSizeShouldRejectNegative(): Unit = {
+    val request =
+      s"""{
+         |  "using": [
+         |    "urn:ietf:params:jmap:core",
+         |    "urn:ietf:params:jmap:mail"],
+         |  "methodCalls": [[
+         |    "Email/query",
+         |    {
+         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "filter": {
+         |        "minSize": -1
+         |      }
+         |    },
+         |    "c1"]]
+         |}""".stripMargin
+
+    awaitAtMostTenSeconds.untilAsserted { () =>
+      val response = `given`
+        .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+        .body(request)
+      .when
+        .post.prettyPeek()
+      .`then`
+        .statusCode(SC_OK)
+        .contentType(JSON)
+        .extract
+        .body
+        .asString
+
+      assertThatJson(response)
+        .isEqualTo(
+          s"""{
+             |    "sessionState": "75128aab4b1b",
+             |    "methodResponses": [
+             |        [
+             |            "error",
+             |            {
+             |                "type": "invalidArguments",
+             |                "description": "{\\"errors\\":[{\\"path\\":\\"obj.filter.minSize\\",\\"messages\\":[\\"Predicate (-1 < 0) did not fail.\\"]}]}"
+             |            },
+             |            "c1"
+             |        ]
+             |    ]
+             |}""".stripMargin)
     }
   }
 
