@@ -45,6 +45,7 @@ import scala.jdk.CollectionConverters._
 
 case class MailboxHasMailException(mailboxId: MailboxId) extends Exception
 case class SystemMailboxChangeException(mailboxId: MailboxId) extends Exception
+case class LoopInMailboxGraphException(mailboxId: MailboxId) extends Exception
 case class MailboxHasChildException(mailboxId: MailboxId) extends Exception
 case class MailboxCreationParseException(setError: SetError) extends Exception
 
@@ -123,6 +124,7 @@ case class UpdateFailure(mailboxId: UnparsedMailboxId, exception: Throwable, pat
     case e: InvalidPropertyException => SetError.invalidPatch(SetErrorDescription(s"${e.cause}"))
     case e: InvalidPatchException => SetError.invalidPatch(SetErrorDescription(s"${e.cause}"))
     case e: SystemMailboxChangeException => SetError.invalidArguments(SetErrorDescription("Invalid change to a system mailbox"), filter(Properties("name", "parentId")))
+    case e: LoopInMailboxGraphException => SetError.invalidArguments(SetErrorDescription("A mailbox parentId property can not be set to itself or one of its child"), Some(Properties("parentId")))
     case e: InsufficientRightsException => SetError.invalidArguments(SetErrorDescription("Invalid change to a delegated mailbox"))
     case e: MailboxHasChildException => SetError.invalidArguments(SetErrorDescription(s"${e.mailboxId.serialize()} parentId property cannot be updated as this mailbox has child mailboxes"), Some(Properties("parentId")))
     case _ => SetError.serverFail(SetErrorDescription(exception.getMessage))
@@ -219,10 +221,15 @@ class MailboxSetMethod @Inject()(serializer: MailboxSerializer,
           if (isASystemMailbox(mailbox)) {
             throw SystemMailboxChangeException(mailboxId)
           }
+          if (validatedPatch.parentIdUpdate.flatMap(_.newId).contains(mailboxId)) {
+            throw LoopInMailboxGraphException(mailboxId)
+          }
           val oldPath = mailbox.getMailboxPath
           val newPath = applyParentIdUpdate(mailboxId, validatedPatch.parentIdUpdate, mailboxSession)
             .andThen(applyNameUpdate(validatedPatch.nameUpdate, mailboxSession))
             .apply(oldPath)
+          println(oldPath)
+          println(newPath)
           if (!oldPath.equals(newPath)) {
             mailboxManager.renameMailbox(mailboxId,
               newPath,
