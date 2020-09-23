@@ -21,6 +21,7 @@ package org.apache.james.mailbox.model;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Objects;
 import java.util.Optional;
 
 import org.apache.james.mailbox.MailboxSession;
@@ -71,6 +72,16 @@ public class MultimailboxesSearchQuery {
         @Override
         public MailboxQuery associatedMailboxSearchQuery() {
             return MailboxQuery.builder().matchesAllMailboxNames().build();
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hashCode(AccessibleNamespace.class);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof AccessibleNamespace;
         }
     }
     
