@@ -242,7 +242,7 @@ public class ReactorRabbitMQChannelPool implements ChannelPool, Startable {
     }
 
     public Mono<Void> createWorkQueue(QueueSpecification queueSpecification, BindingSpecification bindingSpecification) {
-        Preconditions.checkArgument(queueSpecification.getName() != null, "WorkQueue pattern do not make sense for unamed queues");
+        Preconditions.checkArgument(queueSpecification.getName() != null, "WorkQueue pattern do not make sense for unnamed queues");
         Preconditions.checkArgument(queueSpecification.getName().equals(bindingSpecification.getQueue()),
             "Binding needs to be targetting the created queue %s instead of %s",
             queueSpecification.getName(), bindingSpecification.getQueue());
