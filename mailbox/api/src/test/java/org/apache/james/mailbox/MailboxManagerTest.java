@@ -1283,8 +1283,10 @@ public abstract class MailboxManagerTest<T extends MailboxManager> {
                 .inNamespace(new AccessibleNamespace())
                 .build();
 
-            assertThat(Flux.from(mailboxManager.search(multiMailboxesQuery, session, DEFAULT_MAXIMUM_LIMIT))
-                .collectList().block())
+            assertThat(
+                Flux.from(mailboxManager.search(multiMailboxesQuery, session, DEFAULT_MAXIMUM_LIMIT))
+                    .collectList()
+                    .block())
                 .containsOnly(messageId);
         }
 
@@ -1428,8 +1430,10 @@ public abstract class MailboxManagerTest<T extends MailboxManager> {
                 .inNamespace(new PersonalNamespace(session))
                 .build();
 
-            assertThat(Flux.from(mailboxManager.search(multiMailboxesQuery, session, DEFAULT_MAXIMUM_LIMIT))
-                .collectList().block())
+            assertThat(
+                Flux.from(mailboxManager.search(multiMailboxesQuery, session, DEFAULT_MAXIMUM_LIMIT))
+                    .collectList()
+                    .block())
                 .isEmpty();
         }
 
