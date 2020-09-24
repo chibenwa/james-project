@@ -228,8 +228,6 @@ class MailboxSetMethod @Inject()(serializer: MailboxSerializer,
           val newPath = applyParentIdUpdate(mailboxId, validatedPatch.parentIdUpdate, mailboxSession)
             .andThen(applyNameUpdate(validatedPatch.nameUpdate, mailboxSession))
             .apply(oldPath)
-          println(oldPath)
-          println(newPath)
           if (!oldPath.equals(newPath)) {
             mailboxManager.renameMailbox(mailboxId,
               newPath,
