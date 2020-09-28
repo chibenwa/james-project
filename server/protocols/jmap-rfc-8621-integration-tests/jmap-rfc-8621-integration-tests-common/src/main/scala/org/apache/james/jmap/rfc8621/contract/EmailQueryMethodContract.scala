@@ -547,7 +547,7 @@ trait EmailQueryMethodContract {
   }
 
   @Test
-  def headerExistsShouldBeCaseInsentive(server: GuiceJamesServer): Unit = {
+  def headerExistsShouldBeCaseInsensitive(server: GuiceJamesServer): Unit = {
     val mailboxProbe = server.getProbe(classOf[MailboxProbeImpl])
     val bobInboxId = mailboxProbe.createMailbox(inbox(BOB))
     val messageId1: MessageId = mailboxProbe
