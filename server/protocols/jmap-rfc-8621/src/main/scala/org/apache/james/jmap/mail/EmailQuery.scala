@@ -39,7 +39,7 @@ sealed trait Operator
 case object And extends Operator
 
 case class FilterOperator(operator: Operator,
-                          conditions: Seq[FilterCondition]) extends FilterQuery
+                          conditions: Seq[FilterQuery]) extends FilterQuery
 
 case class Text(value: String) extends AnyVal
 case class From(value: String) extends AnyVal
