@@ -118,7 +118,7 @@ object MailboxFilter {
   }
 
   object QueryFilter {
-    def buildQuery(request: EmailQueryRequest): Either[UnsupportedFilterException, SearchQuery.Builder] =
+    def buildQuery(request: EmailQueryRequest): Either[UnsupportedOperationException, SearchQuery.Builder] =
       request.validatedFilter.flatMap(
         _.map(toCriterion)
           .getOrElse(Right(Nil)))

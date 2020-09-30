@@ -4745,7 +4745,7 @@ trait EmailQueryMethodContract {
                     |            "error",
                     |            {
                     |                "type": "unsupportedFilter",
-                    |                "description": "The filter Nested inMailbox filters are not supported is syntactically valid, but the server cannot process it. If the filter was the result of a user’s search input, the client SHOULD suggest that the user simplify their search."
+                    |                "description": "Nested inMailbox filters are not supported"
                     |            },
                     |            "c1"
                     |        ]
@@ -4808,7 +4808,7 @@ trait EmailQueryMethodContract {
                     |            "error",
                     |            {
                     |                "type": "unsupportedFilter",
-                    |                "description": "The filter Nested inMailboxOtherThan filter are not supported is syntactically valid, but the server cannot process it. If the filter was the result of a user’s search input, the client SHOULD suggest that the user simplify their search."
+                    |                "description": "Nested inMailboxOtherThan filter are not supported"
                     |            },
                     |            "c1"
                     |        ]

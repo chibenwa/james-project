@@ -32,6 +32,7 @@ import org.apache.james.mailbox.model.{MailboxId, MessageId, SearchQuery}
 
 case class UnsupportedSortException(unsupportedSort: String) extends UnsupportedOperationException
 case class UnsupportedFilterException(unsupportedFilter: String) extends UnsupportedOperationException
+case class UnsupportedNestingException(message: String) extends UnsupportedOperationException
 case class UnsupportedRequestParameterException(unsupportedParam: String) extends UnsupportedOperationException
 
 sealed trait FilterQuery
@@ -83,22 +84,22 @@ case class EmailQueryRequest(accountId: AccountId,
                              collapseThreads: Option[CollapseThreads],
                              anchor: Option[Anchor],
                              anchorOffset: Option[AnchorOffset]) extends WithAccountId {
-  val validatedFilter: Either[UnsupportedFilterException, Option[FilterQuery]] =
+  val validatedFilter: Either[UnsupportedNestingException, Option[FilterQuery]] =
     filter.map(validateFilter)
       .sequence
       .map(_.flatten)
 
-  private def validateFilter(filter: FilterQuery): Either[UnsupportedFilterException, Option[FilterQuery]] = filter match {
+  private def validateFilter(filter: FilterQuery): Either[UnsupportedNestingException, Option[FilterQuery]] = filter match {
     case filterCondition: FilterCondition => scala.Right(Some(filterCondition))
     case filterOperator: FilterOperator => rejectMailboxFilters(filterOperator)
   }
 
-  private def rejectMailboxFilters(filter: FilterQuery): Either[UnsupportedFilterException, Option[FilterQuery]] =
+  private def rejectMailboxFilters(filter: FilterQuery): Either[UnsupportedNestingException, Option[FilterQuery]] =
     filter match {
       case filterCondition: FilterCondition if filterCondition.inMailbox.isDefined =>
-        scala.Left(UnsupportedFilterException("Nested inMailbox filters are not supported"))
+        scala.Left(UnsupportedNestingException("Nested inMailbox filters are not supported"))
       case filterCondition: FilterCondition if filterCondition.inMailboxOtherThan.isDefined =>
-        scala.Left(UnsupportedFilterException("Nested inMailboxOtherThan filter are not supported"))
+        scala.Left(UnsupportedNestingException("Nested inMailboxOtherThan filter are not supported"))
       case filterCondition: FilterCondition => scala.Right(Some(filterCondition))
       case filterOperator: FilterOperator => filterOperator.conditions
         .toList
