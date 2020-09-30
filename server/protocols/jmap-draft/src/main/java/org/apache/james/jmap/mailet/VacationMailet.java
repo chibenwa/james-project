@@ -101,7 +101,7 @@ public class VacationMailet extends GenericMailet {
 
     private boolean shouldSendNotification(Mail processedMail, Vacation vacation, ZonedDateTime processingDate, boolean alreadySent) {
         return vacation.isActiveAtDate(processingDate)
-            && ! alreadySent
+            && !alreadySent
             && !isNoReplySender(processedMail);
     }
 
