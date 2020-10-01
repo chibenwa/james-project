@@ -23,6 +23,7 @@ import javax.inject.Named;
 import javax.inject.Singleton;
 
 import org.apache.james.blob.api.BucketName;
+import org.apache.james.blob.objectstorage.aws.S3BlobStoreConfiguration;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
@@ -30,8 +31,8 @@ import com.google.inject.Provides;
 public class DefaultBucketModule extends AbstractModule {
     @Provides
     @Singleton
-    private BucketName defaultBucket(@Named("defaultBucket") BucketName defaultBucket) {
-        return defaultBucket;
+    private BucketName defaultBucket(S3BlobStoreConfiguration s3BlobStoreConfiguration) {
+        return s3BlobStoreConfiguration.getNamespace().orElse(BucketName.DEFAULT);
     }
 
     @Provides

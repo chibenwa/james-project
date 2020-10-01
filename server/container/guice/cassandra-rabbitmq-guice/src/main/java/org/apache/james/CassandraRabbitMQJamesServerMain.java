@@ -27,7 +27,6 @@ import org.apache.james.modules.blobstore.BlobStoreCacheModulesChooser;
 import org.apache.james.modules.blobstore.BlobStoreConfiguration;
 import org.apache.james.modules.blobstore.BlobStoreModulesChooser;
 import org.apache.james.modules.event.RabbitMQEventBusModule;
-import org.apache.james.modules.objectstorage.DefaultBucketModule;
 import org.apache.james.modules.rabbitmq.RabbitMQModule;
 import org.apache.james.modules.server.JMXServerModule;
 import org.apache.james.modules.server.RabbitMailQueueRoutesModule;
@@ -42,8 +41,7 @@ public class CassandraRabbitMQJamesServerMain implements JamesServerMain {
             .with(new RabbitMQModule(),
                 new RabbitMailQueueRoutesModule(),
                 new RabbitMQEventBusModule(),
-                new DistributedTaskSerializationModule(),
-                new DefaultBucketModule());
+                new DistributedTaskSerializationModule());
 
     public static void main(String[] args) throws Exception {
         CassandraRabbitMQJamesConfiguration configuration = CassandraRabbitMQJamesConfiguration.builder()
