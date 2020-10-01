@@ -387,17 +387,19 @@ public abstract class AbstractRecipientRewriteTable implements RecipientRewriteT
     }
 
     private void assertNoLoop(MappingSource source, Mapping mapping) throws RecipientRewriteTableException {
-        boolean leadsToALoop = mapping.asMailAddress()
-            .map(Throwing.<MailAddress, Mappings>function(
-                mailAddress -> getResolvedMappings(mailAddress.getLocalPart(), mailAddress.getDomain()))
-                .sneakyThrow())
-            .map(mappings -> mappings.asStream()
-                .flatMap(aMapping -> aMapping.asMailAddress().stream())
-                .anyMatch(address -> source.asMailAddress().map(address::equals).orElse(false)))
-            .orElse(false);
+        if (configuration.isRecursive()) {
+            boolean leadsToALoop = mapping.asMailAddress()
+                .map(Throwing.<MailAddress, Mappings>function(
+                    mailAddress -> getResolvedMappings(mailAddress.getLocalPart(), mailAddress.getDomain()))
+                    .sneakyThrow())
+                .map(mappings -> mappings.asStream()
+                    .flatMap(aMapping -> aMapping.asMailAddress().stream())
+                    .anyMatch(address -> source.asMailAddress().map(address::equals).orElse(false)))
+                .orElse(false);
 
-        if (leadsToALoop) {
-            throw new LoopDetectedException(source, mapping);
+            if (leadsToALoop) {
+                throw new LoopDetectedException(source, mapping);
+            }
         }
     }
 }
