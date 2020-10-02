@@ -4703,6 +4703,7 @@ trait EmailQueryMethodContract {
         .asString
 
       assertThatJson(response)
+        .withOptions(new Options(IGNORING_ARRAY_ORDER))
         .inPath("$.methodResponses[0][1].ids")
         .isEqualTo(
           s"""[
