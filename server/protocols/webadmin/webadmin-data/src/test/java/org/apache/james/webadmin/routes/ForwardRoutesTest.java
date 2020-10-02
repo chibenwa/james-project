@@ -247,7 +247,7 @@ class ForwardRoutesTest {
 
             Map<String, Object> errors = when()
                 .put(BOB + SEPARATOR + "targets" + SEPARATOR + ALICE)
-                .then()
+            .then()
                 .contentType(ContentType.JSON)
                 .statusCode(HttpStatus.CONFLICT_409)
                 .extract()
