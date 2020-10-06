@@ -7357,7 +7357,7 @@ trait MailboxSetMethodContract {
          |                "notUpdated": {
          |                    "#invalid": {
          |                        "type": "invalidArguments",
-         |                        "description": "ClientId(#invalid) was not used in previously defined creationIds"
+         |                        "description": "#invalid was not used in previously defined creationIds"
          |                    }
          |                }
          |            },
