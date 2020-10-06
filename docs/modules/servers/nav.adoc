@@ -13,7 +13,7 @@
 ** xref:distributed.adoc[]
 *** xref:distributed/objectives.adoc[]
 *** xref:distributed/architecture/index.adoc[]
-*** xref:distributed/architecture/consistency-model.adoc[]
+**** xref:distributed/architecture/consistency-model.adoc[]
 *** xref:distributed/run.adoc[]
 *** xref:distributed/run-docker.adoc[]
 *** xref:distributed/configure/index.adoc[]
