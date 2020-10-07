@@ -78,20 +78,32 @@ when implemented for a given denormalization, enables auto-healing.
 
 == Consistency across data stores
 
-TODO
+The Distributed Server leverages several data stores:
+
+ - Cassandra is used for metadata storage
+ - ElasticSearch for search
+ - Object Storage for large object storage
+
+Thus the Distributed Server also offers mechanisms to enforce consistency across data stores.
 
 === Write path organisation
 
-TODO
+The primary data stores is composed of Cassandra for metadata and Object storage for binary data.
+
+To ensure the data referenced in Cassandra is pointing to a valid object in the object store, we write
+the object store payload first, then write the corresponding metadata in Cassandra.
+
+Such a procedure avoids metadata pointing to unexisting blobs, however might lead to some unreferenced
+blobs.
 
 === Cassandra <=> ElasticSearch
 
-TODO
+After being written to the primary stores (namely Cassandra & Object Storage), email content is
+asynchronously indexed into ElasticSearch.
 
-==== Asynchronous writes to other data stores
+This process, called the EventBus, which retries temporary errors, and stores transient errors for
+later admin-triggered retries is described further xref:distributed/operate/guide.adoc#_mailbox_event_bus[here].
+His role is to spread load and limit inconsistencies.
 
-TODO
-
-=== ReIndexing
-
-TODO
+Furthermore, some xref:distributed/operate/guide.adoc#_usual_troubleshooting_procedures[re-indexing tasks]
+enables to re-synchronise ElasticSearch content with the primary data stores
