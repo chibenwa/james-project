@@ -61,15 +61,19 @@ TODO
 
 == Denormalization
 
-TODO
+In Cassandra, data needs to be structured to match the read patterns. To support several conflicting
+read patterns, the data needs to be duplicated into different structures. This process is called
+denormalization.
 
-=== Solve Inconsistency tasks
+While data can be consistent at the table level, some inconsistencies can sneak in at the applicative
+level across denormalization tables.
 
-TODO
+The Distributed server offers several mechanism to mitigate these inconsistencies:
 
-=== Read repairs
-
-TODO
+ - Writes to denormalization tables are retried.
+ - Some xref:distributed/operate/guide.adoc#_solving_cassandra_inconsistencies[SolveInconsistencies tasks] are exposed and are able to heal a given denormalization table
+ - link:https://github.com/apache/james-project/blob/master/src/adr/0042-applicative-read-repairs.md[Read repairs],
+when implemented for a given denormalization, enables auto-healing.
 
 == Consistency across data stores
 
