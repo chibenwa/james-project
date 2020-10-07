@@ -48,6 +48,8 @@ import org.apache.james.webadmin.routes.TasksRoutes;
 import org.apache.james.webadmin.routes.UserMailboxesRoutes;
 import org.apache.james.webadmin.routes.UserRoutes;
 import org.apache.james.webadmin.swagger.routes.SwaggerRoutes;
+import org.awaitility.Awaitility;
+import org.awaitility.Duration;
 import org.eclipse.jetty.http.HttpStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -100,15 +102,19 @@ public abstract class WebAdminServerIntegrationTest {
 
     @Test
     void metricsRoutesShouldBeExposed() {
-        String body = when()
-            .get("/metrics")
-        .then()
-            .statusCode(HttpStatus.OK_200)
-            .extract()
-            .body()
-            .asString();
+        Awaitility.await()
+            .atMost(Duration.ONE_MINUTE)
+            .untilAsserted(() -> {
+                String body = when()
+                    .get("/metrics")
+                    .then()
+                    .statusCode(HttpStatus.OK_200)
+                    .extract()
+                    .body()
+                    .asString();
 
-        assertThat(body).contains("outgoingMails_total 0.0");
+                assertThat(body).contains("outgoingMails_total 0.0");
+            });
     }
 
     @Test
