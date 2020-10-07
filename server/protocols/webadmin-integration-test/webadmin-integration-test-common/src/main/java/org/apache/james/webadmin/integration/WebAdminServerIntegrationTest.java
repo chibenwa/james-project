@@ -102,19 +102,15 @@ public abstract class WebAdminServerIntegrationTest {
 
     @Test
     void metricsRoutesShouldBeExposed() {
-        Awaitility.await()
-            .atMost(Duration.ONE_MINUTE)
-            .untilAsserted(() -> {
-                String body = when()
-                    .get("/metrics")
-                    .then()
-                    .statusCode(HttpStatus.OK_200)
-                    .extract()
-                    .body()
-                    .asString();
+        String body = when()
+                .get("/metrics").prettyPeek()
+            .then()
+                .statusCode(HttpStatus.OK_200)
+                .extract()
+                .body()
+                .asString();
 
-                assertThat(body).contains("outgoingMails_total 0.0");
-            });
+        assertThat(body).contains("outgoingMails_total 0.0");
     }
 
     @Test
