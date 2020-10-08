@@ -74,12 +74,16 @@ denormalization.
 While data can be consistent at the table level, some inconsistencies can sneak in at the applicative
 level across denormalization tables.
 
+We write to a "table of truth" first, then duplicate the data to denormalization tables.
+
 The Distributed server offers several mechanism to mitigate these inconsistencies:
 
  - Writes to denormalization tables are retried.
- - Some xref:distributed/operate/guide.adoc#_solving_cassandra_inconsistencies[SolveInconsistencies tasks] are exposed and are able to heal a given denormalization table
+ - Some xref:distributed/operate/guide.adoc#_solving_cassandra_inconsistencies[SolveInconsistencies tasks] are exposed and are able to heal a given denormalization table.
+They reset the "deduplication tables" content to the "table of truth" content.
  - link:https://github.com/apache/james-project/blob/master/src/adr/0042-applicative-read-repairs.md[Read repairs],
-when implemented for a given denormalization, enables auto-healing.
+when implemented for a given denormalization, enables auto-healing. When an inconsistency is detected, They reset the
+"deduplication tables" entry to the "table of truth" entry.
 
 == Consistency across data stores
 
