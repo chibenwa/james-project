@@ -39,7 +39,7 @@ public class MemoryUsersDAO implements UsersDAO, Configurable {
 
     MemoryUsersDAO() {
         this.userByName = new HashMap<>();
-        this.algo = "SHA512";
+        this.algo = "SHA-512";
     }
 
     @Override
