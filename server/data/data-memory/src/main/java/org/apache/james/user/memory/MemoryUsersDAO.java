@@ -44,7 +44,7 @@ public class MemoryUsersDAO implements UsersDAO, Configurable {
 
     @Override
     public void configure(HierarchicalConfiguration<ImmutableNode> config) {
-        algo = config.getString("algorithm", "SHA512");
+        algo = config.getString("algorithm", "SHA-512");
     }
 
     public void clear() {
