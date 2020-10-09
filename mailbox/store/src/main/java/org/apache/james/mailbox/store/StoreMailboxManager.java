@@ -29,6 +29,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 import javax.inject.Inject;
@@ -626,36 +627,37 @@ public class StoreMailboxManager implements MailboxManager {
         Mono<List<Mailbox>> mailboxesMono = searchMailboxes(expression, session, Right.Lookup).collectList();
 
         return mailboxesMono
-            .flatMapMany(mailboxes -> {
-                if (fetchType == MailboxSearchFetchType.Counters) {
-                    return withCounters(expression, session, mailboxes);
-                } else {
-                    return withoutCounters(expression, session, mailboxes);
-                }
-            })
+            .flatMapMany(mailboxes -> Flux.fromIterable(mailboxes)
+                .filter(expression::matches)
+                .transform(metadataTransformation(fetchType, session, mailboxes)))
             .sort(MailboxMetaData.COMPARATOR);
     }
 
-    public Flux<MailboxMetaData> withCounters(MailboxQuery expression, MailboxSession session, List<Mailbox> mailboxes) {
+    private Function<Flux<Mailbox>, Flux<MailboxMetaData>> metadataTransformation(MailboxSearchFetchType fetchType, MailboxSession session, List<Mailbox> mailboxes) {
+        if (fetchType == MailboxSearchFetchType.Counters) {
+            return withCounters(session, mailboxes);
+        }
+        return withoutCounters(session, mailboxes);
+    }
+
+    private Function<Flux<Mailbox>, Flux<MailboxMetaData>> withCounters(MailboxSession session, List<Mailbox> mailboxes) {
         MessageMapper messageMapper = mailboxSessionMapperFactory.getMessageMapper(session);
-        return Flux.fromIterable(mailboxes)
-            .filter(expression::matches)
+        return mailboxFlux -> mailboxFlux
             .flatMap(mailbox -> retrieveCounters(messageMapper, mailbox, session)
                 .map(Throwing.<MailboxCounters, MailboxMetaData>function(
                     counters -> toMailboxMetadata(session, mailboxes, mailbox, counters))
                     .sneakyThrow()));
     }
 
-    public Flux<MailboxMetaData> withoutCounters(MailboxQuery expression, MailboxSession session, List<Mailbox> mailboxes) {
-        return Flux.fromIterable(mailboxes)
-            .filter(expression::matches)
-            .map(Throwing.<Mailbox, MailboxMetaData>function(
-                    mailbox -> toMailboxMetadata(session, mailboxes, mailbox,
-                        MailboxCounters.builder()
-                            .mailboxId(mailbox.getMailboxId())
-                            .count(0)
-                            .unseen(0)
-                            .build()))
+    private Function<Flux<Mailbox>, Flux<MailboxMetaData>> withoutCounters(MailboxSession session, List<Mailbox> mailboxes) {
+        return mailboxFlux -> mailboxFlux
+                .map(Throwing.<Mailbox, MailboxMetaData>function(
+                    mailbox -> toMailboxMetadata(session, mailboxes, mailbox, MailboxCounters
+                        .builder()
+                        .mailboxId(mailbox.getMailboxId())
+                        .count(0)
+                        .unseen(0)
+                        .build()))
                     .sneakyThrow());
     }
 
