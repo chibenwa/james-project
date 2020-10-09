@@ -21,9 +21,9 @@ package org.apache.james.imap.processor.base;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
-import java.util.TreeSet;
 
 import org.apache.james.mailbox.MessageUid;
 import org.apache.james.mailbox.NullableMessageSequenceNumber;
@@ -42,11 +42,14 @@ public class UidMsnConverter {
     }
 
     public synchronized void addAll(List<MessageUid> addedUids) {
-        TreeSet<MessageUid> tmp = new TreeSet<>();
+        int initialCapacity = addedUids.size() + uids.size();
+        HashSet<MessageUid> tmp = new HashSet<>(initialCapacity);
         tmp.addAll(uids);
         tmp.addAll(addedUids);
         uids.clear();
+        uids.ensureCapacity(initialCapacity);
         uids.addAll(tmp);
+        Collections.sort(uids);
     }
 
     public synchronized NullableMessageSequenceNumber getMsn(MessageUid uid) {
