@@ -622,18 +622,41 @@ public class StoreMailboxManager implements MailboxManager {
     }
 
     @Override
-    public Flux<MailboxMetaData> search(MailboxQuery expression, MailboxSession session) {
+    public Flux<MailboxMetaData> search(MailboxQuery expression, MailboxSearchFetchType fetchType, MailboxSession session) {
         Mono<List<Mailbox>> mailboxesMono = searchMailboxes(expression, session, Right.Lookup).collectList();
-        MessageMapper messageMapper = mailboxSessionMapperFactory.getMessageMapper(session);
 
         return mailboxesMono
-            .flatMapMany(mailboxes -> Flux.fromIterable(mailboxes)
-                .filter(expression::matches)
-                .flatMap(mailbox -> retrieveCounters(messageMapper, mailbox, session)
-                    .map(Throwing.<MailboxCounters, MailboxMetaData>function(
-                        counters -> toMailboxMetadata(session, mailboxes, mailbox, counters))
-                        .sneakyThrow())))
+            .flatMapMany(mailboxes -> {
+                if (fetchType == MailboxSearchFetchType.Counters) {
+                    return withCounters(expression, session, mailboxes);
+                } else {
+                    return withoutCounters(expression, session, mailboxes);
+                }
+            })
             .sort(MailboxMetaData.COMPARATOR);
+    }
+
+    public Flux<MailboxMetaData> withCounters(MailboxQuery expression, MailboxSession session, List<Mailbox> mailboxes) {
+        MessageMapper messageMapper = mailboxSessionMapperFactory.getMessageMapper(session);
+        return Flux.fromIterable(mailboxes)
+            .filter(expression::matches)
+            .flatMap(mailbox -> retrieveCounters(messageMapper, mailbox, session)
+                .map(Throwing.<MailboxCounters, MailboxMetaData>function(
+                    counters -> toMailboxMetadata(session, mailboxes, mailbox, counters))
+                    .sneakyThrow()));
+    }
+
+    public Flux<MailboxMetaData> withoutCounters(MailboxQuery expression, MailboxSession session, List<Mailbox> mailboxes) {
+        return Flux.fromIterable(mailboxes)
+            .filter(expression::matches)
+            .map(Throwing.<Mailbox, MailboxMetaData>function(
+                    mailbox -> toMailboxMetadata(session, mailboxes, mailbox,
+                        MailboxCounters.builder()
+                            .mailboxId(mailbox.getMailboxId())
+                            .count(0)
+                            .unseen(0)
+                            .build()))
+                    .sneakyThrow());
     }
 
     private Mono<MailboxCounters> retrieveCounters(MessageMapper messageMapper, Mailbox mailbox, MailboxSession session) {
