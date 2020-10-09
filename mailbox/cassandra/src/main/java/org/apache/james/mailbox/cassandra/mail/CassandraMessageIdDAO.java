@@ -80,6 +80,7 @@ public class CassandraMessageIdDAO {
     private final PreparedStatement insert;
     private final PreparedStatement select;
     private final PreparedStatement selectAllUids;
+    private final PreparedStatement selectAllOnlyUids;
     private final PreparedStatement selectAllUidsLimited;
     private final PreparedStatement selectUidGte;
     private final PreparedStatement selectUidGteLimited;
@@ -97,6 +98,7 @@ public class CassandraMessageIdDAO {
         this.update = prepareUpdate(session);
         this.select = prepareSelect(session);
         this.selectAllUids = prepareSelectAllUids(session);
+        this.selectAllOnlyUids = prepareSelectAllOnlyUids(session);
         this.selectAllUidsLimited = prepareSelectAllUidsLimited(session);
         this.selectUidGte = prepareSelectUidGte(session);
         this.selectUidGteLimited = prepareSelectUidGteLimited(session);
@@ -152,6 +154,12 @@ public class CassandraMessageIdDAO {
 
     private PreparedStatement prepareSelectAllUids(Session session) {
         return session.prepare(select(FIELDS)
+            .from(TABLE_NAME)
+            .where(eq(MAILBOX_ID, bindMarker(MAILBOX_ID))));
+    }
+
+    private PreparedStatement prepareSelectAllOnlyUids(Session session) {
+        return session.prepare(select(IMAP_UID)
             .from(TABLE_NAME)
             .where(eq(MAILBOX_ID, bindMarker(MAILBOX_ID))));
     }
@@ -261,6 +269,13 @@ public class CassandraMessageIdDAO {
     public Flux<ComposedMessageIdWithMetaData> retrieveMessages(CassandraId mailboxId, MessageRange set, Limit limit) {
         return retrieveRows(mailboxId, set, limit)
             .map(this::fromRowToComposedMessageIdWithFlags);
+    }
+
+    public Flux<MessageUid> retrieveUids(CassandraId mailboxId) {
+        return  cassandraAsyncExecutor.executeRows(
+            selectAllUidsLimited.bind()
+                .setUUID(MAILBOX_ID, mailboxId.asUuid()))
+            .map(row -> MessageUid.of(row.getLong(IMAP_UID)));
     }
 
     public Flux<ComposedMessageIdWithMetaData> retrieveAllMessages() {

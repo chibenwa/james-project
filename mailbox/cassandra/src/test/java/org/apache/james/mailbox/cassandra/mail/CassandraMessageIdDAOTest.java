@@ -427,6 +427,40 @@ class CassandraMessageIdDAOTest {
     }
 
     @Test
+    void retrieveUidsShouldRetrieveAllUids() {
+        CassandraMessageId messageId = messageIdFactory.generate();
+        CassandraMessageId messageId2 = messageIdFactory.generate();
+        CassandraId mailboxId = CassandraId.timeBased();
+        MessageUid messageUid = MessageUid.of(1);
+        MessageUid messageUid2 = MessageUid.of(2);
+
+        ComposedMessageIdWithMetaData composedMessageIdWithMetaData = ComposedMessageIdWithMetaData.builder()
+                .composedMessageId(new ComposedMessageId(mailboxId, messageId, messageUid))
+                .flags(new Flags())
+                .modSeq(ModSeq.of(1))
+                .build();
+        ComposedMessageIdWithMetaData composedMessageIdWithMetaData2 = ComposedMessageIdWithMetaData.builder()
+                .composedMessageId(new ComposedMessageId(mailboxId, messageId2, messageUid2))
+                .flags(new Flags())
+                .modSeq(ModSeq.of(1))
+                .build();
+        Flux.merge(testee.insert(composedMessageIdWithMetaData),
+                testee.insert(composedMessageIdWithMetaData2))
+            .blockLast();
+
+        assertThat(testee.retrieveUids(mailboxId).toIterable())
+            .containsOnly(messageUid, messageUid2);
+    }
+    
+    @Test
+    void retrieveUidsShouldReturnEmptyByDefault() {
+        CassandraId mailboxId = CassandraId.timeBased();
+
+        assertThat(testee.retrieveUids(mailboxId).toIterable())
+            .isEmpty();
+    }
+
+    @Test
     void retrieveMessagesShouldRetrieveSomeWhenRangeFrom() {
         CassandraMessageId messageId = messageIdFactory.generate();
         CassandraMessageId messageId2 = messageIdFactory.generate();
