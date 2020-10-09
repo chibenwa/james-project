@@ -65,12 +65,12 @@ public class UidMsnConverterTest {
 
     @Test
     public void loopingGetMSNShouldSucceedForAMillionItems() {
-        int count = 1000;
+        int count = 1000000;
         testee.addAll(IntStream.range(0, count)
             .mapToObj(i -> MessageUid.of(i + 1))
             .collect(Collectors.toList()));
 
-        IntStream.range(0, 1000000)
+        IntStream.range(0, count)
             .forEach(i -> testee.getMsn(MessageUid.of(i + 1)));
     }
 
