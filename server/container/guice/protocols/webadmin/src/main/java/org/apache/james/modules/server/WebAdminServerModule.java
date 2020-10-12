@@ -145,7 +145,7 @@ public class WebAdminServerModule extends AbstractModule {
     @Provides
     @Singleton
     public AuthenticationFilter providesAuthenticationFilter(PropertiesProvider propertiesProvider,
-                                                             @Named("webadmin") JwtTokenVerifier jwtTokenVerifier) throws Exception {
+                                                             @Named("webadmin") JwtTokenVerifier.Factory jwtTokenVerifier) throws Exception {
         try {
             Configuration configurationFile = propertiesProvider.getConfiguration("webadmin");
             if (configurationFile.getBoolean("jwt.enabled", DEFAULT_JWT_DISABLED)) {
@@ -160,9 +160,9 @@ public class WebAdminServerModule extends AbstractModule {
     @Provides
     @Singleton
     @Named("webadmin")
-    JwtTokenVerifier providesJwtTokenVerifier(WebAdminConfiguration webAdminConfiguration,
+    JwtTokenVerifier.Factory providesJwtTokenVerifier(WebAdminConfiguration webAdminConfiguration,
                                               @Named("jmap") Provider<JwtTokenVerifier> jmapTokenVerifier) {
-        return webAdminConfiguration.getJwtPublicKey()
+        return () -> webAdminConfiguration.getJwtPublicKey()
             .map(keyPath -> new JwtConfiguration(Optional.of(keyPath)))
             .map(JwtTokenVerifier::create)
             .orElseGet(jmapTokenVerifier::get);

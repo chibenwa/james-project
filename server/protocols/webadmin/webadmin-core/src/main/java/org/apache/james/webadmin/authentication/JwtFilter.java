@@ -40,8 +40,8 @@ public class JwtFilter implements AuthenticationFilter {
     private final JwtTokenVerifier jwtTokenVerifier;
 
     @Inject
-    public JwtFilter(@Named("webadmin") JwtTokenVerifier jwtTokenVerifier) {
-        this.jwtTokenVerifier = jwtTokenVerifier;
+    public JwtFilter(@Named("webadmin") JwtTokenVerifier.Factory jwtTokenVerifierFactory) {
+        this.jwtTokenVerifier = jwtTokenVerifierFactory.create();
     }
 
     @Override

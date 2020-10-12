@@ -31,6 +31,10 @@ import io.jsonwebtoken.MalformedJwtException;
 
 public class JwtTokenVerifier {
 
+    public interface Factory {
+        JwtTokenVerifier create();
+    }
+
     public static JwtTokenVerifier create(JwtConfiguration jwtConfiguration) {
         PublicKeyProvider publicKeyProvider = new PublicKeyProvider(jwtConfiguration, new PublicKeyReader());
         return new JwtTokenVerifier(publicKeyProvider);
