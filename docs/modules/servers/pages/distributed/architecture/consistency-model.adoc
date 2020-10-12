@@ -14,7 +14,7 @@ this process replication. By consistency, we mean the ability for all replica to
 same data. By availability, we mean the ability for a replica to answer a request.
 
 In distributed systems, link:https://en.wikipedia.org/wiki/CAP_theorem[according to the CAP theorem],
-as we will necessarily encounter network partitions, then tradeoffs needs to be made between
+as we will necessarily encounter network partitions, then trade-offs need to be made between
 consistency and availability.
 
 This section details this tradeoff for data stores used by the Distributed Server.
