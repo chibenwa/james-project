@@ -34,10 +34,11 @@ import org.apache.james.mailbox.Role;
 import org.apache.james.mailbox.SystemMailboxesProvider;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.exception.MailboxRoleNotFoundException;
-import org.apache.james.mailbox.model.ComposedMessageIdWithMetaData;
+import org.apache.james.mailbox.model.FetchGroup;
 import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.model.MessageId.Factory;
+import org.apache.james.mailbox.model.MessageResult;
 import org.apache.james.queue.api.MailQueue.MailQueueException;
 import org.apache.james.queue.api.MailQueue.MailQueueItem;
 import org.apache.james.queue.api.MailQueueItemDecoratorFactory.MailQueueItemDecorator;
@@ -47,10 +48,7 @@ import org.apache.mailet.Mail;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.github.steveash.guavate.Guavate;
 import com.google.common.collect.ImmutableList;
-
-import reactor.core.publisher.Flux;
 
 public class PostDequeueDecorator extends MailQueueItemDecorator {
     private static final Logger LOG = LoggerFactory.getLogger(PostDequeueDecorator.class);
@@ -145,11 +143,9 @@ public class PostDequeueDecorator extends MailQueueItemDecorator {
 
     private void assertMessageBelongsToOutbox(MessageId messageId, MailboxSession mailboxSession) throws MailboxException, MailShouldBeInOutboxException {
         MailboxId outboxMailboxId = getOutboxMailboxId(mailboxSession);
-        List<ComposedMessageIdWithMetaData> messages = Flux.from(messageIdManager.messageMetadata(messageId, mailboxSession))
-            .collect(Guavate.toImmutableList())
-            .block();
-        for (ComposedMessageIdWithMetaData message: messages) {
-            if (message.getComposedMessageId().getMailboxId().equals(outboxMailboxId)) {
+        List<MessageResult> messages = messageIdManager.getMessage(messageId, FetchGroup.MINIMAL, mailboxSession);
+        for (MessageResult message: messages) {
+            if (message.getMailboxId().equals(outboxMailboxId)) {
                 return;
             }
         }
