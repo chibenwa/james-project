@@ -37,11 +37,11 @@ Enabling *TRACE* on `org.apache.james.jmap.wire` enables reactor-netty wiretap, 
 all incoming and outgoing requests, outgoing requests. This will log also potentially sensible information
 like authentication credentials.
 
-== Generqting a JWT key pair
+== Generating a JWT key pair
 
 The Distributed server enforces the use of RSA-SHA-256.
 
-One can use OpenSSL to generate a JWT tkey pair :
+One can use OpenSSL to generate a JWT key pair :
 
     # private key
     openssl genrsa -out rs256-4096-private.rsa 4096
@@ -53,7 +53,7 @@ using link:https://github.com/vandium-io/jwtgen[jwtgen]:
 
     jwtgen -a RS256 -p rs256-4096-private.rsa 4096 -c "sub=bob@domain.tld" -e 3600 -V
 
-This token can then be passed as `Bearrer` of the `Authorization` header :
+This token can then be passed as `Bearer` of the `Authorization` header :
 
     curl -H "Authorization: Bearer $token" -XPOST http://127.0.0.1:80/jmap -d '...'
 
