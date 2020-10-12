@@ -9,7 +9,7 @@ points to the tools built around it.
 The Distributed Server relies on different storage technologies, all having their own
 consistency models.
 
-These data stores replicates data in order to enforce some level of availability. We call
+These data stores replicate data in order to enforce some level of availability. We call
 this process replication. By consistency, we mean the ability for all replica to hold the
 same data. By availability, we mean the ability for a replica to answer a request.
 
