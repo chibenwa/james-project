@@ -56,9 +56,9 @@ class RabbitMQJwtFilterIntegrationTest extends JwtFilterIntegrationTest {
         .extension(new RabbitMQExtension())
         .server(configuration -> CassandraRabbitMQJamesServerMain.createServer(configuration)
             .overrideWith(binder -> binder.bind(AuthenticationFilter.class).to(JwtFilter.class))
-            .overrideWith(binder -> binder.bind(JwtTokenVerifier.class)
+            .overrideWith(binder -> binder.bind(JwtTokenVerifier.Factory.class)
                 .annotatedWith(Names.named("webadmin"))
-                .toInstance(JwtTokenVerifier.create(jwtConfiguration())))
+                .toInstance(() -> JwtTokenVerifier.create(jwtConfiguration())))
             .overrideWith(new WebadminIntegrationTestModule()))
         .build();
 }

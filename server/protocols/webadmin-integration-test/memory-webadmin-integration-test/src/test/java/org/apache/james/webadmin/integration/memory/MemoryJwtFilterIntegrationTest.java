@@ -38,8 +38,8 @@ class MemoryJwtFilterIntegrationTest extends JwtFilterIntegrationTest {
         .server(configuration -> MemoryJamesServerMain.createServer(configuration)
             .overrideWith(new WebadminIntegrationTestModule())
             .overrideWith(binder -> binder.bind(AuthenticationFilter.class).to(JwtFilter.class))
-            .overrideWith(binder -> binder.bind(JwtTokenVerifier.class)
+            .overrideWith(binder -> binder.bind(JwtTokenVerifier.Factory.class)
                 .annotatedWith(Names.named("webadmin"))
-                .toInstance(JwtTokenVerifier.create(jwtConfiguration()))))
+                .toInstance(() -> JwtTokenVerifier.create(jwtConfiguration()))))
         .build();
 }
