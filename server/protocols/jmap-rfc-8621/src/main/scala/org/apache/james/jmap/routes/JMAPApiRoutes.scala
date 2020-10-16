@@ -164,8 +164,7 @@ class JMAPApiRoutes (val authenticator: Authenticator,
     SMono.justOrEmpty(methodsByName.get(invocation.invocation.methodName))
       .flatMap(method => validateCapabilities(capabilities, method.requiredCapabilities)
       .fold(e => SMono.just(InvocationWithContext(Invocation.error(ErrorCode.UnknownMethod, e.description, invocation.invocation.methodCallId), invocation.processingContext)),
-        _ => SMono.fromPublisher(method.process(capabilities, invocation, mailboxSession))
-      ))
+        _ => SMono.fromPublisher(method.process(capabilities, invocation, mailboxSession))))
       .onErrorResume(throwable => SMono.just(InvocationWithContext(Invocation.error(ErrorCode.ServerFail, throwable.getMessage, invocation.invocation.methodCallId), invocation.processingContext)))
       .switchIfEmpty(SMono.just(InvocationWithContext(Invocation.error(ErrorCode.UnknownMethod, invocation.invocation.methodCallId), invocation.processingContext)))
 
