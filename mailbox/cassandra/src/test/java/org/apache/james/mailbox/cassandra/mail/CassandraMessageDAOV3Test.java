@@ -59,7 +59,7 @@ import com.google.common.primitives.Bytes;
 
 import reactor.core.publisher.Mono;
 
-class CassandraMessageDAOTest {
+class CassandraMessageDAOV3Test {
     private static final int BODY_START = 16;
     private static final CassandraId MAILBOX_ID = CassandraId.timeBased();
     private static final String CONTENT = "Subject: Test7 \n\nBody7\n.\n";
@@ -75,8 +75,7 @@ class CassandraMessageDAOTest {
     static CassandraClusterExtension cassandraCluster = new CassandraClusterExtension(
             MODULES);
 
-    private CassandraMessageDAO testee;
-    private CassandraMessageId.Factory messageIdFactory;
+    private CassandraMessageDAOV3 testee;
 
     private SimpleMailboxMessage message;
     private CassandraMessageId messageId;
@@ -84,17 +83,16 @@ class CassandraMessageDAOTest {
 
     @BeforeEach
     void setUp(CassandraCluster cassandra) {
-        messageIdFactory = new CassandraMessageId.Factory();
+        CassandraMessageId.Factory messageIdFactory = new CassandraMessageId.Factory();
         messageId = messageIdFactory.generate();
         BlobStore blobStore = CassandraBlobStoreFactory.forTesting(cassandra.getConf())
             .passthrough();
         HashBlobId.Factory blobIdFactory = new HashBlobId.Factory();
-        testee = new CassandraMessageDAO(
+        testee = new CassandraMessageDAOV3(
             cassandra.getConf(),
             cassandra.getTypesProvider(),
             blobStore,
             blobIdFactory,
-            messageIdFactory,
             cassandraCluster.getCassandraConsistenciesConfiguration());
 
         messageIdWithMetadata = ComposedMessageIdWithMetaData.builder()
@@ -184,7 +182,7 @@ class CassandraMessageDAOTest {
             .size(content.length())
             .content(new SharedByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8)))
             .flags(new Flags())
-            .properties(propertyBuilder.build())
+            .properties(propertyBuilder)
             .addAttachments(attachments)
             .build();
     }
