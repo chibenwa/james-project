@@ -19,6 +19,8 @@
 
 package org.apache.james.mailbox.cassandra.mail.migration;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.List;
@@ -39,6 +41,7 @@ import org.apache.james.mailbox.cassandra.ids.CassandraId;
 import org.apache.james.mailbox.cassandra.ids.CassandraMessageId;
 import org.apache.james.mailbox.cassandra.mail.CassandraMessageDAO;
 import org.apache.james.mailbox.cassandra.mail.CassandraMessageDAOV3;
+import org.apache.james.mailbox.cassandra.mail.MessageRepresentation;
 import org.apache.james.mailbox.cassandra.modules.CassandraMessageModule;
 import org.apache.james.mailbox.model.MessageAttachmentMetadata;
 import org.apache.james.mailbox.model.MessageId;
@@ -118,6 +121,23 @@ class MessageV3MigrationTest {
 
             softly.assertThat(daoV2.list().collectList().block()).isEmpty();
         });
+    }
+
+    @Test
+    void migrationTaskShouldPreserveMessageContent() throws Exception{
+        SimpleMailboxMessage message1 = createMessage(messageIdFactory.generate());
+        daoV2.save(message1).block();
+        MessageRepresentation original = daoV2.retrieveMessage((CassandraMessageId) message1.getMessageId(), MessageMapper.FetchType.Metadata).block();
+
+        new MessageV3Migration(daoV2, daoV3).apply();
+        MessageRepresentation migrated = daoV3.retrieveMessage((CassandraMessageId) message1.getMessageId(), MessageMapper.FetchType.Metadata).block();
+
+        int start = 0;
+        int end = -1;
+        assertThat(migrated).isEqualToComparingOnlyGivenFields(original, "messageId",
+            "internalDate", "size", "bodyStartOctet", "properties", "attachments", "headerId", "bodyId");
+        assertThat(migrated.getContent().newStream(start, end))
+            .hasSameContentAs(original.getContent().newStream(start, end));
     }
 
     private SimpleMailboxMessage createMessage(MessageId messageId) {
