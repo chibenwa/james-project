@@ -260,7 +260,7 @@ public abstract class AbstractJPAMailboxMessage implements MailboxMessage {
         this.mediaType = properties.getMediaType();
         this.subType = properties.getSubType();
         final List<Property> propertiesAsList = properties.toProperties();
-        this.properties = new ArrayList<>(this.properties.size());
+        this.properties = new ArrayList<>(propertiesAsList.size());
         int order = 0;
         for (Property property : propertiesAsList) {
             this.properties.add(new JPAProperty(property, order++));
