@@ -329,7 +329,7 @@ public class CachedBlobStoreTest implements BlobStoreContract {
 
         mimeMessageStore.read(partsId).block();
 
-        assertThat(statementRecorder.listExecutedStatements(Selector.preparedStatement("SELECT * FROM blob_cache LIMIT 1;")))
+        assertThat(statementRecorder.listExecutedStatements(Selector.preparedStatementStartingWith("SELECT * FROM blob_cache")))
             .hasSize(1);
     }
 
