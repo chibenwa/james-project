@@ -662,7 +662,7 @@ trait EmailSetMethodContract {
         """{
           |   "id":"%s",
           |   "keywords": {
-          |       "$Answered": true,
+          |       "$answered": true,
           |       "music": true
           |    }
           |}
