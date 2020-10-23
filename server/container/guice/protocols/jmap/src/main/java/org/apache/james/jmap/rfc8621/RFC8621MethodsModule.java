@@ -24,6 +24,7 @@ import static org.apache.james.jmap.core.JmapRfc8621Configuration.LOCALHOST_CONF
 
 import java.io.FileNotFoundException;
 
+import com.google.inject.Scopes;
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.jmap.JMAPRoutesHandler;
@@ -37,6 +38,7 @@ import org.apache.james.jmap.method.CoreEchoMethod;
 import org.apache.james.jmap.method.EmailGetMethod;
 import org.apache.james.jmap.method.EmailQueryMethod;
 import org.apache.james.jmap.method.EmailSetMethod;
+import org.apache.james.jmap.method.EmailSubmissionSetMethod;
 import org.apache.james.jmap.method.MailboxGetMethod;
 import org.apache.james.jmap.method.MailboxQueryMethod;
 import org.apache.james.jmap.method.MailboxSetMethod;
@@ -50,6 +52,8 @@ import org.apache.james.jmap.routes.JMAPApiRoutes;
 import org.apache.james.jmap.routes.SessionRoutes;
 import org.apache.james.jmap.routes.UploadRoutes;
 import org.apache.james.metrics.api.MetricFactory;
+import org.apache.james.utils.InitializationOperation;
+import org.apache.james.utils.InitilizationOperationBuilder;
 import org.apache.james.utils.PropertiesProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,6 +72,8 @@ public class RFC8621MethodsModule extends AbstractModule {
     protected void configure() {
         bind(ZoneIdProvider.class).to(SystemZoneIdProvider.class);
 
+        bind(EmailSubmissionSetMethod.class).in(Scopes.SINGLETON);
+
         Multibinder<Method> methods = Multibinder.newSetBinder(binder(), Method.class);
         methods.addBinding().to(CoreEchoMethod.class);
         methods.addBinding().to(MailboxGetMethod.class);
@@ -75,6 +81,7 @@ public class RFC8621MethodsModule extends AbstractModule {
         methods.addBinding().to(MailboxSetMethod.class);
         methods.addBinding().to(EmailGetMethod.class);
         methods.addBinding().to(EmailSetMethod.class);
+        methods.addBinding().to(EmailSubmissionSetMethod.class);
         methods.addBinding().to(EmailQueryMethod.class);
         methods.addBinding().to(VacationResponseGetMethod.class);
         methods.addBinding().to(VacationResponseSetMethod.class);
@@ -107,5 +114,12 @@ public class RFC8621MethodsModule extends AbstractModule {
             LOGGER.warn("Could not find JMAP configuration file [jmap.properties]. JMAP server will be enabled with default value.");
             return LOCALHOST_CONFIGURATION();
         }
+    }
+
+    @ProvidesIntoSet
+    InitializationOperation initSubmissions(EmailSubmissionSetMethod instance) {
+        return InitilizationOperationBuilder
+                .forClass(EmailSubmissionSetMethod.class)
+                .init(instance::init);
     }
 }
