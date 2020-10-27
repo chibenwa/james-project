@@ -2057,8 +2057,7 @@ trait EmailGetMethodContract {
          |             "name": "user1",
          |             "email": "user1@domain.tld"
          |          },
-         |         {
-         |             "name": "user2",
+         |          {
          |             "email": "user2@domain.tld"
          |          }
          |
