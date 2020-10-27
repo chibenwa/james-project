@@ -2010,7 +2010,7 @@ trait EmailGetMethodContract {
   }
 
   @Test
-  def senderPropertyShouldKeepFirstValue(server: GuiceJamesServer): Unit = {
+  def senderPropertyShouldDisplayBothValues(server: GuiceJamesServer): Unit = {
     val message: Message = Message.Builder
       .of
       .addField(new RawField("Sender",
@@ -2056,7 +2056,12 @@ trait EmailGetMethodContract {
          |         {
          |             "name": "user1",
          |             "email": "user1@domain.tld"
+         |          },
+         |         {
+         |             "name": "user2",
+         |             "email": "user2@domain.tld"
          |          }
+         |
          |    ]
          |}""".stripMargin)
   }
