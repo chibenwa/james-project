@@ -26,6 +26,7 @@ import org.apache.james.mailbox.model.MessageId;
 
 import com.datastax.driver.core.utils.UUIDs;
 import com.google.common.base.MoreObjects;
+import com.google.common.base.Preconditions;
 
 public class CassandraMessageId implements MessageId {
 
@@ -37,6 +38,8 @@ public class CassandraMessageId implements MessageId {
         }
 
         public CassandraMessageId of(UUID uuid) {
+            Preconditions.checkNotNull(uuid);
+
             return new CassandraMessageId(uuid);
         }
 
