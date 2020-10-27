@@ -6227,7 +6227,7 @@ trait EmailGetMethodContract {
            |     "c1"]]
            |}""".stripMargin)
     .when
-      .post.prettyPeek
+      .post
     .`then`
       .statusCode(SC_OK)
       .contentType(JSON)
