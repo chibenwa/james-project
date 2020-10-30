@@ -198,7 +198,7 @@ trait EmailSetMethodContract {
   }
 
   @Test
-  def specificHeadShouldMatchSupportedType(server: GuiceJamesServer): Unit = {
+  def specificHeaderShouldMatchSupportedType(server: GuiceJamesServer): Unit = {
     val bobPath = MailboxPath.inbox(BOB)
     val mailboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(bobPath)
 
@@ -289,7 +289,7 @@ trait EmailSetMethodContract {
   }
 
   @Test
-  def createShouldFailWhenBadJsonPauloadForSpecificHeader(server: GuiceJamesServer): Unit = {
+  def createShouldFailWhenBadJsonPayloadForSpecificHeader(server: GuiceJamesServer): Unit = {
     val bobPath = MailboxPath.inbox(BOB)
     val mailboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(bobPath)
 
