@@ -43,7 +43,7 @@ import reactor.core.scheduler.Schedulers
 
 import scala.jdk.CollectionConverters._
 
-case class MessageNotFoundExeception(messageId: MessageId) extends Exception
+case class MessageNotFoundException(messageId: MessageId) extends Exception
 
 class EmailSetMethod @Inject()(serializer: EmailSetSerializer,
                                messageIdManager: MessageIdManager,
@@ -84,7 +84,7 @@ class EmailSetMethod @Inject()(serializer: EmailSetSerializer,
       deleteResult.getDestroyed.asScala
         .headOption
         .map(DestroySuccess)
-        .getOrElse(DestroyFailure(EmailSet.asUnparsed(notFound.head), MessageNotFoundExeception(notFound.head)))
+        .getOrElse(DestroyFailure(EmailSet.asUnparsed(notFound.head), MessageNotFoundException(notFound.head)))
     }
   }
 
@@ -93,7 +93,7 @@ class EmailSetMethod @Inject()(serializer: EmailSetSerializer,
   case class DestroyFailure(unparsedMessageId: UnparsedMessageId, e: Throwable) extends DestroyResult {
     def asMessageSetError: SetError = e match {
       case e: IllegalArgumentException => SetError.invalidArguments(SetErrorDescription(s"$unparsedMessageId is not a messageId: ${e.getMessage}"))
-      case e: MessageNotFoundExeception => SetError.notFound(SetErrorDescription(s"Cannot find message with messageId: ${e.messageId.serialize()}"))
+      case e: MessageNotFoundException => SetError.notFound(SetErrorDescription(s"Cannot find message with messageId: ${e.messageId.serialize()}"))
       case _ => SetError.serverFail(SetErrorDescription(e.getMessage))
     }
   }
@@ -104,7 +104,7 @@ class EmailSetMethod @Inject()(serializer: EmailSetSerializer,
     def asMessageSetError: SetError = e match {
       case e: IllegalArgumentException => SetError.invalidPatch(SetErrorDescription(s"Message $unparsedMessageId update is invalid: ${e.getMessage}"))
       case _: MailboxNotFoundException => SetError.notFound(SetErrorDescription(s"Mailbox not found"))
-      case e: MessageNotFoundExeception => SetError.notFound(SetErrorDescription(s"Cannot find message with messageId: ${e.messageId.serialize()}"))
+      case e: MessageNotFoundException => SetError.notFound(SetErrorDescription(s"Cannot find message with messageId: ${e.messageId.serialize()}"))
       case _ => SetError.serverFail(SetErrorDescription(e.getMessage))
     }
   }
@@ -219,7 +219,7 @@ class EmailSetMethod @Inject()(serializer: EmailSetSerializer,
       })
 
     if (mailboxIds.value.isEmpty) {
-      SMono.just[UpdateResult](UpdateFailure(EmailSet.asUnparsed(messageId), MessageNotFoundExeception(messageId)))
+      SMono.just[UpdateResult](UpdateFailure(EmailSet.asUnparsed(messageId), MessageNotFoundException(messageId)))
     } else {
       update.validate
         .fold(

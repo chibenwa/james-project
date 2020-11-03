@@ -20,9 +20,11 @@
 package org.apache.james.jmap.rfc8621.contract
 
 import java.nio.charset.StandardCharsets
+import java.util.concurrent.TimeUnit
 
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
-import io.restassured.RestAssured.{`given`, requestSpecification}
+import io.restassured.RestAssured.{`given`, `with`, requestSpecification}
+import io.restassured.builder.ResponseSpecBuilder
 import io.restassured.http.ContentType.JSON
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import org.apache.http.HttpStatus.SC_OK
@@ -35,9 +37,18 @@ import org.apache.james.mailbox.model.{MailboxId, MailboxPath, MessageId}
 import org.apache.james.mime4j.dom.Message
 import org.apache.james.modules.MailboxProbeImpl
 import org.apache.james.utils.DataProbeImpl
+import org.awaitility.Awaitility
+import org.awaitility.Duration.ONE_HUNDRED_MILLISECONDS
 import org.junit.jupiter.api.{BeforeEach, Test}
 
 trait EmailSubmissionSetMethodContract {
+  private lazy val slowPacedPollInterval = ONE_HUNDRED_MILLISECONDS
+  private lazy val calmlyAwait = Awaitility.`with`
+    .pollInterval(slowPacedPollInterval)
+    .and.`with`.pollDelay(slowPacedPollInterval)
+    .await
+  private lazy val awaitAtMostTenSeconds = calmlyAwait.atMost(10, TimeUnit.SECONDS)
+
   @BeforeEach
   def setUp(server: GuiceJamesServer): Unit = {
     server.getProbe(classOf[DataProbeImpl])
@@ -81,16 +92,10 @@ trait EmailSubmissionSetMethodContract {
          |       "accountId": "$ACCOUNT_ID",
          |       "create": {
          |         "k1490": {
-         |           "emailId": "${messageId}",
+         |           "emailId": "${messageId.serialize}",
          |           "envelope": {
-         |             "mailFrom": {
-         |               "email": "${BOB.asString}",
-         |               "parameters": null
-         |             },
-         |             "rcptTo": [{
-         |               "email": "${ANDRE.asString}",
-         |               "parameters": null
-         |             }]
+         |             "mailFrom": {"email": "${BOB.asString}"},
+         |             "rcptTo": [{"email": "${ANDRE.asString}"}]
          |           }
          |         }
          |    }
@@ -101,11 +106,9 @@ trait EmailSubmissionSetMethodContract {
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .body(requestBob)
     .when
-      .post.prettyPeek
+      .post
     .`then`
       .statusCode(SC_OK)
-
-    // todo 2 tests, validate bob response
 
     val requestAndre =
       s"""{
@@ -113,19 +116,74 @@ trait EmailSubmissionSetMethodContract {
          |  "methodCalls": [[
          |    "Email/query",
          |    {
-         |      "accountId": "account id andre",
-         |      "filter": {"inMailbox": "${andreInboxId.serialize()}"}
+         |      "accountId": "1e8584548eca20f26faf6becc1704a0f352839f12c208a47fbd486d60f491f7c",
+         |      "filter": {"inMailbox": "${andreInboxId.serialize}"}
          |    },
          |    "c1"]]
          |}""".stripMargin
 
-    // todo await
+    awaitAtMostTenSeconds.untilAsserted { () =>
+      val response = `given`(
+        baseRequestSpecBuilder(server)
+          .setAuth(authScheme(UserCredential(ANDRE, ANDRE_PASSWORD)))
+          .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+          .setBody(requestAndre)
+          .build, new ResponseSpecBuilder().build)
+        .post
+      .`then`
+        .statusCode(SC_OK)
+        .contentType(JSON)
+        .extract
+        .body
+        .asString
+
+      assertThatJson(response)
+        .inPath("methodResponses[0][1].ids")
+        .isArray
+        .hasSize(1)
+    }
+  }
+
+  @Test
+  def emailSubmissionSetCreateShouldReturnSuccess(server: GuiceJamesServer): Unit = {
+    val message: Message = Message.Builder
+      .of
+      .setSubject("test")
+      .setSender(BOB.asString)
+      .setFrom(BOB.asString)
+      .setTo(ANDRE.asString)
+      .setBody("testmail", StandardCharsets.UTF_8)
+      .build
+
+    val bobDraftsPath = MailboxPath.forUser(BOB, DefaultMailboxes.DRAFTS)
+    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(bobDraftsPath)
+    val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl]).appendMessage(BOB.asString(), bobDraftsPath, AppendCommand.builder()
+      .build(message))
+      .getMessageId
+
+    val requestBob =
+      s"""{
+         |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail"],
+         |  "methodCalls": [
+         |     ["EmailSubmission/set", {
+         |       "accountId": "$ACCOUNT_ID",
+         |       "create": {
+         |         "k1490": {
+         |           "emailId": "${messageId.serialize}",
+         |           "envelope": {
+         |             "mailFrom": {"email": "${BOB.asString}"},
+         |             "rcptTo": [{"email": "${ANDRE.asString}"}]
+         |           }
+         |         }
+         |    }
+         |  }, "c1"]]
+         |}""".stripMargin
+
     val response = `given`
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
-      .auth().basic(ANDRE.asString, ANDRE_PASSWORD)
-      .body(requestAndre)
+      .body(requestBob)
     .when
-      .post.prettyPeek
+      .post
     .`then`
       .statusCode(SC_OK)
       .contentType(JSON)
@@ -133,21 +191,10 @@ trait EmailSubmissionSetMethodContract {
       .body
       .asString
 
-    assertThatJson(response).isEqualTo(
-      s"""{
-         |    "sessionState": "75128aab4b1b",
-         |    "methodResponses": [[
-         |            "Email/query",
-         |            {
-         |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-         |                "queryState": "queryState",
-         |                "canCalculateChanges": false,
-         |                "position": 0,
-         |                "limit": 256,
-         |                "ids": ["messageId"]
-         |            },
-         |            "c1"
-         |        ]]
-         |}""".stripMargin)
+    assertThatJson(response)
+      // Ids are randomly generated, and not stored, let's ignore it
+      .whenIgnoringPaths("methodResponses[0][1].created.k1490.id")
+      .inPath("methodResponses[0][1].created")
+      .isEqualTo("""{"k1490": {}}""")
   }
 }

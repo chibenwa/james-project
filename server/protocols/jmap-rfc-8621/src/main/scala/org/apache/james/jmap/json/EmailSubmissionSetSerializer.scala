@@ -21,17 +21,34 @@ package org.apache.james.jmap.json
 
 import eu.timepit.refined.collection.NonEmpty
 import eu.timepit.refined.refineV
+import javax.inject.Inject
+import org.apache.james.core.MailAddress
 import org.apache.james.jmap.mail.EmailSubmissionSet.EmailSubmissionCreationId
 import org.apache.james.jmap.mail.{Address, EmailSubmissionAddress, EmailSubmissionCreationRequest, EmailSubmissionCreationResponse, EmailSubmissionId, EmailSubmissionSetRequest, EmailSubmissionSetResponse, Envelope, Parameters}
-import play.api.libs.json.{JsError, JsObject, JsResult, JsSuccess, JsValue, Json, Reads, Writes}
+import org.apache.james.mailbox.model.MessageId
+import play.api.libs.json.{JsError, JsObject, JsResult, JsString, JsSuccess, JsValue, Json, Reads, Writes}
 
-class EmailSubmissionSetSerializer {
+import scala.util.Try
+
+class EmailSubmissionSetSerializer @Inject()(messageIdFactory: MessageId.Factory) {
   private implicit val mapCreationRequestByEmailSubmissionCreationId: Reads[Map[EmailSubmissionCreationId, JsObject]] =
     readMapEntry[EmailSubmissionCreationId, JsObject](s => refineV[NonEmpty](s),
       {
         case o: JsObject => JsSuccess(o)
         case _ => JsError("Expecting a JsObject as a creation entry")
       })
+
+  private implicit val messageIdReads: Reads[MessageId] = {
+    case JsString(serializedMessageId) => Try(JsSuccess(messageIdFactory.fromString(serializedMessageId)))
+      .fold(_ => JsError("Invalid messageId"), messageId => messageId)
+    case _ => JsError("Expecting messageId to be represented by a JsString")
+  }
+
+  private implicit val mailAddressReads: Reads[MailAddress] = {
+    case JsString(value) => Try(JsSuccess(new MailAddress(value)))
+      .fold(e => JsError(s"Invalid mailAddress: ${e.getMessage}"), mailAddress => mailAddress)
+    case _ => JsError("Expecting mailAddress to be represented by a JsString")
+  }
 
   private implicit val emailSubmissionSetRequestReads: Reads[EmailSubmissionSetRequest] = Json.reads[EmailSubmissionSetRequest]
 

@@ -19,38 +19,65 @@
 
 package org.apache.james.jmap.method
 
+import java.io.InputStream
+
 import eu.timepit.refined.auto._
 import javax.inject.Inject
+import javax.mail.MessagingException
+import javax.mail.internet.MimeMessage
 import org.apache.james.jmap.http.SessionSupplier
 import org.apache.james.jmap.json.{EmailSubmissionSetSerializer, ResponseSerializer}
 import org.apache.james.jmap.mail.EmailSubmissionSet.EmailSubmissionCreationId
 import org.apache.james.jmap.mail.{EmailSubmissionCreationRequest, EmailSubmissionCreationResponse, EmailSubmissionId, EmailSubmissionSetRequest, EmailSubmissionSetResponse}
+import org.apache.james.jmap.method.EmailSubmissionSetMethod.MAIL_METADATA_USERNAME_ATTRIBUTE
 import org.apache.james.jmap.model.CapabilityIdentifier.CapabilityIdentifier
 import org.apache.james.jmap.model.DefaultCapabilities.{CORE_CAPABILITY, MAIL_CAPABILITY}
 import org.apache.james.jmap.model.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.model.SetError.SetErrorDescription
-import org.apache.james.jmap.model.{Capabilities, ClientId, Id, Invocation, ServerId, SetError, State}
+import org.apache.james.jmap.model._
 import org.apache.james.jmap.routes.ProcessingContext
+import org.apache.james.lifecycle.api.{LifecycleUtil, Startable}
+import org.apache.james.mailbox.model.{FetchGroup, MessageResult}
 import org.apache.james.mailbox.{MailboxSession, MessageIdManager}
 import org.apache.james.metrics.api.MetricFactory
-import play.api.libs.json.{JsError, JsObject, JsPath, JsSuccess, Json, JsonValidationError}
+import org.apache.james.queue.api.MailQueueFactory.SPOOL
+import org.apache.james.queue.api.{MailQueue, MailQueueFactory}
+import org.apache.james.server.core.{MailImpl, MimeMessageCopyOnWriteProxy, MimeMessageInputStreamSource, MimeMessageSource}
+import org.apache.mailet.{Attribute, AttributeName, AttributeValue}
+import play.api.libs.json._
 import reactor.core.scala.publisher.{SFlux, SMono}
 import reactor.core.scheduler.Schedulers
+
+import scala.jdk.CollectionConverters._
+import scala.util.Try
+
+object EmailSubmissionSetMethod {
+  val MAIL_METADATA_USERNAME_ATTRIBUTE: AttributeName = AttributeName.of("org.apache.james.jmap.send.MailMetaData.username")
+}
 
 case class EmailSubmissionCreationParseException(setError: SetError) extends Exception
 
 class EmailSubmissionSetMethod @Inject()(serializer: EmailSubmissionSetSerializer,
                                          messageIdManager: MessageIdManager,
+                                         mailQueueFactory: MailQueueFactory[_ <: MailQueue],
                                          val metricFactory: MetricFactory,
-                                         val sessionSupplier: SessionSupplier) extends MethodRequiringAccountId[EmailSubmissionSetRequest] {
+                                         val sessionSupplier: SessionSupplier) extends MethodRequiringAccountId[EmailSubmissionSetRequest] with Startable {
   override val methodName: MethodName = MethodName("EmailSubmission/set")
   override val requiredCapabilities: Capabilities = Capabilities(CORE_CAPABILITY, MAIL_CAPABILITY)
+  var queue: MailQueue = null
 
   sealed trait CreationResult {
     def emailSubmissionCreationId: EmailSubmissionCreationId
   }
   case class CreationSuccess(emailSubmissionCreationId: EmailSubmissionCreationId, emailSubmissionCreationResponse: EmailSubmissionCreationResponse) extends CreationResult
-  case class CreationFailure(emailSubmissionCreationId: EmailSubmissionCreationId, exception: Exception) extends CreationResult
+  case class CreationFailure(emailSubmissionCreationId: EmailSubmissionCreationId, exception: Throwable) extends CreationResult {
+    def asSetError: SetError = exception match {
+      case e: EmailSubmissionCreationParseException => e.setError
+      case e: Exception =>
+        e.printStackTrace()
+        SetError.serverFail(SetErrorDescription(exception.getMessage))
+    }
+  }
   case class CreationResults(created: Seq[CreationResult]) {
     def retrieveCreated: Map[EmailSubmissionCreationId, EmailSubmissionCreationResponse] = created
       .flatMap(result => result match {
@@ -59,9 +86,21 @@ class EmailSubmissionSetMethod @Inject()(serializer: EmailSubmissionSetSerialize
       })
       .toMap
       .map(creation => (creation._1, creation._2))
+
+
+    def retrieveErrors: Map[EmailSubmissionCreationId, SetError] = created
+      .flatMap(result => result match {
+        case failure: CreationFailure => Some(failure.emailSubmissionCreationId, failure.asSetError)
+        case _ => None
+      })
+      .toMap
   }
 
-    override def doProcess(capabilities: Set[CapabilityIdentifier], invocation: InvocationWithContext, mailboxSession: MailboxSession, request: EmailSubmissionSetRequest): SMono[InvocationWithContext] = {
+  def init(): Unit = {
+    queue = mailQueueFactory.createQueue(SPOOL)
+  }
+
+  override def doProcess(capabilities: Set[CapabilityIdentifier], invocation: InvocationWithContext, mailboxSession: MailboxSession, request: EmailSubmissionSetRequest): SMono[InvocationWithContext] = {
     for {
       createdResults <- create(request, mailboxSession, invocation.processingContext)
     } yield InvocationWithContext(
@@ -70,7 +109,8 @@ class EmailSubmissionSetMethod @Inject()(serializer: EmailSubmissionSetSerialize
         arguments = Arguments(serializer.serializeEmailSubmissionSetResponse(EmailSubmissionSetResponse(
             accountId = request.accountId,
             newState = State.INSTANCE,
-            created = Some(createdResults._1.retrieveCreated)))
+            created = Some(createdResults._1.retrieveCreated).filter(_.nonEmpty),
+            notCreated = Some(createdResults._1.retrieveErrors).filter(_.nonEmpty)))
           .as[JsObject]),
         methodCallId = invocation.invocation.methodCallId),
       processingContext = createdResults._2)
@@ -94,14 +134,14 @@ class EmailSubmissionSetMethod @Inject()(serializer: EmailSubmissionSetSerialize
       .foldLeft((CreationResults(Nil), processingContext)){
         (acc : (CreationResults, ProcessingContext), elem: (EmailSubmissionCreationId, JsObject)) => {
           val (emailSubmissionCreationId, jsObject) = elem
-          val (creationResult, updatedProcessingContext) = createMailbox(session, emailSubmissionCreationId, jsObject, acc._2)
+          val (creationResult, updatedProcessingContext) = createSubmission(session, emailSubmissionCreationId, jsObject, acc._2)
           (CreationResults(acc._1.created :+ creationResult), updatedProcessingContext)
         }
       }
       .subscribeOn(Schedulers.elastic())
   }
 
-  private def createMailbox(mailboxSession: MailboxSession,
+  private def createSubmission(mailboxSession: MailboxSession,
                             emailSubmissionCreationId: EmailSubmissionCreationId,
                             jsObject: JsObject,
                             processingContext: ProcessingContext): (CreationResult, ProcessingContext) = {
@@ -131,11 +171,43 @@ class EmailSubmissionSetMethod @Inject()(serializer: EmailSubmissionSetSerialize
     }
 
   private def sendEmail(mailboxSession: MailboxSession,
-                        emailSubmissionCreationRequest: EmailSubmissionCreationRequest): Either[Exception, EmailSubmissionCreationResponse] = ???
+                        request: EmailSubmissionCreationRequest): Either[Throwable, EmailSubmissionCreationResponse] = {
+    val message: Either[Exception, MessageResult] = messageIdManager.getMessage(request.emailId, FetchGroup.FULL_CONTENT, mailboxSession)
+      .asScala
+      .toList
+      .headOption
+      .toRight(MessageNotFoundException(request.emailId))
+
+    message.flatMap(m => {
+      val submissionId = EmailSubmissionId.generate
+      toMimeMessage(submissionId.value, m.getFullContent.getInputStream)
+        .flatMap(mimeMessage => {
+          Try(queue.enQueue(MailImpl.builder()
+              .name(submissionId.value)
+              .addRecipients(request.envelope.rcptTo.map(_.email).asJava)
+              .sender(request.envelope.mailFrom.email)
+              .mimeMessage(mimeMessage)
+              .addAttribute(new Attribute(MAIL_METADATA_USERNAME_ATTRIBUTE, AttributeValue.of(mailboxSession.getUser.asString())))
+              .build()))
+            .map(_ => EmailSubmissionCreationResponse(submissionId))
+        }).toEither
+    })
+  }
+
+  private def toMimeMessage(name: String, inputStream: InputStream): Try[MimeMessage] = {
+    val source = new MimeMessageInputStreamSource(name, inputStream)
+    // if MimeMessageCopyOnWriteProxy throws an error in the constructor we
+    // have to manually care disposing our source.
+    Try(new MimeMessageCopyOnWriteProxy(source))
+      .recover(e => {
+        LifecycleUtil.dispose(source)
+        throw e
+      })
+  }
 
   private def recordCreationIdInProcessingContext(emailSubmissionCreationId: EmailSubmissionCreationId,
                                                   processingContext: ProcessingContext,
-                                                  emailSubmissionId: EmailSubmissionId): Either[IllegalArgumentException, ProcessingContext] = {
+                                                  emailSubmissionId: EmailSubmissionId) = {
     for {
       creationId <- Id.validate(emailSubmissionCreationId)
       serverAssignedId <- Id.validate(emailSubmissionId.value)

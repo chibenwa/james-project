@@ -19,20 +19,29 @@
 
 package org.apache.james.jmap.mail
 
+import java.util.UUID
+
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.collection.NonEmpty
 import eu.timepit.refined.refineV
 import eu.timepit.refined.types.string.NonEmptyString
+import org.apache.james.core.MailAddress
 import org.apache.james.jmap.mail.Email.UnparsedEmailId
 import org.apache.james.jmap.mail.EmailSubmissionSet.EmailSubmissionCreationId
 import org.apache.james.jmap.method.{EmailSubmissionCreationParseException, WithAccountId}
+import org.apache.james.jmap.model.Id.Id
 import org.apache.james.jmap.model.SetError.SetErrorDescription
 import org.apache.james.jmap.model.State.State
-import org.apache.james.jmap.model.{AccountId, Properties, SetError}
+import org.apache.james.jmap.model.{AccountId, Id, Properties, SetError}
+import org.apache.james.mailbox.model.MessageId
 import play.api.libs.json.JsObject
 
 object EmailSubmissionSet {
   type EmailSubmissionCreationId = String Refined NonEmpty
+}
+
+object EmailSubmissionId {
+  def generate: EmailSubmissionId = EmailSubmissionId(Id.validate(UUID.randomUUID().toString).toOption.get)
 }
 
 case class EmailSubmissionSetRequest(accountId: AccountId,
@@ -40,19 +49,20 @@ case class EmailSubmissionSetRequest(accountId: AccountId,
 
 case class EmailSubmissionSetResponse(accountId: AccountId,
                                       newState: State,
-                                      created: Option[Map[EmailSubmissionCreationId, EmailSubmissionCreationResponse]])
+                                      created: Option[Map[EmailSubmissionCreationId, EmailSubmissionCreationResponse]],
+                                      notCreated: Option[Map[EmailSubmissionCreationId, SetError]])
 
-case class EmailSubmissionId(value: String)
+case class EmailSubmissionId(value: Id)
 
 case class EmailSubmissionCreationResponse(id: EmailSubmissionId)
 
 case class Parameters(value: String)
-case class EmailSubmissionAddress(email: Address, parameters: Option[Parameters])
+case class EmailSubmissionAddress(email: MailAddress)
 
-case class Envelope(mailFrom: EmailSubmissionAddress, rcptTo: EmailSubmissionAddress)
+case class Envelope(mailFrom: EmailSubmissionAddress, rcptTo: List[EmailSubmissionAddress])
 
 object EmailSubmissionCreationRequest {
-  private val assignableProperties = Set("name", "parentId", "isSubscribed", "rights")
+  private val assignableProperties = Set("emailId", "envelope")
 
   def validateProperties(jsObject: JsObject): Either[EmailSubmissionCreationParseException, JsObject] =
     jsObject.keys.diff(assignableProperties) match {
@@ -70,5 +80,5 @@ object EmailSubmissionCreationRequest {
     }))
 }
 
-case class EmailSubmissionCreationRequest(emailId: UnparsedEmailId,
+case class EmailSubmissionCreationRequest(emailId: MessageId,
                                           envelope: Envelope)
