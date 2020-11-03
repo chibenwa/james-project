@@ -22,14 +22,14 @@ package org.apache.james.jmap.method
 import java.io.InputStream
 
 import eu.timepit.refined.auto._
+import javax.annotation.PreDestroy
 import javax.inject.Inject
-import javax.mail.MessagingException
 import javax.mail.internet.MimeMessage
 import org.apache.james.jmap.http.SessionSupplier
 import org.apache.james.jmap.json.{EmailSubmissionSetSerializer, ResponseSerializer}
 import org.apache.james.jmap.mail.EmailSubmissionSet.EmailSubmissionCreationId
 import org.apache.james.jmap.mail.{EmailSubmissionCreationRequest, EmailSubmissionCreationResponse, EmailSubmissionId, EmailSubmissionSetRequest, EmailSubmissionSetResponse}
-import org.apache.james.jmap.method.EmailSubmissionSetMethod.MAIL_METADATA_USERNAME_ATTRIBUTE
+import org.apache.james.jmap.method.EmailSubmissionSetMethod.{LOGGER, MAIL_METADATA_USERNAME_ATTRIBUTE}
 import org.apache.james.jmap.model.CapabilityIdentifier.CapabilityIdentifier
 import org.apache.james.jmap.model.DefaultCapabilities.{CORE_CAPABILITY, MAIL_CAPABILITY}
 import org.apache.james.jmap.model.Invocation.{Arguments, MethodName}
@@ -42,8 +42,9 @@ import org.apache.james.mailbox.{MailboxSession, MessageIdManager}
 import org.apache.james.metrics.api.MetricFactory
 import org.apache.james.queue.api.MailQueueFactory.SPOOL
 import org.apache.james.queue.api.{MailQueue, MailQueueFactory}
-import org.apache.james.server.core.{MailImpl, MimeMessageCopyOnWriteProxy, MimeMessageInputStreamSource, MimeMessageSource}
+import org.apache.james.server.core.{MailImpl, MimeMessageCopyOnWriteProxy, MimeMessageInputStreamSource}
 import org.apache.mailet.{Attribute, AttributeName, AttributeValue}
+import org.slf4j.{Logger, LoggerFactory}
 import play.api.libs.json._
 import reactor.core.scala.publisher.{SFlux, SMono}
 import reactor.core.scheduler.Schedulers
@@ -53,6 +54,7 @@ import scala.util.Try
 
 object EmailSubmissionSetMethod {
   val MAIL_METADATA_USERNAME_ATTRIBUTE: AttributeName = AttributeName.of("org.apache.james.jmap.send.MailMetaData.username")
+  val LOGGER: Logger = LoggerFactory.getLogger(classOf[EmailSubmissionSetMethod])
 }
 
 case class EmailSubmissionCreationParseException(setError: SetError) extends Exception
@@ -98,6 +100,11 @@ class EmailSubmissionSetMethod @Inject()(serializer: EmailSubmissionSetSerialize
 
   def init(): Unit = {
     queue = mailQueueFactory.createQueue(SPOOL)
+  }
+
+  @PreDestroy def dispose(): Unit = {
+    Try(queue.close())
+      .recover(e => LOGGER.debug("error closing queue", e))
   }
 
   override def doProcess(capabilities: Set[CapabilityIdentifier], invocation: InvocationWithContext, mailboxSession: MailboxSession, request: EmailSubmissionSetRequest): SMono[InvocationWithContext] = {
