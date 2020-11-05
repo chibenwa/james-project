@@ -19,7 +19,6 @@
 
 package org.apache.james.modules.server;
 
-import com.google.inject.Scopes;
 import org.apache.james.queue.api.MailQueue;
 import org.apache.james.queue.api.MailQueueFactory;
 import org.apache.james.queue.api.ManageableMailQueue;
