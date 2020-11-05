@@ -121,7 +121,7 @@ public class MailboxPathV3Migration implements Migration {
     private Mono<Void> migrate(CassandraIdAndPath idAndPath) {
         return mailboxDAO.retrieveMailbox(idAndPath.getCassandraId())
             .flatMap(mailbox -> daoV3.save(mailbox)
-                .then(daoV2.delete(idAndPath.getMailboxPath())))
+                .then(daoV2.delete(mailbox.generateAssociatedPath())))
             .onErrorResume(error -> handleErrorMigrate(idAndPath, error))
             .retryWhen(RetryBackoffSpec.backoff(MAX_ATTEMPTS, MIN_BACKOFF)
                 .jitter(0.5)
