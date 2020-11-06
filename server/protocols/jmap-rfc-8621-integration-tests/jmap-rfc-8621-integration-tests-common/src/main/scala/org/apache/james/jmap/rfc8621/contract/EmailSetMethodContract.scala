@@ -430,7 +430,7 @@ trait EmailSetMethodContract {
       .isEqualTo(
         s"""|{
           |   "type":"invalidPatch",
-          |   "description": "Message update is invalid: List((,List(JsonValidationError(List(Value associated with keywords is invalid: List((,List(JsonValidationError(List(keyword value can only be true),ArraySeq()))))),ArraySeq()))))"
+          |   "description": "Message update is invalid: List((,List(JsonValidationError(List(Value associated with keywords is invalid: List((/movie,List(JsonValidationError(List(map marker value can only be true),ArraySeq()))))),ArraySeq()))))"
           |}""".stripMargin)
   }
 
