@@ -22,6 +22,7 @@ package org.apache.james.jmap
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
+import cats.implicits.toTraverseOps
 import eu.timepit.refined.api.{RefType, Validate}
 import org.apache.james.jmap.model.Id.Id
 import org.apache.james.jmap.model.SetError.SetErrorDescription
@@ -41,28 +42,9 @@ package object json {
 
   def readMapEntry[K, V](keyValidator: String => Either[String, K], valueReads: Reads[V]): Reads[Map[K, V]] =
     _.validate[Map[String, JsValue]]
-      .flatMap(mapWithStringKey =>{
-        val firstAcc = scala.util.Right[JsError, Map[K, V]](Map.empty)
-        mapWithStringKey
-          .foldLeft[Either[JsError, Map[K, V]]](firstAcc)((acc: Either[JsError, Map[K, V]], keyValue) => {
-            acc match {
-              case error@Left(_) => error
-              case scala.util.Right(validatedAcc) =>
-                val refinedKey: Either[String, K] = keyValidator.apply(keyValue._1)
-                refinedKey match {
-                  case Left(error) => Left(JsError(error))
-                  case scala.util.Right(unparsedK) =>
-                    val transformedValue: JsResult[V] = valueReads.reads(keyValue._2)
-                    transformedValue.fold(
-                      error => Left(JsError(error)),
-                      v => scala.util.Right(validatedAcc + (unparsedK -> v)))
-                }
-            }
-          }) match {
-          case Left(jsError) => jsError
-          case scala.util.Right(value) => JsSuccess(value)
-        }
-      })
+      .flatMap(aMap => aMap.toList.map(entry => keyValidator.apply(entry._1).left.map(message => JsError(message))
+        .flatMap(key => valueReads.reads(entry._2).asEither.map((key, _)).left.map(e => JsError(e))))
+        .sequence.fold(e => e, aMap => JsSuccess(aMap.toMap)))
 
   // code copied from https://github.com/avdv/play-json-refined/blob/master/src/main/scala/de.cbley.refined.play.json/package.scala
   implicit def writeRefined[T, P, F[_, _]](
