@@ -56,17 +56,17 @@ class EmailSubmissionSetSerializer @Inject()(messageIdFactory: MessageId.Factory
 
   private implicit val parametersReads: Reads[Parameters] = Json.valueReads[Parameters]
   private implicit val emailReads: Reads[Address] = Json.valueReads[Address]
-  private implicit val emailSubmissionAddresReads: Reads[EmailSubmissionAddress] = Json.reads[EmailSubmissionAddress]
+  private implicit val emailSubmissionAddressReads: Reads[EmailSubmissionAddress] = Json.reads[EmailSubmissionAddress]
   private implicit val envelopeReads: Reads[Envelope] = Json.reads[Envelope]
 
   implicit val emailSubmissionCreationRequestReads: Reads[EmailSubmissionCreationRequest] = Json.reads[EmailSubmissionCreationRequest]
 
   private implicit val emailSubmissionCreationResponseWrites: Writes[EmailSubmissionCreationResponse] = Json.writes[EmailSubmissionCreationResponse]
 
-  private implicit def emailSubmissionSetResponseWrites(implicit emailSubmissionCreationResponseWrites: Writes[EmailSubmissionCreationResponse]): Writes[EmailSubmissionSetResponse] = Json.writes[EmailSubmissionSetResponse]
+  private implicit val emailSubmissionMapCreationResponseWrites: Writes[Map[EmailSubmissionCreationId, EmailSubmissionCreationResponse]] =
+    mapWrites[EmailSubmissionCreationId, EmailSubmissionCreationResponse](_.value, emailSubmissionCreationResponseWrites)
 
-  private implicit def emailSubmissionMapCreationResponseWrites(implicit emailSubmissionSetCreationResponseWrites: Writes[EmailSubmissionCreationResponse]): Writes[Map[EmailSubmissionCreationId, EmailSubmissionCreationResponse]] =
-    mapWrites[EmailSubmissionCreationId, EmailSubmissionCreationResponse](_.value, emailSubmissionSetCreationResponseWrites)
+  private implicit val emailSubmissionSetResponseWrites: Writes[EmailSubmissionSetResponse] = Json.writes[EmailSubmissionSetResponse]
 
   def deserializeEmailSubmissionSetRequest(input: JsValue): JsResult[EmailSubmissionSetRequest] = Json.fromJson[EmailSubmissionSetRequest](input)
 
