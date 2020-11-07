@@ -22,9 +22,11 @@ package org.apache.james.jmap.json
 import java.io.InputStream
 import java.net.URL
 
+import eu.timepit.refined.refineV
 import org.apache.james.core.Username
 import org.apache.james.jmap.model
 import org.apache.james.jmap.model.CapabilityIdentifier.CapabilityIdentifier
+import org.apache.james.jmap.model.Id.IdConstraint
 import org.apache.james.jmap.model.Invocation.{Arguments, MethodCallId, MethodName}
 import org.apache.james.jmap.model.SetError.SetErrorDescription
 import org.apache.james.jmap.model.{Account, Invocation, Session, _}
@@ -43,9 +45,7 @@ object ResponseSerializer {
     mapWrites[ClientId, ServerId](_.value.value, serverIdFormat)
 
   private implicit val createdIdsIdRead: Reads[Map[ClientId, ServerId]] =
-    Reads.mapReads[ClientId, ServerId] {
-      clientIdString => Json.fromJson[ClientId](JsString(clientIdString))
-    }
+    Reads.mapReads[ClientId, ServerId] { clientIdString =>refineV[IdConstraint](clientIdString).fold(JsError(_), id => JsSuccess(ClientId(id)))}
   private implicit val createdIdsFormat: Format[CreatedIds] = Json.valueFormat[CreatedIds]
 
   // Invocation
