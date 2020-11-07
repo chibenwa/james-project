@@ -19,12 +19,10 @@
 
 package org.apache.james.jmap.json
 
-import java.time.format.DateTimeFormatter
-
 import org.apache.james.jmap.mail.VacationResponse.{UnparsedVacationResponseId, VACATION_RESPONSE_ID}
-import org.apache.james.jmap.mail.{FromDate, HtmlBody, IsEnabled, Subject, TextBody, ToDate, VacationResponse, VacationResponseGetRequest, VacationResponseGetResponse, VacationResponseId, VacationResponseIds, VacationResponseNotFound}
+import org.apache.james.jmap.mail._
 import org.apache.james.jmap.model._
-import org.apache.james.jmap.vacation.{VacationResponsePatchObject, VacationResponseSetError, VacationResponseSetRequest, VacationResponseSetResponse, VacationResponseUpdateResponse}
+import org.apache.james.jmap.vacation._
 import play.api.libs.json._
 
 import scala.language.implicitConversions
@@ -42,9 +40,6 @@ object VacationSerializer {
   private implicit val vacationResponseSetErrorWrites: Writes[VacationResponseSetError] = Json.writes[VacationResponseSetError]
 
   private implicit val vacationResponseSetResponseWrites: Writes[VacationResponseSetResponse] = Json.writes[VacationResponseSetResponse]
-
-  private implicit val utcDateWrites: Writes[UTCDate] =
-    utcDate => JsString(utcDate.asUTC.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssX")))
 
   private implicit val vacationResponseIdWrites: Writes[VacationResponseId] = _ => JsString(VACATION_RESPONSE_ID.value)
   private implicit val vacationResponseIdReads: Reads[VacationResponseId] = {
