@@ -56,7 +56,7 @@ object MailboxQuerySerializer {
   private implicit val emailQueryRequestReads: Reads[MailboxQueryRequest] = Json.reads[MailboxQueryRequest]
   private implicit val queryStateWrites: Writes[QueryState] = Json.valueWrites[QueryState]
 
-  private implicit def mailboxQueryResponseWrites: OWrites[MailboxQueryResponse] = Json.writes[MailboxQueryResponse]
+  private implicit val mailboxQueryResponseWrites: OWrites[MailboxQueryResponse] = Json.writes[MailboxQueryResponse]
 
   def serialize(mailboxQueryResponse: MailboxQueryResponse): JsObject = Json.toJsObject(mailboxQueryResponse)
 
