@@ -66,11 +66,6 @@ package object json {
         }
       })
 
-  implicit def idMapWrite[Any](implicit vr: Writes[Any]): Writes[Map[Id, Any]] =
-    (m: Map[Id, Any]) => {
-      JsObject(m.map { case (k, v) => (k.value, vr.writes(v)) }.toSeq)
-    }
-
   private[json] implicit val UTCDateReads: Reads[UTCDate] = {
     case JsString(value) =>
       Try(UTCDate(ZonedDateTime.parse(value, DateTimeFormatter.ISO_DATE_TIME))) match {
