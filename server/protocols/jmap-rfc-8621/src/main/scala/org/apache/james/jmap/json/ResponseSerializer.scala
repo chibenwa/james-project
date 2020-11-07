@@ -45,7 +45,7 @@ object ResponseSerializer {
     mapWrites[ClientId, ServerId](_.value.value, serverIdFormat)
 
   private implicit val createdIdsIdRead: Reads[Map[ClientId, ServerId]] =
-    Reads.mapReads[ClientId, ServerId] { clientIdString =>refineV[IdConstraint](clientIdString).fold(JsError(_), id => JsSuccess(ClientId(id)))}
+    Reads.mapReads[ClientId, ServerId] { clientIdString => refineV[IdConstraint](clientIdString).fold(JsError(_), id => JsSuccess(ClientId(id)))}
   private implicit val createdIdsFormat: Format[CreatedIds] = Json.valueFormat[CreatedIds]
 
   // Invocation
