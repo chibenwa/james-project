@@ -145,24 +145,22 @@ class MailboxSerializer @Inject()(mailboxIdFactory: MailboxId.Factory) {
 
   private implicit val mailboxSetUpdateResponseWrites: Writes[MailboxUpdateResponse] = Json.valueWrites[MailboxUpdateResponse]
 
-  private implicit def mailboxMapSetErrorForCreationWrites: Writes[Map[MailboxCreationId, SetError]] =
+  private implicit val mailboxMapSetErrorForCreationWrites: Writes[Map[MailboxCreationId, SetError]] =
     mapWrites[MailboxCreationId, SetError](_.value, setErrorWrites)
-  private implicit def mailboxMapSetErrorWrites: Writes[Map[MailboxId, SetError]] =
+  private implicit val mailboxMapSetErrorWrites: Writes[Map[MailboxId, SetError]] =
     mapWrites[MailboxId, SetError](_.serialize(), setErrorWrites)
-  private implicit def mailboxMapSetErrorWritesByClientId: Writes[Map[ClientId, SetError]] =
+  private implicit val mailboxMapSetErrorWritesByClientId: Writes[Map[ClientId, SetError]] =
     mapWrites[ClientId, SetError](_.value.value, setErrorWrites)
   private implicit def mailboxMapCreationResponseWrites(implicit mailboxSetCreationResponseWrites: Writes[MailboxCreationResponse]): Writes[Map[MailboxCreationId, MailboxCreationResponse]] =
     mapWrites[MailboxCreationId, MailboxCreationResponse](_.value, mailboxSetCreationResponseWrites)
-  private implicit def mailboxMapUpdateResponseWrites: Writes[Map[MailboxId, MailboxUpdateResponse]] =
+  private implicit val mailboxMapUpdateResponseWrites: Writes[Map[MailboxId, MailboxUpdateResponse]] =
     mapWrites[MailboxId, MailboxUpdateResponse](_.serialize(), mailboxSetUpdateResponseWrites)
 
-  private def mailboxWritesWithFilteredProperties(properties: Properties, capabilities: Set[CapabilityIdentifier]): Writes[Mailbox] = {
+  private def mailboxWritesWithFilteredProperties(properties: Properties, capabilities: Set[CapabilityIdentifier]): Writes[Mailbox] =
     mailboxWrites(Mailbox.propertiesFiltered(properties, capabilities))
-  }
 
-  private def mailboxCreationResponseWritesWithFilteredProperties(capabilities: Set[CapabilityIdentifier]): Writes[MailboxCreationResponse] = {
+  private def mailboxCreationResponseWritesWithFilteredProperties(capabilities: Set[CapabilityIdentifier]): Writes[MailboxCreationResponse] =
     mailboxCreationResponseWrites(MailboxCreationResponse.propertiesFiltered(capabilities))
-  }
 
   def serialize(mailbox: Mailbox)(implicit mailboxWrites: Writes[Mailbox]): JsValue = Json.toJson(mailbox)
 
