@@ -82,14 +82,13 @@ class EmailQuerySerializer @Inject()(mailboxIdFactory: MailboxId.Factory) {
   }
 
   private implicit val filterConditionReads: Reads[FilterCondition] = {
-    case JsObject(underlying) => {
+    case JsObject(underlying) =>
       val unsupported: collection.Set[String] = underlying.keySet.diff(FilterCondition.SUPPORTED)
       if (unsupported.nonEmpty) {
         JsError(s"These '${unsupported.mkString("[", ", ", "]")}' was unsupported filter options")
       } else {
         Json.reads[FilterCondition].reads(JsObject(underlying))
       }
-    }
     case jsValue => Json.reads[FilterCondition].reads(jsValue)
   }
 
@@ -133,7 +132,7 @@ class EmailQuerySerializer @Inject()(mailboxIdFactory: MailboxId.Factory) {
 
   private implicit val emailQueryRequestReads: Reads[EmailQueryRequest] = Json.reads[EmailQueryRequest]
 
-  private implicit def emailQueryResponseWrites: OWrites[EmailQueryResponse] = Json.writes[EmailQueryResponse]
+  private implicit val emailQueryResponseWrites: OWrites[EmailQueryResponse] = Json.writes[EmailQueryResponse]
 
   def serialize(emailQueryResponse: EmailQueryResponse): JsObject = Json.toJsObject(emailQueryResponse)
 
