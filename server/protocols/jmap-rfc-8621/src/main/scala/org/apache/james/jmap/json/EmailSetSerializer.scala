@@ -23,11 +23,11 @@ import cats.implicits._
 import eu.timepit.refined.refineV
 import javax.inject.Inject
 import org.apache.james.jmap.mail.EmailSet.{UnparsedMessageId, UnparsedMessageIdConstraint}
-import org.apache.james.jmap.mail.{DestroyIds, EmailSetRequest, EmailSetResponse, EmailSetUpdate, MailboxIds}
+import org.apache.james.jmap.mail._
 import org.apache.james.jmap.model.KeywordsFactory.STRICT_KEYWORDS_FACTORY
 import org.apache.james.jmap.model.{Keyword, Keywords, SetError}
 import org.apache.james.mailbox.model.{MailboxId, MessageId}
-import play.api.libs.json.{JsBoolean, JsError, JsNull, JsObject, JsResult, JsString, JsSuccess, JsValue, Json, OWrites, Reads, Writes}
+import play.api.libs.json._
 
 import scala.util.Try
 
@@ -170,12 +170,7 @@ class EmailSetSerializer @Inject()(messageIdFactory: MessageId.Factory, mailboxI
   }
 
   private implicit val mailboxIdsMapReads: Reads[Map[MailboxId, Boolean]] =
-    readMapEntry[MailboxId, Boolean](s => Try(mailboxIdFactory.fromString(s)).toEither.left.map(error => error.getMessage),
-      {
-        case JsBoolean(true) => JsSuccess(true)
-        case JsBoolean(false) => JsError("mailboxId value can only be true")
-        case _ => JsError("Expecting mailboxId value to be a boolean")
-      })
+    Reads.mapReads[MailboxId, Boolean] {s => Try(mailboxIdFactory.fromString(s)).fold(e => JsError(e.getMessage), JsSuccess(_)) } (mapMarkerReads)
 
   private implicit val mailboxIdsReads: Reads[MailboxIds] = jsValue => mailboxIdsMapReads.reads(jsValue).map(
     mailboxIdsMap => MailboxIds(mailboxIdsMap.keys.toList))
@@ -186,11 +181,7 @@ class EmailSetSerializer @Inject()(messageIdFactory: MessageId.Factory, mailboxI
   }
 
   private implicit val updatesMapReads: Reads[Map[UnparsedMessageId, JsObject]] =
-    readMapEntry[UnparsedMessageId, JsObject](s => refineV[UnparsedMessageIdConstraint](s),
-      {
-        case o: JsObject => JsSuccess(o)
-        case _ => JsError("Expecting a JsObject as an update entry")
-      })
+    Reads.mapReads[UnparsedMessageId, JsObject] {string => refineV[UnparsedMessageIdConstraint](string).fold(JsError(_), id => JsSuccess(id)) }
 
   private implicit val keywordReads: Reads[Keyword] = {
     case jsString: JsString => Keyword.parse(jsString.value)
@@ -200,12 +191,7 @@ class EmailSetSerializer @Inject()(messageIdFactory: MessageId.Factory, mailboxI
   }
 
   private implicit val keywordsMapReads: Reads[Map[Keyword, Boolean]] =
-    readMapEntry[Keyword, Boolean](s => Keyword.parse(s),
-      {
-        case JsBoolean(true) => JsSuccess(true)
-        case JsBoolean(false) => JsError("keyword value can only be true")
-        case _ => JsError("Expecting keyword value to be a boolean")
-      })
+    Reads.mapReads[Keyword, Boolean] {string => Keyword.parse(string).fold(JsError(_), JsSuccess(_)) } (mapMarkerReads)
   private implicit val keywordsReads: Reads[Keywords] = jsValue => keywordsMapReads.reads(jsValue).flatMap(
     keywordsMap => STRICT_KEYWORDS_FACTORY.fromSet(keywordsMap.keys.toSet)
       .fold(e => JsError(e.getMessage), keywords => JsSuccess(keywords)))

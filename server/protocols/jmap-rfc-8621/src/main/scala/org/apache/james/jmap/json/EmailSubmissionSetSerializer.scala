@@ -32,11 +32,7 @@ import scala.util.Try
 
 class EmailSubmissionSetSerializer @Inject()(messageIdFactory: MessageId.Factory) {
   private implicit val mapCreationRequestByEmailSubmissionCreationId: Reads[Map[EmailSubmissionCreationId, JsObject]] =
-    readMapEntry[EmailSubmissionCreationId, JsObject](s => refineV[NonEmpty](s),
-      {
-        case o: JsObject => JsSuccess(o)
-        case _ => JsError("Expecting a JsObject as a creation entry")
-      })
+    Reads.mapReads[EmailSubmissionCreationId, JsObject] {string => refineV[NonEmpty](string).fold(JsError(_), id => JsSuccess(id)) }
 
   private implicit val messageIdReads: Reads[MessageId] = {
     case JsString(serializedMessageId) => Try(JsSuccess(messageIdFactory.fromString(serializedMessageId)))

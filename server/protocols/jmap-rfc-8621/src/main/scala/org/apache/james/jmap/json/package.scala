@@ -22,9 +22,7 @@ package org.apache.james.jmap
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
-import cats.implicits.toTraverseOps
 import eu.timepit.refined.api.{RefType, Validate}
-import org.apache.james.jmap.model.Id.Id
 import org.apache.james.jmap.model.SetError.SetErrorDescription
 import org.apache.james.jmap.model.{AccountId, Properties, SetError, UTCDate}
 import play.api.libs.json._
@@ -32,6 +30,17 @@ import play.api.libs.json._
 import scala.util.{Failure, Success, Try}
 
 package object json {
+  implicit val jsObjectReads: Reads[JsObject] = {
+    case o: JsObject => JsSuccess(o)
+    case _ => JsError("Expecting a JsObject as a creation entry")
+  }
+
+  val mapMarkerReads: Reads[Boolean] = {
+    case JsBoolean(true) => JsSuccess(true)
+    case JsBoolean(false) => JsError("map marker value can only be true")
+    case _ => JsError("Expecting mailboxId value to be a boolean")
+  }
+
   def mapWrites[K, V](keyWriter: K => String, valueWriter: Writes[V]): Writes[Map[K, V]] =
     (ids: Map[K, V]) => {
       ids.foldLeft(JsObject.empty)((jsObject, kv) => {
@@ -39,12 +48,6 @@ package object json {
         jsObject.+(keyWriter.apply(key), valueWriter.writes(value))
       })
     }
-
-  def readMapEntry[K, V](keyValidator: String => Either[String, K], valueReads: Reads[V]): Reads[Map[K, V]] =
-    _.validate[Map[String, JsValue]]
-      .flatMap(aMap => aMap.toList.map(entry => keyValidator.apply(entry._1).left.map(message => JsError(message))
-        .flatMap(key => valueReads.reads(entry._2).asEither.map((key, _)).left.map(e => JsError(e))))
-        .sequence.fold(e => e, aMap => JsSuccess(aMap.toMap)))
 
   // code copied from https://github.com/avdv/play-json-refined/blob/master/src/main/scala/de.cbley.refined.play.json/package.scala
   implicit def writeRefined[T, P, F[_, _]](

@@ -124,15 +124,10 @@ class MailboxSerializer @Inject()(mailboxIdFactory: MailboxId.Factory) {
   private implicit val mailboxPatchObject: Reads[MailboxPatchObject] = Json.valueReads[MailboxPatchObject]
 
   private implicit val mapPatchObjectByMailboxIdReads: Reads[Map[UnparsedMailboxId, MailboxPatchObject]] =
-    readMapEntry[UnparsedMailboxId, MailboxPatchObject](s => refineV[UnparsedMailboxIdConstraint](s),
-      mailboxPatchObject)
+    Reads.mapReads[UnparsedMailboxId, MailboxPatchObject] {string => refineV[UnparsedMailboxIdConstraint](string).fold(JsError(_), id => JsSuccess(id)) }
 
   private implicit val mapCreationRequestByMailBoxCreationId: Reads[Map[MailboxCreationId, JsObject]] =
-    readMapEntry[MailboxCreationId, JsObject](s => refineV[NonEmpty](s),
-      {
-        case o: JsObject => JsSuccess(o)
-        case _ => JsError("Expecting a JsObject as a creation entry")
-      })
+    Reads.mapReads[MailboxCreationId, JsObject] {string => refineV[NonEmpty](string).fold(JsError(_), id => JsSuccess(id)) }
 
   private implicit val mailboxSetRequestReads: Reads[MailboxSetRequest] = Json.reads[MailboxSetRequest]
 

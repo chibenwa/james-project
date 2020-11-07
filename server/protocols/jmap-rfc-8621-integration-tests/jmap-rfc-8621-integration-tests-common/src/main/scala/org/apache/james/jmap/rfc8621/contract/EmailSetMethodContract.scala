@@ -170,7 +170,7 @@ trait EmailSetMethodContract {
       .isEqualTo(
         """|{
           |   "type":"invalidPatch",
-          |   "description": "Message 1 update is invalid: List((,List(JsonValidationError(List(Value associated with keywords is invalid: List((,List(JsonValidationError(List(keyword value can only be true),ArraySeq()))))),ArraySeq()))))"
+          |   "description": "Message 1 update is invalid: List((,List(JsonValidationError(List(Value associated with keywords is invalid: List((/movie,List(JsonValidationError(List(map marker value can only be true),ArraySeq()))))),ArraySeq()))))"
           |}""".stripMargin)
   }
 
@@ -220,7 +220,7 @@ trait EmailSetMethodContract {
       .isEqualTo(
         """|{
            |   "type":"invalidPatch",
-           |   "description": "Message 1 update is invalid: List((,List(JsonValidationError(List(Value associated with keywords is invalid: List((,List(JsonValidationError(List(FlagName must not be null or empty, must have length form 1-255,must not contain characters with hex from '\\u0000' to '\\u00019' or {'(' ')' '{' ']' '%' '*' '\"' '\\'} ),ArraySeq()))))),ArraySeq()))))"
+           |   "description": "Message 1 update is invalid: List((,List(JsonValidationError(List(Value associated with keywords is invalid: List((/mus*c,List(JsonValidationError(List(FlagName must not be null or empty, must have length form 1-255,must not contain characters with hex from '\\u0000' to '\\u00019' or {'(' ')' '{' ']' '%' '*' '\"' '\\'} ),ArraySeq()))))),ArraySeq()))))"
            |}""".stripMargin)
   }
 
@@ -2290,7 +2290,7 @@ trait EmailSetMethodContract {
            |        "notUpdated": {
            |          "${messageId.serialize}": {
            |            "type": "invalidPatch",
-           |            "description": "Message ${messageId.serialize} update is invalid: List((,List(JsonValidationError(List(Value associated with mailboxIds is invalid: List((,List(JsonValidationError(List(For input string: \\"invalid\\"),ArraySeq()))))),ArraySeq()))))"
+           |            "description": "Message ${messageId.serialize} update is invalid: List((,List(JsonValidationError(List(Value associated with mailboxIds is invalid: List((/invalid,List(JsonValidationError(List(For input string: \\"invalid\\"),ArraySeq()))))),ArraySeq()))))"
            |          }
            |        }
            |      }, "c1"]
@@ -2351,7 +2351,7 @@ trait EmailSetMethodContract {
            |        "notUpdated": {
            |          "${messageId.serialize}": {
            |            "type": "invalidPatch",
-           |            "description": "Message ${messageId.serialize} update is invalid: List((,List(JsonValidationError(List(Value associated with mailboxIds is invalid: List((,List(JsonValidationError(List(Expecting mailboxId value to be a boolean),ArraySeq()))))),ArraySeq()))))"
+           |            "description": "Message ${messageId.serialize} update is invalid: List((,List(JsonValidationError(List(Value associated with mailboxIds is invalid: List((/1,List(JsonValidationError(List(Expecting mailboxId value to be a boolean),ArraySeq()))))),ArraySeq()))))"
            |          }
            |        }
            |      }, "c1"]
@@ -2412,7 +2412,7 @@ trait EmailSetMethodContract {
            |        "notUpdated": {
            |          "${messageId.serialize}": {
            |            "type": "invalidPatch",
-           |            "description": "Message ${messageId.serialize} update is invalid: List((,List(JsonValidationError(List(Value associated with mailboxIds is invalid: List((,List(JsonValidationError(List(Expecting mailboxId value to be a boolean),ArraySeq()))))),ArraySeq()))))"
+           |            "description": "Message ${messageId.serialize} update is invalid: List((,List(JsonValidationError(List(Value associated with mailboxIds is invalid: List((/1,List(JsonValidationError(List(Expecting mailboxId value to be a boolean),ArraySeq()))))),ArraySeq()))))"
            |          }
            |        }
            |      }, "c1"]
@@ -2493,7 +2493,7 @@ trait EmailSetMethodContract {
            |        "notUpdated": {
            |          "${messageId2.serialize}": {
            |            "type": "invalidPatch",
-           |            "description": "Message ${messageId2.serialize} update is invalid: List((,List(JsonValidationError(List(Value associated with mailboxIds is invalid: List((,List(JsonValidationError(List(For input string: \\"invalid\\"),ArraySeq()))))),ArraySeq()))))"
+           |            "description": "Message ${messageId2.serialize} update is invalid: List((,List(JsonValidationError(List(Value associated with mailboxIds is invalid: List((/invalid,List(JsonValidationError(List(For input string: \\"invalid\\"),ArraySeq()))))),ArraySeq()))))"
            |          }
            |        }
            |      }, "c1"]
