@@ -827,7 +827,7 @@ public abstract class AbstractMessageSearchIndexTest {
     }
 
     @Test
-    void headerContainsShouldBeCaseIncentive() throws Exception {
+    void headerContainsShouldBeCaseInsensitive() throws Exception {
         SearchQuery searchQuery = SearchQuery.of(SearchQuery.headerContains("Precedence", "LiSt"));
 
         assertThat(messageSearchIndex.search(session, mailbox, searchQuery).toStream())

@@ -4720,7 +4720,7 @@ trait EmailQueryMethodContract {
   }
 
   @Test
-  def subjectShouldBeCaseIncentive(server: GuiceJamesServer): Unit = {
+  def subjectShouldBeCaseInsensitive(server: GuiceJamesServer): Unit = {
     server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
     def messageBuilder = Message.Builder
       .of
