@@ -51,7 +51,7 @@ import reactor.core.scala.publisher.SMono
 import reactor.core.scheduler.Schedulers
 import reactor.netty.http.server.{HttpServerRequest, HttpServerResponse}
 
-case class TooBogUploadException() extends RuntimeException
+case class TooBigUploadException() extends RuntimeException
 
 object UploadRoutes {
   val LOGGER: Logger = LoggerFactory.getLogger(classOf[DownloadRoutes])
@@ -101,7 +101,7 @@ class UploadRoutes @Inject()(@Named(InjectionKeys.RFC_8621) val authenticator: A
         authenticator.authenticate(request))
         .flatMap(session => post(request, response, ContentType.of(contentType), session))
         .onErrorResume {
-          case e: TooBogUploadException => SMono.fromPublisher(response.status(BAD_REQUEST).sendString(SMono.just("Attempt to upload exceed max size")).`then`())
+          case e: TooBigUploadException => SMono.fromPublisher(response.status(BAD_REQUEST).sendString(SMono.just("Attempt to upload exceed max size")).`then`())
           case e: UnauthorizedException => SMono.fromPublisher(handleAuthenticationFailure(response, LOGGER, e))
           case e: Throwable => SMono.fromPublisher(handleInternalError(response, LOGGER, e))
         }
@@ -135,7 +135,7 @@ class UploadRoutes @Inject()(@Named(InjectionKeys.RFC_8621) val authenticator: A
 
     SMono.fromCallable(() => new LimitedInputStream(content, maxSize) {
       override def raiseError(max: Long, count: Long): Unit = if (count > max) {
-        throw TooBogUploadException()
+        throw TooBigUploadException()
       }})
       .flatMap(uploadContent(accountId, contentType, _, mailboxSession))
       .flatMap(uploadResponse => SMono.fromPublisher(response
