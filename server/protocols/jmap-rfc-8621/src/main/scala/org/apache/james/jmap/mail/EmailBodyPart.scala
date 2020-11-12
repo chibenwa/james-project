@@ -257,7 +257,8 @@ case class EmailBodyPart(partId: PartId,
   }
 
   private def htmlBodyOfMultipart: List[EmailBodyPart] = `type` match {
-    case MULTIPART_ALTERNATIVE => textHtmlSubparts
+    case MULTIPART_ALTERNATIVE => textHtmlSubparts ++ subParts.getOrElse(Nil)
+      .flatMap(subPart => subPart.htmlBody)
     case _ => subParts.getOrElse(Nil)
       .flatMap(subPart => subPart.htmlBody)
   }
