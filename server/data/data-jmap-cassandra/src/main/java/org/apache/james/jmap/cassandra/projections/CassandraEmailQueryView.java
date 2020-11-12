@@ -100,8 +100,7 @@ public class CassandraEmailQueryView implements EmailQueryView {
             .from(TABLE_NAME_RECEIVED_AT)
             .where(eq(MAILBOX_ID, bindMarker(MAILBOX_ID)))
             .and(gte(RECEIVED_AT, bindMarker(RECEIVED_AT)))
-            .orderBy(desc(RECEIVED_AT))
-            .allowFiltering());
+            .orderBy(desc(RECEIVED_AT)));
 
         insertInLookupTable = session.prepare(insertInto(DATE_LOOKUP_TABLE)
             .value(MAILBOX_ID, bindMarker(MAILBOX_ID))
