@@ -70,10 +70,10 @@ public class CassandraEmailQueryView implements EmailQueryView {
     private final PreparedStatement insertInLookupTable;
     private final PreparedStatement insertReceivedAt;
     private final PreparedStatement insertSentAt;
-    private final PreparedStatement deleteLoopupRecord;
+    private final PreparedStatement deleteLookupRecord;
     private final PreparedStatement deleteSentAt;
     private final PreparedStatement deleteReceivedAt;
-    private final PreparedStatement deleteAllLoopupRecords;
+    private final PreparedStatement deleteAllLookupRecords;
     private final PreparedStatement deleteAllSentAt;
     private final PreparedStatement deleteAllReceivedAt;
     private final PreparedStatement lookupDate;
@@ -119,7 +119,7 @@ public class CassandraEmailQueryView implements EmailQueryView {
             .value(RECEIVED_AT, bindMarker(RECEIVED_AT))
             .value(SENT_AT, bindMarker(SENT_AT)));
 
-        deleteLoopupRecord = session.prepare(QueryBuilder.delete()
+        deleteLookupRecord = session.prepare(QueryBuilder.delete()
             .from(DATE_LOOKUP_TABLE)
             .where(eq(MAILBOX_ID, bindMarker(MAILBOX_ID)))
             .and(eq(MESSAGE_ID, bindMarker(MESSAGE_ID))));
@@ -136,7 +136,7 @@ public class CassandraEmailQueryView implements EmailQueryView {
             .and(eq(MESSAGE_ID, bindMarker(MESSAGE_ID)))
             .and(eq(RECEIVED_AT, bindMarker(RECEIVED_AT))));
 
-        deleteAllLoopupRecords = session.prepare(QueryBuilder.delete()
+        deleteAllLookupRecords = session.prepare(QueryBuilder.delete()
             .from(DATE_LOOKUP_TABLE)
             .where(eq(MAILBOX_ID, bindMarker(MAILBOX_ID))));
 
@@ -166,7 +166,6 @@ public class CassandraEmailQueryView implements EmailQueryView {
 
     @Override
     public Flux<MessageId> listMailboxContentSinceReceivedAt(MailboxId mailboxId, ZonedDateTime since, Limit limit) {
-
         Preconditions.checkArgument(!limit.isUnlimited(), "Limit should be defined");
 
         Date sinceDate = Date.from(since.toInstant());
@@ -219,7 +218,7 @@ public class CassandraEmailQueryView implements EmailQueryView {
         Date sentAt = row.getTimestamp(SENT_AT);
 
         BatchStatement batchStatement = new BatchStatement();
-        batchStatement.add(deleteLoopupRecord.bind()
+        batchStatement.add(deleteLookupRecord.bind()
             .setUUID(MAILBOX_ID, cassandraId.asUuid())
             .setUUID(MESSAGE_ID, cassandraMessageId.get()));
         batchStatement.add(deleteSentAt.bind()
@@ -239,7 +238,7 @@ public class CassandraEmailQueryView implements EmailQueryView {
         CassandraId cassandraId = (CassandraId) mailboxId;
 
         BatchStatement batchStatement = new BatchStatement();
-        batchStatement.add(deleteAllLoopupRecords.bind()
+        batchStatement.add(deleteAllLookupRecords.bind()
             .setUUID(MAILBOX_ID, ((CassandraId) mailboxId).asUuid()));
         batchStatement.add(deleteAllReceivedAt.bind()
             .setUUID(MAILBOX_ID, cassandraId.asUuid()));
