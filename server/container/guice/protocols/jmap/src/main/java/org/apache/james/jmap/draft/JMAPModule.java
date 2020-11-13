@@ -55,6 +55,7 @@ import org.apache.james.transport.matchers.RecipientIsLocal;
 import org.apache.james.util.Port;
 import org.apache.james.util.html.HtmlTextExtractor;
 import org.apache.james.utils.PropertiesProvider;
+import org.apache.mailet.Mail;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -83,21 +84,21 @@ public class JMAPModule extends AbstractModule {
     public static final CamelMailetContainerModule.ProcessorsCheck VACATION_MAILET_CHECK =
         CamelMailetContainerModule.ProcessorsCheck.Or.of(
             new CamelMailetContainerModule.ProcessorsCheck.Impl(
-                "transport",
+                Mail.TRANSPORT,
                 RecipientIsLocal.class,
                 VacationMailet.class),
             new CamelMailetContainerModule.ProcessorsCheck.Impl(
-                "local-delivery",
+                Mail.LOCAL_DELIVERY,
                 All.class,
                 VacationMailet.class));
     public static final CamelMailetContainerModule.ProcessorsCheck FILTERING_MAILET_CHECK =
         CamelMailetContainerModule.ProcessorsCheck.Or.of(
         new CamelMailetContainerModule.ProcessorsCheck.Impl(
-            "transport",
+            Mail.TRANSPORT,
             RecipientIsLocal.class,
             JMAPFiltering.class),
         new CamelMailetContainerModule.ProcessorsCheck.Impl(
-            "local-delivery",
+            Mail.LOCAL_DELIVERY,
             All.class,
             JMAPFiltering.class));
 
