@@ -217,7 +217,7 @@ class DownloadRoutes @Inject()(@Named(InjectionKeys.RFC_8621) val authenticator:
       .onErrorResume {
         case e: ForbiddenException =>
           respondDetails(response,
-            ProblemDetails(status = FORBIDDEN, detail = "You cannot upload in others accoutns"),
+            ProblemDetails(status = FORBIDDEN, detail = "You cannot upload in others accounts"),
             FORBIDDEN)
         case e: UnauthorizedException =>
           LOGGER.warn("Unauthorized", e)
