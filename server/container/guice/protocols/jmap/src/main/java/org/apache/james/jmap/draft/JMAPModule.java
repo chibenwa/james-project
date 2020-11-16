@@ -125,6 +125,7 @@ public class JMAPModule extends AbstractModule {
             return JMAPConfiguration.builder()
                 .enabled(configuration.getBoolean("enabled", true))
                 .port(Port.of(configuration.getInt("jmap.port", DEFAULT_JMAP_PORT)))
+                .enableEmailQueryView(configuration.getBoolean("view.email.query.enabled", null))
                 .build();
         } catch (FileNotFoundException e) {
             LOGGER.warn("Could not find JMAP configuration file. JMAP server will not be enabled.");
