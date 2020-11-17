@@ -80,22 +80,16 @@ class EmailQueryMethod @Inject() (serializer: EmailQuerySerializer,
 
   override def getRequest(mailboxSession: MailboxSession, invocation: Invocation): SMono[EmailQueryRequest] = asEmailQueryRequest(invocation.arguments)
 
-  private def executeQuery(mailboxSession: MailboxSession, request: EmailQueryRequest, searchQuery: MultimailboxesSearchQuery, position: Position, limitToUse: Limit): SMono[EmailQueryResponse] = {
-    def ids: SMono[Seq[MessageId]] = {
-      if (configuration.isEmailQueryViewEnabled) {
-        request match {
-          case request: EmailQueryRequest if matchesInMailboxSortedBySentAt(request) =>
-            queryViewForListingSortedBySentAt(mailboxSession, position, limitToUse, request)
-          case request: EmailQueryRequest if matchesInMailboxAfterSortedBySentAt(request) =>
-            queryViewForContentAfterSortedBySentAt(mailboxSession, position, limitToUse, request)
-          case _ => executeQueryAgainstSearchIndex(mailboxSession, searchQuery, position, limitToUse)
-        }
-      } else {
-        executeQueryAgainstSearchIndex(mailboxSession, searchQuery, position, limitToUse)
-      }
+  private def executeQuery(session: MailboxSession, request: EmailQueryRequest, searchQuery: MultimailboxesSearchQuery, position: Position, limit: Limit): SMono[EmailQueryResponse] = {
+    val ids: SMono[Seq[MessageId]] = request match {
+      case request: EmailQueryRequest if matchesInMailboxSortedBySentAt(request) =>
+        queryViewForListingSortedBySentAt(session, position, limit, request)
+      case request: EmailQueryRequest if matchesInMailboxAfterSortedBySentAt(request) =>
+        queryViewForContentAfterSortedBySentAt(session, position, limit, request)
+      case _ => executeQueryAgainstSearchIndex(session, searchQuery, position, limit)
     }
 
-    ids.map(ids => toResponse(request, position, limitToUse, ids))
+    ids.map(ids => toResponse(request, position, limit, ids))
   }
 
   private def queryViewForContentAfterSortedBySentAt(mailboxSession: MailboxSession, position: Position, limitToUse: Limit, request: EmailQueryRequest): SMono[Seq[MessageId]] = {
@@ -131,11 +125,13 @@ class EmailQueryMethod @Inject() (serializer: EmailQuerySerializer,
   }
 
   private def matchesInMailboxSortedBySentAt(request: EmailQueryRequest): Boolean =
-    request.filter.exists(_.inMailboxFilterOnly) &&
+    configuration.isEmailQueryViewEnabled &&
+      request.filter.exists(_.inMailboxFilterOnly) &&
       request.comparator.contains(Set(Comparator.SENT_AT_DESC))
 
   private def matchesInMailboxAfterSortedBySentAt(request: EmailQueryRequest): Boolean =
-    request.filter.exists(_.inMailboxAndAfterFilterOnly) &&
+    configuration.isEmailQueryViewEnabled &&
+      request.filter.exists(_.inMailboxAndAfterFilterOnly) &&
       request.comparator.contains(Set(Comparator.SENT_AT_DESC))
 
   private def toResponse(request: EmailQueryRequest, position: Position, limitToUse: Limit, ids: Seq[MessageId]): EmailQueryResponse =
