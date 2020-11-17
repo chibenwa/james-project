@@ -32,6 +32,7 @@ import javax.inject.Inject;
 import javax.inject.Named;
 
 import org.apache.commons.lang3.NotImplementedException;
+import org.apache.james.jmap.JMAPConfiguration;
 import org.apache.james.jmap.api.projections.EmailQueryView;
 import org.apache.james.jmap.draft.model.Filter;
 import org.apache.james.jmap.draft.model.FilterCondition;
@@ -76,19 +77,24 @@ public class GetMessageListMethod implements Method {
     private final GetMessagesMethod getMessagesMethod;
     private final Factory mailboxIdFactory;
     private final EmailQueryView emailQueryView;
+    private final JMAPConfiguration configuration;
     private final MetricFactory metricFactory;
 
     @Inject
     private GetMessageListMethod(MailboxManager mailboxManager,
-            @Named(MAXIMUM_LIMIT) long maximumLimit, GetMessagesMethod getMessagesMethod, MailboxId.Factory mailboxIdFactory,
-            EmailQueryView emailQueryView,
-            MetricFactory metricFactory) {
+                                 @Named(MAXIMUM_LIMIT) long maximumLimit,
+                                 GetMessagesMethod getMessagesMethod,
+                                 Factory mailboxIdFactory,
+                                 EmailQueryView emailQueryView,
+                                 JMAPConfiguration configuration,
+                                 MetricFactory metricFactory) {
 
         this.mailboxManager = mailboxManager;
         this.maximumLimit = maximumLimit;
         this.getMessagesMethod = getMessagesMethod;
         this.mailboxIdFactory = mailboxIdFactory;
         this.emailQueryView = emailQueryView;
+        this.configuration = configuration;
         this.metricFactory = metricFactory;
     }
 
@@ -196,12 +202,14 @@ public class GetMessageListMethod implements Method {
     }
 
     private boolean isListingContentInMailboxQuery(GetMessageListRequest messageListRequest) {
-        return messageListRequest.getFilter().map(Filter::inMailboxFilterOnly).orElse(false)
+        return configuration.isEmailQueryViewEnabled()
+            && messageListRequest.getFilter().map(Filter::inMailboxFilterOnly).orElse(false)
             && messageListRequest.getSort().equals(ImmutableList.of("date desc"));
     }
 
     private boolean isListingContentInMailboxAfterQuery(GetMessageListRequest messageListRequest) {
-        return messageListRequest.getFilter().map(Filter::inMailboxAndAfterFiltersOnly).orElse(false)
+        return configuration.isEmailQueryViewEnabled()
+            && messageListRequest.getFilter().map(Filter::inMailboxAndAfterFiltersOnly).orElse(false)
             && messageListRequest.getSort().equals(ImmutableList.of("date desc"));
     }
 
