@@ -76,8 +76,6 @@ class MailetPreconditionTest {
 
         @Test
         void vacationMailetCheckShouldNotThrowIfValidPairPresent() {
-            List<MatcherMailetPair> pairs = Lists.newArrayList(new MatcherMailetPair(new RecipientIsLocal(), new VacationMailet(null, null, null, null, null)));
-
             assertThatCode(() -> JMAPModule.VACATION_MAILET_CHECK.check(ImmutableMultimap.of(
                 "transport", new MatcherMailetPair(new RecipientIsLocal(), new VacationMailet(null, null, null, null, null)))))
                 .doesNotThrowAnyException();
@@ -85,8 +83,6 @@ class MailetPreconditionTest {
 
         @Test
         void vacationMailetCheckShouldSupportLocalDeliveryProcessor() {
-            List<MatcherMailetPair> pairs = Lists.newArrayList(new MatcherMailetPair(new RecipientIsLocal(), new VacationMailet(null, null, null, null, null)));
-
             assertThatCode(() -> JMAPModule.VACATION_MAILET_CHECK.check(ImmutableMultimap.of(
                 "local-delivery", new MatcherMailetPair(new All(), new VacationMailet(null, null, null, null, null)))))
                 .doesNotThrowAnyException();
