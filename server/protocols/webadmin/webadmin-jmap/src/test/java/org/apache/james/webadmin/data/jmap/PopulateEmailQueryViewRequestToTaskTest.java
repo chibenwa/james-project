@@ -26,9 +26,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 
-import java.util.Optional;
-import java.util.stream.IntStream;
-
 import org.apache.james.core.Username;
 import org.apache.james.domainlist.api.DomainList;
 import org.apache.james.jmap.memory.projections.MemoryEmailQueryView;
@@ -57,14 +54,12 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import com.github.fge.lambdas.Throwing;
-
 import io.restassured.RestAssured;
 import io.restassured.filter.log.LogDetail;
 import spark.Service;
 
 class PopulateEmailQueryViewRequestToTaskTest {
-    private final class JMAPRoutes implements Routes {
+    private static final class JMAPRoutes implements Routes {
         private final EmailQueryViewPopulator populator;
         private final TaskManager taskManager;
 
@@ -96,7 +91,6 @@ class PopulateEmailQueryViewRequestToTaskTest {
     private WebAdminServer webAdminServer;
     private MemoryTaskManager taskManager;
     private InMemoryMailboxManager mailboxManager;
-    private MemoryUsersRepository usersRepository;
     private MailboxId bobInboxboxId;
     private MailboxSession bobSession;
     private MemoryEmailQueryView view;
@@ -107,7 +101,7 @@ class PopulateEmailQueryViewRequestToTaskTest {
         taskManager = new MemoryTaskManager(new Hostname("foo"));
 
         mailboxManager = InMemoryIntegrationResources.defaultResources().getMailboxManager();
-        usersRepository = MemoryUsersRepository.withoutVirtualHosting(NO_DOMAIN_LIST);
+        MemoryUsersRepository usersRepository = MemoryUsersRepository.withoutVirtualHosting(NO_DOMAIN_LIST);
         usersRepository.addUser(BOB, "pass");
         bobSession = mailboxManager.createSystemSession(BOB);
         bobInboxboxId = mailboxManager.createMailbox(MailboxPath.inbox(BOB), bobSession)
@@ -255,7 +249,7 @@ class PopulateEmailQueryViewRequestToTaskTest {
     }
 
     @Test
-    void recomputeUserShouldUpdateProjection() throws Exception {
+    void populateShouldUpdateProjection() throws Exception {
         ComposedMessageId messageId = mailboxManager.getMailbox(bobInboxboxId, bobSession).appendMessage(
             MessageManager.AppendCommand.builder().build("header: value\r\n\r\nbody"),
             bobSession).getId();
@@ -275,7 +269,7 @@ class PopulateEmailQueryViewRequestToTaskTest {
     }
 
     @Test
-    void recomputeUserShouldBeIdempotent() throws Exception {
+    void populateShouldBeIdempotent() throws Exception {
         ComposedMessageId messageId = mailboxManager.getMailbox(bobInboxboxId, bobSession).appendMessage(
             MessageManager.AppendCommand.builder().build("header: value\r\n\r\nbody"),
             bobSession).getId();
