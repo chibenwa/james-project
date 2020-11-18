@@ -35,7 +35,6 @@ import org.apache.james.jmap.api.projections.EmailQueryView;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageManager;
-import org.apache.james.mailbox.MessageUid;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.model.FetchGroup;
 import org.apache.james.mailbox.model.MailboxId;
@@ -152,8 +151,6 @@ public class EmailQueryViewPopulator {
     }
 
     private Mono<Result> correctProjection(MessageResult messageResult, Progress progress) {
-
-
         return Mono.fromCallable(() -> {
             MailboxId mailboxId = messageResult.getMailboxId();
             MessageId messageId = messageResult.getMessageId();
@@ -199,15 +196,6 @@ public class EmailQueryViewPopulator {
             return Iterators.toFlux(messageManager.getMessages(MessageRange.all(), FetchGroup.HEADERS, session));
         } catch (MailboxException e) {
             return Flux.error(e);
-        }
-    }
-
-    private Mono<MessageResult> retrieveContent(MessageManager messageManager, MailboxSession session, MessageUid uid) {
-        try {
-            return Iterators.toFlux(messageManager.getMessages(MessageRange.one(uid), FetchGroup.FULL_CONTENT, session))
-                .next();
-        } catch (MailboxException e) {
-            return Mono.error(e);
         }
     }
 
