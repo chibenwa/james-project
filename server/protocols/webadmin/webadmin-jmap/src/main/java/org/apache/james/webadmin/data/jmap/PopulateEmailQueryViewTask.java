@@ -95,7 +95,7 @@ public class PopulateEmailQueryViewTask implements Task {
         private final Optional<RunningOptionsDTO> runningOptions;
 
         public PopulateEmailQueryViewTaskDTO(@JsonProperty("type") String type,
-                                           @JsonProperty("runningOptions") Optional<RunningOptionsDTO> runningOptions) {
+                                             @JsonProperty("runningOptions") Optional<RunningOptionsDTO> runningOptions) {
             this.type = type;
             this.runningOptions = runningOptions;
         }
