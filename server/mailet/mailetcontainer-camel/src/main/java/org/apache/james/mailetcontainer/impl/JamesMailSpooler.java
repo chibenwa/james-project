@@ -279,7 +279,7 @@ public class JamesMailSpooler implements Disposable, Configurable, MailSpoolerMB
                 mailProcessor, errorRepository(), queue, configuration));
             LOGGER.info("Spooler started");
         } else {
-            LOGGER.info("Spooler had been dis-activated. To enable is set 'threads' count to a value greater than zero");
+            LOGGER.info("Spooler had been deactivated. To enable it set 'threads' count to a value greater than zero");
         }
     }
 
