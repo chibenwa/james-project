@@ -36,7 +36,7 @@ The following protocols should be considered experimental
 
 == Topology
 
-While it is perfectly possible to deploy homogeneous James instances, with the same configuration and thus the sames
+While it is perfectly possible to deploy homogeneous James instances, with the same configuration and thus the same
 protocols and the same responsibilities one might want to investigate in
 xref:distributed/architecture/specialized-instances.adoc['Specialized instances'].
 
