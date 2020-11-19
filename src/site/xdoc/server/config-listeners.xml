@@ -44,6 +44,10 @@
 
         <section name="MailboxListener configuration">
             <p>
+                The &lt;executeGroupListeners&gt; controls whether to launch group mailbox listener consumption.
+                Defaults to true. Use with caution.
+            </p>
+            <p>
                 Mailbox listener configuration is under the XML element &lt;listener&gt;
             </p>
             <p>
