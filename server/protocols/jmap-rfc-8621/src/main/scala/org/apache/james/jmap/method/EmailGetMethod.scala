@@ -179,7 +179,7 @@ class EmailGetMethod @Inject() (readerFactory: EmailViewReaderFactory,
         .read(ids, request, mailboxSession)
         .collectMap(_.metadata.id)
 
-    foundResultsMono.flatMapMany(foundResults => SFlux.fromIterable(ids)
+    foundResultsMono.flatMapIterable(foundResults => ids
       .map(id => foundResults.get(id)
         .map(EmailGetResults.found)
         .getOrElse(EmailGetResults.notFound(id))))
