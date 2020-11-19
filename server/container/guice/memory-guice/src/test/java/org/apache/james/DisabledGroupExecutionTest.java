@@ -45,7 +45,7 @@ import com.google.inject.multibindings.Multibinder;
 
 import reactor.core.publisher.Mono;
 
-class DisabledGroupExecutionTest implements JamesServerContract {
+class DisabledGroupExecutionTest {
 
     public static class ReactiveNoopMailboxListener implements MailboxListener.ReactiveGroupMailboxListener {
         public static class NoopMailboxListenerGroup extends Group {
