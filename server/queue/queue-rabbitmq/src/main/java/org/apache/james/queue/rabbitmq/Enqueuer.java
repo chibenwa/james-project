@@ -19,15 +19,10 @@
 
 package org.apache.james.queue.rabbitmq;
 
-import static com.rabbitmq.client.MessageProperties.PERSISTENT_TEXT_PLAIN;
-import static org.apache.james.backends.rabbitmq.Constants.EMPTY_ROUTING_KEY;
-import static org.apache.james.queue.api.MailQueue.ENQUEUED_METRIC_NAME_PREFIX;
-
-import java.time.Clock;
-
-import javax.mail.MessagingException;
-import javax.mail.internet.MimeMessage;
-
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.github.fge.lambdas.Throwing;
+import com.google.common.collect.ImmutableMap;
+import com.rabbitmq.client.AMQP;
 import org.apache.james.blob.api.Store;
 import org.apache.james.blob.mail.MimeMessagePartsId;
 import org.apache.james.metrics.api.Metric;
@@ -36,15 +31,18 @@ import org.apache.james.queue.api.MailQueue;
 import org.apache.james.queue.rabbitmq.view.api.MailQueueView;
 import org.apache.james.queue.rabbitmq.view.cassandra.CassandraMailQueueBrowser;
 import org.apache.mailet.Mail;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.github.fge.lambdas.Throwing;
-import com.google.common.collect.ImmutableMap;
-import com.rabbitmq.client.AMQP;
-
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.rabbitmq.OutboundMessage;
 import reactor.rabbitmq.Sender;
+
+import javax.mail.MessagingException;
+import javax.mail.internet.MimeMessage;
+import java.time.Clock;
+
+import static com.rabbitmq.client.MessageProperties.PERSISTENT_TEXT_PLAIN;
+import static org.apache.james.backends.rabbitmq.Constants.EMPTY_ROUTING_KEY;
+import static org.apache.james.queue.api.MailQueue.ENQUEUED_METRIC_NAME_PREFIX;
 
 class Enqueuer {
     private final MailQueueName name;
@@ -71,8 +69,13 @@ class Enqueuer {
         EnqueueId enqueueId = EnqueueId.generate();
         saveMail(mail)
             .map(partIds -> new MailReference(enqueueId, mail, partIds))
-            .flatMap(Throwing.function(this::publishReferenceToRabbit).sneakyThrow())
-            .flatMap(mailQueueView::storeMail)
+            .flatMap(Throwing.<MailReference, Mono<Void>>function(mailReference -> {
+                EnqueuedItem enqueuedItem = toEnqueuedItems(mailReference);
+                return Flux.mergeDelayError(2,
+                        mailQueueView.storeMail(enqueuedItem),
+                        publishReferenceToRabbit(mailReference))
+                        .then();
+            }).sneakyThrow())
             .thenEmpty(Mono.fromRunnable(enqueueMetric::increment))
             .block();
     }
@@ -92,7 +95,7 @@ class Enqueuer {
         }
     }
 
-    private Mono<EnqueuedItem> publishReferenceToRabbit(MailReference mailReference) throws MailQueue.MailQueueException {
+    private Mono<Void> publishReferenceToRabbit(MailReference mailReference) throws MailQueue.MailQueueException {
         AMQP.BasicProperties basicProperties = new AMQP.BasicProperties.Builder()
             .deliveryMode(PERSISTENT_TEXT_PLAIN.getDeliveryMode())
             .priority(PERSISTENT_TEXT_PLAIN.getPriority())
@@ -105,15 +108,17 @@ class Enqueuer {
             EMPTY_ROUTING_KEY,
             basicProperties,
             getMailReferenceBytes(mailReference));
-        return sender.send(Mono.just(data))
-            .then(Mono.just(
-                EnqueuedItem.builder()
-                    .enqueueId(mailReference.getEnqueueId())
-                    .mailQueueName(name)
-                    .mail(mailReference.getMail())
-                    .enqueuedTime(clock.instant())
-                    .mimeMessagePartsId(mailReference.getPartsId())
-                    .build()));
+        return sender.send(Mono.just(data));
+    }
+
+    private EnqueuedItem toEnqueuedItems(MailReference mailReference) {
+        return EnqueuedItem.builder()
+                .enqueueId(mailReference.getEnqueueId())
+                .mailQueueName(name)
+                .mail(mailReference.getMail())
+                .enqueuedTime(clock.instant())
+                .mimeMessagePartsId(mailReference.getPartsId())
+                .build();
     }
 
     private byte[] getMailReferenceBytes(MailReference mailReference) throws MailQueue.MailQueueException {
