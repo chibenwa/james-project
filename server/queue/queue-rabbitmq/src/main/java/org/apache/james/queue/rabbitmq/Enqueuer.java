@@ -19,10 +19,15 @@
 
 package org.apache.james.queue.rabbitmq;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.github.fge.lambdas.Throwing;
-import com.google.common.collect.ImmutableMap;
-import com.rabbitmq.client.AMQP;
+import static com.rabbitmq.client.MessageProperties.PERSISTENT_TEXT_PLAIN;
+import static org.apache.james.backends.rabbitmq.Constants.EMPTY_ROUTING_KEY;
+import static org.apache.james.queue.api.MailQueue.ENQUEUED_METRIC_NAME_PREFIX;
+
+import java.time.Clock;
+
+import javax.mail.MessagingException;
+import javax.mail.internet.MimeMessage;
+
 import org.apache.james.blob.api.Store;
 import org.apache.james.blob.mail.MimeMessagePartsId;
 import org.apache.james.metrics.api.Metric;
@@ -31,18 +36,16 @@ import org.apache.james.queue.api.MailQueue;
 import org.apache.james.queue.rabbitmq.view.api.MailQueueView;
 import org.apache.james.queue.rabbitmq.view.cassandra.CassandraMailQueueBrowser;
 import org.apache.mailet.Mail;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.github.fge.lambdas.Throwing;
+import com.google.common.collect.ImmutableMap;
+import com.rabbitmq.client.AMQP;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.rabbitmq.OutboundMessage;
 import reactor.rabbitmq.Sender;
-
-import javax.mail.MessagingException;
-import javax.mail.internet.MimeMessage;
-import java.time.Clock;
-
-import static com.rabbitmq.client.MessageProperties.PERSISTENT_TEXT_PLAIN;
-import static org.apache.james.backends.rabbitmq.Constants.EMPTY_ROUTING_KEY;
-import static org.apache.james.queue.api.MailQueue.ENQUEUED_METRIC_NAME_PREFIX;
 
 class Enqueuer {
     private final MailQueueName name;
