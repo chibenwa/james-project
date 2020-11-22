@@ -92,8 +92,6 @@ public class RabbitMQModule extends AbstractModule {
 
         Multibinder.newSetBinder(binder(), StartUpCheck.class).addBinding().to(CassandraMailQueueViewStartUpCheck.class);
         Multibinder.newSetBinder(binder(), HealthCheck.class).addBinding().to(RabbitMQHealthCheck.class);
-
-        bind(ReactorRabbitMQChannelPool.Configuration.class).toInstance(ReactorRabbitMQChannelPool.Configuration.DEFAULT);
     }
 
     @Provides
@@ -176,5 +174,17 @@ public class RabbitMQModule extends AbstractModule {
     @Singleton
     public ReceiverProvider provideRabbitMQReceiver(SimpleConnectionPool simpleConnectionPool) {
         return () -> RabbitFlux.createReceiver(new ReceiverOptions().connectionMono(simpleConnectionPool.getResilientConnection()));
+    }
+
+    @Provides
+    @Singleton
+    public SimpleConnectionPool.Configuration provideConnectionPoolConfiguration(@Named(RABBITMQ_CONFIGURATION_NAME) org.apache.commons.configuration2.Configuration configuration) {
+        return SimpleConnectionPool.Configuration.from(configuration);
+    }
+
+    @Provides
+    @Singleton
+    public ReactorRabbitMQChannelPool.Configuration provideChannelPoolConfiguration(@Named(RABBITMQ_CONFIGURATION_NAME) org.apache.commons.configuration2.Configuration configuration) {
+        return ReactorRabbitMQChannelPool.Configuration.from(configuration);
     }
 }
