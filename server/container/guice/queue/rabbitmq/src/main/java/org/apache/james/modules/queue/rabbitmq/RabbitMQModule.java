@@ -178,13 +178,13 @@ public class RabbitMQModule extends AbstractModule {
 
     @Provides
     @Singleton
-    public SimpleConnectionPool.Configuration provideConnectionPoolConfiguration() {
-        return SimpleConnectionPool.Configuration.DEFAULT;
+    public SimpleConnectionPool.Configuration provideConnectionPoolConfiguration(@Named(RABBITMQ_CONFIGURATION_NAME) org.apache.commons.configuration2.Configuration configuration) {
+        return SimpleConnectionPool.Configuration.from(configuration);
     }
 
     @Provides
     @Singleton
-    public ReactorRabbitMQChannelPool.Configuration provideChannelPoolConfiguration() {
-        return ReactorRabbitMQChannelPool.Configuration.DEFAULT;
+    public ReactorRabbitMQChannelPool.Configuration provideChannelPoolConfiguration(@Named(RABBITMQ_CONFIGURATION_NAME) org.apache.commons.configuration2.Configuration configuration) {
+        return ReactorRabbitMQChannelPool.Configuration.from(configuration);
     }
 }
