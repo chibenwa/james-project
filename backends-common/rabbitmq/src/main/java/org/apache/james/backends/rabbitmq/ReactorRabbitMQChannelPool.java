@@ -71,11 +71,9 @@ public class ReactorRabbitMQChannelPool implements ChannelPool, Startable {
         private static final Logger LOGGER = LoggerFactory.getLogger(ChannelFactory.class);
 
         private final Mono<Connection> connectionMono;
-        private final Configuration configuration;
 
-        ChannelFactory(Mono<Connection> connectionMono, Configuration configuration) {
+        ChannelFactory(Mono<Connection> connectionMono) {
             this.connectionMono = connectionMono;
-            this.configuration = configuration;
         }
 
         @Override
@@ -89,7 +87,6 @@ public class ReactorRabbitMQChannelPool implements ChannelPool, Startable {
             return Mono.fromCallable(connection::openChannel)
                 .map(maybeChannel ->
                     maybeChannel.orElseThrow(() -> new RuntimeException("RabbitMQ reached to maximum opened channels, cannot get more channels")))
-                .retryWhen(configuration.backoffSpec().scheduler(Schedulers.elastic()))
                 .doOnError(throwable -> LOGGER.error("error when creating new channel", throwable));
         }
 
@@ -177,7 +174,7 @@ public class ReactorRabbitMQChannelPool implements ChannelPool, Startable {
     public ReactorRabbitMQChannelPool(Mono<Connection> connectionMono, Configuration configuration) {
         this.connectionMono = connectionMono;
         this.configuration = configuration;
-        ChannelFactory channelFactory = new ChannelFactory(connectionMono, configuration);
+        ChannelFactory channelFactory = new ChannelFactory(connectionMono);
 
         GenericObjectPoolConfig<Channel> config = new GenericObjectPoolConfig<>();
         config.setMaxTotal(configuration.getMaxChannel());
