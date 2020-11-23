@@ -112,7 +112,7 @@ class SessionRoutesTest extends AnyFlatSpec with BeforeAndAfter with Matchers {
 
   "get" should "return correct session" in {
     val sessionJson = RestAssured.`with`()
-        .get.prettyPeek()
+        .get
       .thenReturn
         .getBody
         .asString()
