@@ -157,16 +157,16 @@ class RabbitMQWebAdminServerTaskSerializationIntegrationTest {
     }
 
     @Test
-    void recomputeFastViewProjectionItemsShouldCompleteWhenNoMail(GuiceJamesServer server) throws Exception {
+    void recomputeFastViewProjectionItemsShouldComplete(GuiceJamesServer server) throws Exception {
         server.getProbe(DataProbeImpl.class).addUser(USERNAME, "secret");
         mailboxProbe.createMailbox(MailboxConstants.USER_NAMESPACE, USERNAME, MailboxConstants.INBOX);
         mailboxProbe.appendMessage(
-                USERNAME,
-                MailboxPath.inbox(Username.of(USERNAME)),
-                new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes()),
-                new Date(),
-                false,
-                new Flags());
+            USERNAME,
+            MailboxPath.inbox(Username.of(USERNAME)),
+            new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes()),
+            new Date(),
+            false,
+            new Flags());
 
         String taskId = with()
             .post("/mailboxes?task=recomputeFastViewProjectionItems")
@@ -186,16 +186,16 @@ class RabbitMQWebAdminServerTaskSerializationIntegrationTest {
     }
 
     @Test
-    void populateEmailQueryViewShouldCompleteWhenNoMail(GuiceJamesServer server) throws Exception {
+    void populateEmailQueryViewShouldComplete(GuiceJamesServer server) throws Exception {
         server.getProbe(DataProbeImpl.class).addUser(USERNAME, "secret");
         mailboxProbe.createMailbox(MailboxConstants.USER_NAMESPACE, USERNAME, MailboxConstants.INBOX);
         mailboxProbe.appendMessage(
-                USERNAME,
-                MailboxPath.inbox(Username.of(USERNAME)),
-                new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes()),
-                new Date(),
-                false,
-                new Flags());
+            USERNAME,
+            MailboxPath.inbox(Username.of(USERNAME)),
+            new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes()),
+            new Date(),
+            false,
+            new Flags());
 
         String taskId = with()
             .post("/mailboxes?task=populateEmailQueryView")
