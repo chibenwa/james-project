@@ -95,6 +95,9 @@ public class StoreRightManager implements RightManager {
 
     @Override
     public Rfc4314Rights myRights(MailboxPath mailboxPath, MailboxSession session) throws MailboxException {
+        if (mailboxPath.belongsTo(session)) {
+            return MailboxACL.FULL_RIGHTS;
+        }
         MailboxMapper mapper = mailboxSessionMapperFactory.getMailboxMapper(session);
         Mailbox mailbox = blockOptional(mapper.findMailboxByPath(mailboxPath))
             .orElseThrow(() -> new MailboxNotFoundException(mailboxPath));
