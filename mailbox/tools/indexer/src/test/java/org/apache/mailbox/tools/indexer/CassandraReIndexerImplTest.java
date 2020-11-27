@@ -78,7 +78,6 @@ public class CassandraReIndexerImplTest {
 
     @BeforeEach
     void setUp(CassandraCluster cassandra) {
-        cassandra.getConf().printStatements();
         mailboxManager = CassandraMailboxManagerProvider.provideMailboxManager(cassandra, PreDeletionHooks.NO_PRE_DELETION_HOOK);
         MailboxSessionMapperFactory mailboxSessionMapperFactory = mailboxManager.getMapperFactory();
         messageSearchIndex = mock(ListeningMessageSearchIndex.class);
