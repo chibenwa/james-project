@@ -93,6 +93,6 @@ Contributions enhancing support are furthermore welcomed.
 The list of tested JMAP clients are:
 
  - [OpenPaaS](https://open-paas.org/) is actively using the draft version of the JMAP implementation. Migration to
- RFC-8621 is planed.
+ RFC-8621 is planned.
  - Experiments had been run on top of [LTT.RS](https://github.com/iNPUTmice/lttrs-android). Version in the Accept
  headers needs to be explicitly set to `rfc-8621`. [Read more](https://github.com/linagora/james-project/pull/4089).
