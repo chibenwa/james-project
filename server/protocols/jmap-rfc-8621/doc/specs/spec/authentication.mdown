@@ -4,7 +4,7 @@ JMAP RFC-8620 deliberately do not address authentication concerns, and only assu
 
 Discovery of available authentication mechanism is not part of the JMAP specification.
 
-This document summarizes available authentication mechanism on top of JMAP RFC-8621  implementation as part of the James
+This document summarizes available authentication mechanism on top of JMAP RFC-8621 implementation as part of the James
 project.
 
 ## Basic authentication
