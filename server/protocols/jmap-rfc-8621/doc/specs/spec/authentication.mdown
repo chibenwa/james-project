@@ -1,6 +1,6 @@
 # Authentication
 
-JMAP RFC-8620 deliberately do not address authentication concerns, and only assume authenticated requests are handled.
+JMAP RFC-8620 deliberately does not address authentication concerns, and only assumes authenticated requests are handled.
 
 Discovery of available authentication mechanism is not part of the JMAP specification.
 
