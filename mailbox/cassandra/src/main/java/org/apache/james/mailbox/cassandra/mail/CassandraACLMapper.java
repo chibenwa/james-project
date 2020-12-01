@@ -46,7 +46,6 @@ import org.apache.james.util.FunctionalUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datastax.driver.core.ConsistencyLevel;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
@@ -67,14 +66,12 @@ public class CassandraACLMapper {
     private final PreparedStatement conditionalUpdateStatement;
     private final PreparedStatement readStatement;
     private final PreparedStatement deleteStatement;
-    private final ConsistencyLevel consistencyLevel;
 
     @Inject
     public CassandraACLMapper(Session session, CassandraUserMailboxRightsDAO userMailboxRightsDAO,
                               CassandraConfiguration cassandraConfiguration, CassandraConsistenciesConfiguration consistenciesConfiguration) {
         this.executor = new CassandraAsyncExecutor(session);
         this.maxAclRetry = cassandraConfiguration.getAclMaxRetry();
-        this.consistencyLevel = consistenciesConfiguration.getLightweightTransaction();
         this.conditionalInsertStatement = prepareConditionalInsert(session);
         this.conditionalUpdateStatement = prepareConditionalUpdate(session);
         this.readStatement = prepareReadStatement(session);
@@ -85,8 +82,7 @@ public class CassandraACLMapper {
     private PreparedStatement prepareDelete(Session session) {
         return session.prepare(
             QueryBuilder.delete().from(CassandraACLTable.TABLE_NAME)
-                .where(eq(CassandraACLTable.ID, bindMarker(CassandraACLTable.ID)))
-                .ifExists());
+                .where(eq(CassandraACLTable.ID, bindMarker(CassandraACLTable.ID))));
     }
 
     private PreparedStatement prepareConditionalInsert(Session session) {
@@ -94,17 +90,14 @@ public class CassandraACLMapper {
             insertInto(CassandraACLTable.TABLE_NAME)
                 .value(CassandraACLTable.ID, bindMarker(CassandraACLTable.ID))
                 .value(CassandraACLTable.ACL, bindMarker(CassandraACLTable.ACL))
-                .value(CassandraACLTable.VERSION, INITIAL_VALUE)
-                .ifNotExists());
+                .value(CassandraACLTable.VERSION, INITIAL_VALUE));
     }
 
     private PreparedStatement prepareConditionalUpdate(Session session) {
         return session.prepare(
             update(CassandraACLTable.TABLE_NAME)
                 .where(eq(CassandraACLTable.ID, bindMarker(CassandraACLTable.ID)))
-                .with(set(CassandraACLTable.ACL, bindMarker(CassandraACLTable.ACL)))
-                .and(set(CassandraACLTable.VERSION, bindMarker(CassandraACLTable.VERSION)))
-                .onlyIf(eq(CassandraACLTable.VERSION, bindMarker(OLD_VERSION))));
+                .with(set(CassandraACLTable.ACL, bindMarker(CassandraACLTable.ACL))));
     }
 
     private PreparedStatement prepareReadStatement(Session session) {
@@ -153,19 +146,15 @@ public class CassandraACLMapper {
     private Mono<Row> getStoredACLRow(CassandraId cassandraId) {
         return executor.executeSingleRow(
             readStatement.bind()
-                .setUUID(CassandraACLTable.ID, cassandraId.asUuid())
-                .setConsistencyLevel(consistencyLevel));
+                .setUUID(CassandraACLTable.ID, cassandraId.asUuid()));
     }
 
     private Mono<MailboxACL> updateStoredACL(CassandraId cassandraId, ACLWithVersion aclWithVersion) {
-        return executor.executeReturnApplied(
+        return executor.executeVoid(
             conditionalUpdateStatement.bind()
                 .setUUID(CassandraACLTable.ID, cassandraId.asUuid())
-                .setString(CassandraACLTable.ACL, convertAclToJson(aclWithVersion.mailboxACL))
-                .setLong(CassandraACLTable.VERSION, aclWithVersion.version + 1)
-                .setLong(OLD_VERSION, aclWithVersion.version))
-            .filter(FunctionalUtils.identityPredicate())
-            .map(any -> aclWithVersion.mailboxACL);
+                .setString(CassandraACLTable.ACL, convertAclToJson(aclWithVersion.mailboxACL)))
+            .thenReturn(aclWithVersion.mailboxACL);
     }
 
     public Mono<Void> delete(CassandraId cassandraId) {
