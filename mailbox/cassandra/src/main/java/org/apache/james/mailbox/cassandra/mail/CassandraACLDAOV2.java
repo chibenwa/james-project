@@ -174,7 +174,7 @@ public class CassandraACLDAOV2 implements CassandraACLDAO {
             .collect(Guavate.toImmutableSet());
     }
 
-    private Mono<Void> doSetACL(CassandraId cassandraId, MailboxACL mailboxACL) {
+    public Mono<Void> doSetACL(CassandraId cassandraId, MailboxACL mailboxACL) {
         BatchStatement batchStatement = new BatchStatement();
         mailboxACL.getEntries().entrySet()
             .stream().map(entry -> replaceRights.bind()
