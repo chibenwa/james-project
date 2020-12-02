@@ -136,6 +136,7 @@ public class CassandraACLDAOV2 implements CassandraACLDAO {
 
     public Mono<ACLDiff> setACL(CassandraId cassandraId, MailboxACL mailboxACL) {
         return getACL(cassandraId)
+            .switchIfEmpty(Mono.just(MailboxACL.EMPTY))
             .flatMap(oldACL -> delete(cassandraId)
                 .then(Flux.fromIterable(mailboxACL.getEntries().entrySet())
                     .concatMap(entry -> doSetACL(cassandraId, mailboxACL))
