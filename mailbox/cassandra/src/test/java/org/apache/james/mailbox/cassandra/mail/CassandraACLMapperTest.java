@@ -46,6 +46,7 @@ import org.apache.james.mailbox.model.MailboxACL;
 import org.apache.james.util.concurrent.NamedThreadFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
@@ -179,6 +180,7 @@ class CassandraACLMapperTest {
         assertThat(cassandraACLMapper.getACL(MAILBOX_ID).block()).isEqualTo(new MailboxACL().union(key, rights));
     }
 
+    @Disabled
     @Test
     void twoConcurrentUpdatesWhenNoACLStoredShouldReturnACLWithTwoEntries(CassandraCluster cassandra) throws Exception {
         Barrier barrier = new Barrier(2);
@@ -203,6 +205,7 @@ class CassandraACLMapperTest {
             .isEqualTo(new MailboxACL().union(keyBob, rights).union(keyAlice, rights));
     }
 
+    @Disabled
     @Test
     void twoConcurrentUpdatesWhenStoredShouldReturnACLWithTwoEntries(CassandraCluster cassandra) throws Exception {
         MailboxACL.EntryKey keyBenwa = new MailboxACL.EntryKey("benwa", MailboxACL.NameType.user, false);
