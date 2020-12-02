@@ -31,6 +31,7 @@ import org.apache.james.mailbox.model.MailboxACL;
 import reactor.core.publisher.Mono;
 
 public class CassandraACLMapper {
+    public static final SchemaVersion ACL_V2_SCHEME_VERSION = new SchemaVersion(10);
     private final CassandraUserMailboxRightsDAO userMailboxRightsDAO;
     private final CassandraACLDAOV1 cassandraACLDAOV1;
     private final CassandraACLDAOV2 cassandraACLDAOV2;
@@ -47,32 +48,35 @@ public class CassandraACLMapper {
         this.versionManager = versionManager;
     }
 
-    private CassandraACLDAO aclDao() {
-        if (versionManager.isBefore(new SchemaVersion(10)).block()) {
-            return cassandraACLDAOV1;
-        }
-        return cassandraACLDAOV2;
+    private Mono<CassandraACLDAO> aclDao() {
+        return versionManager.isBefore(ACL_V2_SCHEME_VERSION)
+            .map(isBefore -> {
+                if (isBefore) {
+                    return cassandraACLDAOV1;
+                }
+                return cassandraACLDAOV2;
+            });
     }
 
     public Mono<MailboxACL> getACL(CassandraId cassandraId) {
-        return aclDao().getACL(cassandraId);
+        return aclDao().flatMap(dao -> dao.getACL(cassandraId));
     }
 
     public Mono<ACLDiff> updateACL(CassandraId cassandraId, MailboxACL.ACLCommand command) {
-        return aclDao().updateACL(cassandraId, command)
+        return aclDao().flatMap(dao -> dao.updateACL(cassandraId, command)
             .flatMap(aclDiff -> userMailboxRightsDAO.update(cassandraId, aclDiff)
             .thenReturn(aclDiff))
-            .switchIfEmpty(Mono.error(new MailboxException("Unable to update ACL")));
+            .switchIfEmpty(Mono.error(new MailboxException("Unable to update ACL"))));
     }
 
     public Mono<ACLDiff> setACL(CassandraId cassandraId, MailboxACL mailboxACL) {
-        return aclDao().setACL(cassandraId, mailboxACL)
+        return aclDao().flatMap(dao -> dao.setACL(cassandraId, mailboxACL)
             .flatMap(aclDiff -> userMailboxRightsDAO.update(cassandraId, aclDiff)
             .thenReturn(aclDiff))
-            .switchIfEmpty(Mono.defer(() -> Mono.error(new MailboxException("Unable to update ACL"))));
+            .switchIfEmpty(Mono.defer(() -> Mono.error(new MailboxException("Unable to update ACL")))));
     }
 
     public Mono<Void> delete(CassandraId cassandraId) {
-        return aclDao().delete(cassandraId);
+        return aclDao().flatMap(dao -> dao.delete(cassandraId));
     }
 }
