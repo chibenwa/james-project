@@ -222,13 +222,13 @@ public class AttributeValue<T> {
         }
     }
     public <U> Optional<AttributeValue<Map<String, AttributeValue<U>>>> asMapAttributeValueOf(Class<U> type) {
-        if (type.isInstance(Map.class)) {
+        if (Map.class.isInstance(value)) {
             Map<String, AttributeValue<?>> aMap = (Map<String, AttributeValue<?>>) value;
             Map<String, AttributeValue<U>> castedMap = aMap.entrySet()
                 .stream()
                 .flatMap(entry -> entry.getValue().asAttributeValueOf(type).stream().map(castedValue -> Pair.of(entry.getKey(), castedValue)))
                 .collect(Guavate.toImmutableMap(Pair::getKey, Pair::getValue));
-            return Optional.of(new AttributeValue<>(aMap, new Serializer.MapSerializer()));
+            return Optional.of(new AttributeValue<>(castedMap, new Serializer.MapSerializer()));
         } else {
             return Optional.empty();
         }

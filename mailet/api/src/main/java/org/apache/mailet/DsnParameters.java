@@ -202,10 +202,26 @@ public class DsnParameters {
             Optional<MailAddress> orcptParameter = Optional.ofNullable(rcptToArgLine.get(ORCPT_PARAMETER))
                 .map(RecipientDsnParameters::parseOrcpt);
 
+            return of(notifyParameter, orcptParameter);
+        }
+
+        public static Optional<RecipientDsnParameters> of(Optional<EnumSet<Notify>> notifyParameter, Optional<MailAddress> orcptParameter) {
             if (notifyParameter.isEmpty() && orcptParameter.isEmpty()) {
                 return Optional.empty();
             }
             return Optional.of(new RecipientDsnParameters(notifyParameter, orcptParameter));
+        }
+
+        public static RecipientDsnParameters of(EnumSet<Notify> notifyParameter, MailAddress orcptParameter) {
+            return new RecipientDsnParameters(Optional.of(notifyParameter), Optional.of(orcptParameter));
+        }
+
+        public static RecipientDsnParameters of(MailAddress orcptParameter) {
+            return new RecipientDsnParameters(Optional.empty(), Optional.of(orcptParameter));
+        }
+
+        public static RecipientDsnParameters of(EnumSet<Notify> notifyParameter) {
+            return new RecipientDsnParameters(Optional.of(notifyParameter), Optional.empty());
         }
 
         private static MailAddress parseOrcpt(String input) {
