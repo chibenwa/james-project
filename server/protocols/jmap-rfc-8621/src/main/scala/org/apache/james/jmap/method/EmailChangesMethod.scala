@@ -32,8 +32,7 @@ import org.apache.james.metrics.api.MetricFactory
 import play.api.libs.json.{JsError, JsSuccess}
 import reactor.core.scala.publisher.SMono
 
-class EmailChangesMethod @Inject()(
-                                   val metricFactory: MetricFactory,
+class EmailChangesMethod @Inject()(val metricFactory: MetricFactory,
                                    val sessionSupplier: SessionSupplier) extends MethodRequiringAccountId[EmailChangesRequest] {
   override val methodName: MethodName = MethodName("Email/changes")
   override val requiredCapabilities: Set[CapabilityIdentifier] = Set(JMAP_MAIL)
