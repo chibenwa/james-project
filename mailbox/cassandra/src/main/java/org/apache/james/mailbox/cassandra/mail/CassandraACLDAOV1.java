@@ -134,10 +134,10 @@ public class CassandraACLDAOV1 implements CassandraACLDAO {
     Mono<ACLDiff> doUpdateAcl(CassandraId cassandraId, Function<ACLWithVersion, ACLWithVersion> aclTransformation, MailboxACL replacement) {
         return getAclWithVersion(cassandraId)
             .flatMap(aclWithVersion ->
-                    updateStoredACL(cassandraId, aclTransformation.apply(aclWithVersion))
-                            .map(newACL -> ACLDiff.computeDiff(aclWithVersion.mailboxACL, newACL)))
+                updateStoredACL(cassandraId, aclTransformation.apply(aclWithVersion))
+                    .map(newACL -> ACLDiff.computeDiff(aclWithVersion.mailboxACL, newACL)))
             .switchIfEmpty(insertACL(cassandraId, replacement)
-                    .map(newACL -> ACLDiff.computeDiff(MailboxACL.EMPTY, newACL)))
+                .map(newACL -> ACLDiff.computeDiff(MailboxACL.EMPTY, newACL)))
             .single()
             .retry(maxAclRetry);
     }
