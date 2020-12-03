@@ -240,7 +240,7 @@ case class EmailBodyPart(partId: PartId,
   }
 
   def textBodyContent(htmlTextExtractor: HtmlTextExtractor): Try[Option[EmailBodyValue]] = `type` match {
-    case TEXT_HTML  => bodyContent.map(maybeContent => maybeContent.map(
+    case TEXT_HTML => bodyContent.map(maybeContent => maybeContent.map(
       content => EmailBodyValue(htmlTextExtractor.toPlainText(content.value),
         content.isEncodingProblem,
         content.isTruncated)))
