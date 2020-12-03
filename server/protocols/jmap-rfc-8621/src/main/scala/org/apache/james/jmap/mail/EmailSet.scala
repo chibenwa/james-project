@@ -296,30 +296,27 @@ case class EmailCreationRequest(mailboxIds: MailboxIds,
   def validateHtmlBody: Either[IllegalArgumentException, Option[String]] = htmlBody match {
     case None => Right(None)
     case Some(html :: Nil) if !html.`type`.value.equals("text/html") => Left(new IllegalArgumentException("Expecting htmlBody type to be text/html"))
-    case Some(html :: Nil) => bodyValues.getOrElse(Map())
-      .get(html.partId)
-      .map {
-        case part if part.isTruncated.isDefined && part.isTruncated.get.value.equals(true) => Left(new IllegalArgumentException("Expecting isTruncated to be false"))
-        case part if part.isEncodingProblem.isDefined && part.isEncodingProblem.get.value.equals(true) => Left(new IllegalArgumentException("Expecting isEncodingProblem to be false"))
-        case part => Right(Some(part.value))
-      }
+    case Some(html :: Nil) => retrieveCorrespondingBody(html.partId)
       .getOrElse(Left(new IllegalArgumentException("Expecting bodyValues to contain the part specified in htmlBody")))
     case _ => Left(new IllegalArgumentException("Expecting htmlBody to contains only 1 part"))
   }
 
   def validateTextBody: Either[IllegalArgumentException, Option[String]] = textBody match {
     case None => Right(None)
-    case Some(html :: Nil) if !html.`type`.value.equals("text/plain") => Left(new IllegalArgumentException("Expecting htmlBody type to be text/html"))
-    case Some(html :: Nil) => bodyValues.getOrElse(Map())
-      .get(html.partId)
+    case Some(text :: Nil) if !text.`type`.value.equals("text/plain") => Left(new IllegalArgumentException("Expecting htmlBody type to be text/html"))
+    case Some(text :: Nil) => retrieveCorrespondingBody(text.partId)
+      .getOrElse(Left(new IllegalArgumentException("Expecting bodyValues to contain the part specified in textBody")))
+    case _ => Left(new IllegalArgumentException("Expecting textBody to contains only 1 part"))
+  }
+
+  private def retrieveCorrespondingBody(partId: ClientPartId): Option[Either[IllegalArgumentException, Some[String]]] =
+    bodyValues.getOrElse(Map())
+      .get(partId)
       .map {
         case part if part.isTruncated.isDefined && part.isTruncated.get.value.equals(true) => Left(new IllegalArgumentException("Expecting isTruncated to be false"))
         case part if part.isEncodingProblem.isDefined && part.isEncodingProblem.get.value.equals(true) => Left(new IllegalArgumentException("Expecting isEncodingProblem to be false"))
         case part => Right(Some(part.value))
       }
-      .getOrElse(Left(new IllegalArgumentException("Expecting bodyValues to contain the part specified in textBody")))
-    case _ => Left(new IllegalArgumentException("Expecting textBody to contains only 1 part"))
-  }
 
   private def validateSpecificHeaders(message: Message.Builder): Either[IllegalArgumentException, Unit] = {
     specificHeaders.map(header => {
