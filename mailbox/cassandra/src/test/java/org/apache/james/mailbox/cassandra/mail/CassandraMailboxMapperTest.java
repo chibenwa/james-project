@@ -33,13 +33,19 @@ import org.apache.james.backends.cassandra.CassandraClusterExtension;
 import org.apache.james.backends.cassandra.Scenario;
 import org.apache.james.backends.cassandra.components.CassandraModule;
 import org.apache.james.backends.cassandra.init.configuration.CassandraConfiguration;
+import org.apache.james.backends.cassandra.init.configuration.CassandraConsistenciesConfiguration;
 import org.apache.james.backends.cassandra.utils.CassandraUtils;
 import org.apache.james.backends.cassandra.versions.CassandraSchemaVersionDAO;
 import org.apache.james.backends.cassandra.versions.CassandraSchemaVersionManager;
 import org.apache.james.backends.cassandra.versions.CassandraSchemaVersionModule;
 import org.apache.james.backends.cassandra.versions.SchemaVersion;
 import org.apache.james.core.Username;
+import org.apache.james.eventsourcing.eventstore.cassandra.CassandraEventStore;
+import org.apache.james.eventsourcing.eventstore.cassandra.CassandraEventStoreModule;
+import org.apache.james.eventsourcing.eventstore.cassandra.EventStoreDao;
+import org.apache.james.eventsourcing.eventstore.cassandra.JsonEventSerializer;
 import org.apache.james.mailbox.cassandra.ids.CassandraId;
+import org.apache.james.mailbox.cassandra.mail.eventsourcing.acl.ACLModule;
 import org.apache.james.mailbox.cassandra.modules.CassandraAclModule;
 import org.apache.james.mailbox.cassandra.modules.CassandraMailboxModule;
 import org.apache.james.mailbox.exception.MailboxNotFoundException;
@@ -78,6 +84,7 @@ class CassandraMailboxMapperTest {
     private static final Mailbox MAILBOX_BIS = new Mailbox(MAILBOX_PATH, UID_VALIDITY, MAILBOX_ID_2);
 
     private static final CassandraModule MODULES = CassandraModule.aggregateModules(
+        CassandraEventStoreModule.MODULE(),
         CassandraMailboxModule.MODULE,
         CassandraSchemaVersionModule.MODULE,
         CassandraAclModule.MODULE);
@@ -100,28 +107,32 @@ class CassandraMailboxMapperTest {
         mailboxPathDAO = new CassandraMailboxPathDAOImpl(cassandra.getConf(), cassandra.getTypesProvider(), cassandraCluster.getCassandraConsistenciesConfiguration());
         mailboxPathV2DAO = new CassandraMailboxPathV2DAO(cassandra.getConf(), CassandraUtils.WITH_DEFAULT_CONFIGURATION, cassandraCluster.getCassandraConsistenciesConfiguration());
         mailboxPathV3DAO = new CassandraMailboxPathV3DAO(cassandra.getConf(), CassandraUtils.WITH_DEFAULT_CONFIGURATION, cassandraCluster.getCassandraConsistenciesConfiguration());
-        CassandraUserMailboxRightsDAO userMailboxRightsDAO = new CassandraUserMailboxRightsDAO(cassandra.getConf(), CassandraUtils.WITH_DEFAULT_CONFIGURATION);
-        CassandraACLMapper aclMapper = new CassandraACLMapper(
-            new CassandraUserMailboxRightsDAO(cassandra.getConf(), CassandraUtils.WITH_DEFAULT_CONFIGURATION),
-            new CassandraACLDAOV1(cassandra.getConf(),
-                CassandraConfiguration.DEFAULT_CONFIGURATION,
-                cassandraCluster.getCassandraConsistenciesConfiguration()),
-            new CassandraACLDAOV2(cassandra.getConf()),
-            new CassandraSchemaVersionManager(new CassandraSchemaVersionDAO(cassandra.getConf())));
-        versionDAO = new CassandraSchemaVersionDAO(cassandra.getConf());
 
+        versionDAO = new CassandraSchemaVersionDAO(cassandra.getConf());
         versionDAO.truncateVersion()
             .then(versionDAO.updateVersion(new SchemaVersion(7)))
             .block();
+        CassandraSchemaVersionManager versionManager = new CassandraSchemaVersionManager(versionDAO);
 
+        CassandraACLDAOV1 aclDAOV1 = new CassandraACLDAOV1(cassandra.getConf(), CassandraConfiguration.DEFAULT_CONFIGURATION, CassandraConsistenciesConfiguration.DEFAULT);
+        CassandraACLDAOV2 aclDAOv2 = new CassandraACLDAOV2(cassandra.getConf());
+        JsonEventSerializer jsonEventSerializer = JsonEventSerializer
+            .forModules(ACLModule.ACL_RESET, ACLModule.ACL_UPDATE)
+            .withoutNestedType();
+        CassandraUserMailboxRightsDAO usersRightDAO = new CassandraUserMailboxRightsDAO(cassandra.getConf(), CassandraUtils.WITH_DEFAULT_CONFIGURATION);
+        CassandraEventStore eventStore = new CassandraEventStore(new EventStoreDao(cassandra.getConf(), jsonEventSerializer, CassandraConsistenciesConfiguration.DEFAULT));
+        CassandraACLMapper aclMapper = new CassandraACLMapper(
+            new CassandraACLMapper.StoreV1(usersRightDAO, aclDAOV1),
+            new CassandraACLMapper.StoreV2(usersRightDAO, aclDAOv2, eventStore),
+            versionManager);
         testee = new CassandraMailboxMapper(
             mailboxDAO,
             mailboxPathDAO,
             mailboxPathV2DAO,
             mailboxPathV3DAO,
-            userMailboxRightsDAO,
+            usersRightDAO,
             aclMapper,
-            new CassandraSchemaVersionManager(versionDAO),
+            versionManager,
             CassandraConfiguration.DEFAULT_CONFIGURATION);
     }
 

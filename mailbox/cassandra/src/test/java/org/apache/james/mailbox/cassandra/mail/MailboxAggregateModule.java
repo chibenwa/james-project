@@ -22,6 +22,7 @@ package org.apache.james.mailbox.cassandra.mail;
 import org.apache.james.backends.cassandra.components.CassandraModule;
 import org.apache.james.backends.cassandra.versions.CassandraSchemaVersionModule;
 import org.apache.james.blob.cassandra.CassandraBlobModule;
+import org.apache.james.eventsourcing.eventstore.cassandra.CassandraEventStoreModule;
 import org.apache.james.mailbox.cassandra.modules.CassandraAclModule;
 import org.apache.james.mailbox.cassandra.modules.CassandraAnnotationModule;
 import org.apache.james.mailbox.cassandra.modules.CassandraApplicableFlagsModule;
@@ -39,6 +40,7 @@ import org.apache.james.mailbox.cassandra.modules.CassandraUidModule;
 
 public interface MailboxAggregateModule {
     CassandraModule MODULE = CassandraModule.aggregateModules(
+            CassandraEventStoreModule.MODULE(),
             CassandraSchemaVersionModule.MODULE,
             CassandraAclModule.MODULE,
             CassandraMailboxModule.MODULE,
