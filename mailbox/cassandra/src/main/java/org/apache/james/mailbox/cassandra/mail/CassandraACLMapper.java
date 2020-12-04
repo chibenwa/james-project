@@ -137,7 +137,7 @@ public class CassandraACLMapper {
                 .map(ACLReseted.class::cast)
                 .map(ACLReseted::getAclDiff)
                 .next()
-                .switchIfEmpty(Mono.defer(() -> Mono.error(new MailboxException("Unable to update ACL"))));
+                .switchIfEmpty(Mono.defer(() -> Mono.error(new MailboxException("Unable to set ACL"))));
         }
 
         @Override

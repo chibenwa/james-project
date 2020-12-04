@@ -60,10 +60,10 @@ class AclV2MigrationTest {
         UidValidity.generate(), MAILBOX_ID);
 
     public static final CassandraModule MODULES = CassandraModule.aggregateModules(
-        CassandraMailboxModule.MODULE,
         CassandraAclModule.MODULE,
-        CassandraSchemaVersionModule.MODULE,
-        CassandraEventStoreModule.MODULE());
+        CassandraEventStoreModule.MODULE(),
+        CassandraMailboxModule.MODULE,
+        CassandraSchemaVersionModule.MODULE);
 
     @RegisterExtension
     static CassandraClusterExtension cassandraCluster = new CassandraClusterExtension(MODULES);

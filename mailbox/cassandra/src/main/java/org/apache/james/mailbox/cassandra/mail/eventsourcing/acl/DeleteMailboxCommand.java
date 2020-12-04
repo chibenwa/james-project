@@ -45,7 +45,7 @@ public class DeleteMailboxCommand implements Command {
         public Publisher<List<? extends Event>> handle(DeleteMailboxCommand command) {
             return Mono.from(eventStore.getEventsOfAggregate(command.getId()))
                 .map(history -> MailboxACLAggregate.load(command.getId(), history))
-                .map(aggregate -> aggregate.deleteMailbox(command));
+                .map(aggregate -> aggregate.deleteMailbox());
         }
     }
 

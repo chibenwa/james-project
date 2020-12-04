@@ -40,22 +40,22 @@ import org.apache.james.mailbox.cassandra.modules.CassandraUidModule;
 
 public interface MailboxAggregateModule {
     CassandraModule MODULE = CassandraModule.aggregateModules(
-            CassandraEventStoreModule.MODULE(),
-            CassandraSchemaVersionModule.MODULE,
-            CassandraAclModule.MODULE,
-            CassandraMailboxModule.MODULE,
-            CassandraMessageModule.MODULE,
-            CassandraBlobModule.MODULE,
-            CassandraAttachmentModule.MODULE,
-            CassandraMailboxCounterModule.MODULE,
-            CassandraMailboxRecentsModule.MODULE,
-            CassandraFirstUnseenModule.MODULE,
-            CassandraUidModule.MODULE,
-            CassandraModSeqModule.MODULE,
-            CassandraSubscriptionModule.MODULE,
-            CassandraDeletedMessageModule.MODULE,
-            CassandraAnnotationModule.MODULE,
-            CassandraApplicableFlagsModule.MODULE);
+        CassandraAclModule.MODULE,
+        CassandraAnnotationModule.MODULE,
+        CassandraApplicableFlagsModule.MODULE,
+        CassandraAttachmentModule.MODULE,
+        CassandraBlobModule.MODULE,
+        CassandraEventStoreModule.MODULE(),
+        CassandraDeletedMessageModule.MODULE,
+        CassandraFirstUnseenModule.MODULE,
+        CassandraMailboxCounterModule.MODULE,
+        CassandraMailboxModule.MODULE,
+        CassandraMailboxRecentsModule.MODULE,
+        CassandraMessageModule.MODULE,
+        CassandraModSeqModule.MODULE,
+        CassandraSchemaVersionModule.MODULE,
+        CassandraSubscriptionModule.MODULE,
+        CassandraUidModule.MODULE);
 
     CassandraModule MODULE_WITH_QUOTA = CassandraModule.aggregateModules(CassandraQuotaModule.MODULE, MODULE);
 }

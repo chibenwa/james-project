@@ -65,7 +65,7 @@ public class MailboxACLAggregate {
             .forEach(this::apply);
     }
 
-    public List<Event> deleteMailbox(DeleteMailboxCommand deleteMailboxCommand) {
+    public List<Event> deleteMailbox() {
         return ImmutableList.of(new ACLReseted(aggregateId, history.getNextEventId(),
             ACLDiff.computeDiff(state.acl.orElse(MailboxACL.EMPTY), MailboxACL.EMPTY)));
     }
