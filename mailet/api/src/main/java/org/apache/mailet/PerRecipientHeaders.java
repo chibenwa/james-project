@@ -106,7 +106,7 @@ public class PerRecipientHeaders implements Serializable {
         }
 
         public static Header fromString(String value) {
-            Preconditions.checkArgument(value.contains(SEPARATOR), "Header is string form need to contain ': ' separator");
+            Preconditions.checkArgument(value.contains(SEPARATOR), "Header is string form needs to contain ': ' separator");
 
             List<String> parts = Splitter.on(SEPARATOR).splitToList(value);
 
