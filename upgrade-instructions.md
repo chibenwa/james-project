@@ -39,7 +39,7 @@ JMS and ActiveMQ mail queues.
 In order to do so, we introduced a breaking change in the message format.
 
 Upgrades should be done with an empty mail queue. To do so:
- - Switch off incoming SMTP+JMAP traffic (external load balancing or restarting with dis-activated SMTP service)
+ - Switch off incoming SMTP + JMAP traffic (external load balancing or restarting with dis-activated SMTP service)
  - Flush your MailQueues
  - Await the mail processing to finish, monitoring the size of your mail queue
  - Upgrade, then restart SMTP + JMAP traffic
