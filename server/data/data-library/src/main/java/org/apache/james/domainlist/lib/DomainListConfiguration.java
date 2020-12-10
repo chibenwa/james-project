@@ -129,6 +129,7 @@ public class DomainListConfiguration {
         }
     }
 
+    public static final Duration DEFAULT_EXPIRACY = Duration.ofSeconds(10);
     public static DomainListConfiguration DEFAULT = builder().build();
 
     public static final String CONFIGURE_AUTODETECT = "autodetect";
@@ -137,7 +138,6 @@ public class DomainListConfiguration {
     public static final String CONFIGURE_DOMAIN_NAMES = "domainnames.domainname";
     public static final String ENABLE_READ_CACHE = "read.cache.enable";
     public static final String READ_CACHE_EXPIRACY = "read.cache.expiracy";
-    public static final Duration DEFAULT_EXPIRACY = Duration.ofSeconds(10);
 
     public static Builder builder() {
         return new Builder();
