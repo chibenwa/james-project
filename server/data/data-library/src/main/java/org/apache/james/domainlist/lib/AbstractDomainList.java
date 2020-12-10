@@ -224,7 +224,7 @@ public abstract class AbstractDomainList implements DomainList, Configurable {
     }
 
     private ImmutableList<Domain> detectIps(Collection<Domain> domains) {
-        if (configuration.isAutoDetect()) {
+        if (configuration.isAutoDetectIp()) {
             return getDomainsIpStream(domains, dns, LOGGER)
                 .collect(Guavate.toImmutableList());
         }
