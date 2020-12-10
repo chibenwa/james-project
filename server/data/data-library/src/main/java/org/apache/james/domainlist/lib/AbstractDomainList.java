@@ -224,7 +224,7 @@ public abstract class AbstractDomainList implements DomainList, Configurable {
     }
 
     private ImmutableList<Domain> detectIps(Collection<Domain> domains) {
-        if (configuration.isAutoDetect() ) {
+        if (configuration.isAutoDetect()) {
             return getDomainsIpStream(domains, dns, LOGGER)
                 .collect(Guavate.toImmutableList());
         }
@@ -232,7 +232,7 @@ public abstract class AbstractDomainList implements DomainList, Configurable {
     }
 
     private ImmutableList<Domain> detectDomains() {
-        if (configuration.isAutoDetect() ) {
+        if (configuration.isAutoDetect()) {
             String hostName;
             try {
                 hostName = dns.getHostName(dns.getLocalHost());
