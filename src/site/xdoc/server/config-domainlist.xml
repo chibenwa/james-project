@@ -56,7 +56,7 @@ The automatic IP detection is to support RFC 2821, Sec 4.1.3, address literals. 
         <dt><strong>read.cache.expiracy</strong></dt>
         <dd>Experimental. String (duration), defaults to 10 seconds (10s). Supported units are ms, s, m, h, d, w, month, y.
             Expiracy of the cache. Longer means less reads are performed to the backend but writes will take longer to propagate.
-            Low values (a few seconds) are adivsed.</dd>
+            Low values (a few seconds) are advised.</dd>
 
         <dt><strong>defaultDomain</strong></dt>
         <dd>Set the default domain which will be used if an email is send to a recipient without a domain part.

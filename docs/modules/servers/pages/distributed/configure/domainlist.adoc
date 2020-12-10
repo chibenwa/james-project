@@ -36,7 +36,7 @@ to propagate.
 |read.cache.expiracy
 |Experimental. String (duration), defaults to 10 seconds (10s). Supported units are ms, s, m, h, d, w, month, y.
 Expiracy of the cache. Longer means less reads are performed to the backend but writes will take longer to propagate.
-Low values (a few seconds) are adivsed.
+Low values (a few seconds) are advised.
 
 
 |===
