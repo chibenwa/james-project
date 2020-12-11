@@ -107,7 +107,7 @@ class CacheDomainListTest {
         assertThat(domainList.containsDomain(DOMAIN_1)).isEqualTo(true);
     }
 
-    DNSService getDNSServer(final String hostName) throws UnknownHostException {
+    private DNSService getDNSServer(final String hostName) throws UnknownHostException {
         return new InMemoryDNSService()
             .registerMxRecord(hostName, "127.0.0.1")
             .registerMxRecord("127.0.0.1", "127.0.0.1");
