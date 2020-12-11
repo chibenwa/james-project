@@ -385,7 +385,7 @@ class CassandraMailboxMapperTest {
                     .times(TRY_COUNT_BEFORE_FAILURE)
                     .whenQueryStartsWith("SELECT id,mailboxbase,uidvalidity,name FROM mailbox WHERE id=:id;"));
 
-            doQuietly(() -> testee.rename(inboxRenamed));
+            doQuietly(() -> testee.rename(inboxRenamed).block());
 
             cassandra.getConf().registerScenario(Scenario.NOTHING);
 
