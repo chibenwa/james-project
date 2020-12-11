@@ -66,7 +66,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.github.fge.lambdas.Throwing;
-import com.github.fge.lambdas.runnable.ThrowingRunnable;
 
 import reactor.core.publisher.Mono;
 
@@ -360,7 +359,7 @@ class CassandraMailboxMapperTest {
                     .times(10)
                     .whenQueryStartsWith("INSERT INTO mailbox (id,name,uidvalidity,mailboxbase) VALUES (:id,:name,:uidvalidity,:mailboxbase);"));
 
-            doQuietly(() -> testee.create(inboxPath, UID_VALIDITY).block());
+            doQuietly(testee.create(inboxPath, UID_VALIDITY));
 
             SoftAssertions.assertSoftly(softly -> {
                 softly.assertThat(testee.findMailboxByPath(inboxPath).blockOptional())
@@ -385,7 +384,7 @@ class CassandraMailboxMapperTest {
                     .times(TRY_COUNT_BEFORE_FAILURE)
                     .whenQueryStartsWith("SELECT id,mailboxbase,uidvalidity,name FROM mailbox WHERE id=:id;"));
 
-            doQuietly(() -> testee.rename(inboxRenamed).block());
+            doQuietly(testee.rename(inboxRenamed));
 
             cassandra.getConf().registerScenario(Scenario.NOTHING);
 
@@ -416,7 +415,7 @@ class CassandraMailboxMapperTest {
                     .times(TRY_COUNT_BEFORE_FAILURE)
                     .whenQueryStartsWith("SELECT id,mailboxbase,uidvalidity,name FROM mailbox WHERE id=:id;"));
 
-            doQuietly(() -> testee.rename(inboxRenamed).block());
+            doQuietly(testee.rename(inboxRenamed));
 
             SoftAssertions.assertSoftly(Throwing.consumer(softly ->
                 softly.assertThat(testee.findMailboxWithPathLike(allMailboxesSearchQuery)
@@ -439,7 +438,7 @@ class CassandraMailboxMapperTest {
                     .times(TRY_COUNT_BEFORE_FAILURE)
                     .whenQueryStartsWith("SELECT id,mailboxbase,uidvalidity,name FROM mailbox WHERE id=:id;"));
 
-            doQuietly(() -> testee.rename(inboxRenamed).block());
+            doQuietly(testee.rename(inboxRenamed));
 
             SoftAssertions.assertSoftly(Throwing.consumer(softly -> {
                 softly.assertThatThrownBy(() -> testee.findMailboxByPath(inboxPathRenamed).block())
@@ -461,7 +460,7 @@ class CassandraMailboxMapperTest {
                     .times(TRY_COUNT_BEFORE_FAILURE)
                     .whenQueryStartsWith("DELETE FROM mailboxPathV3 WHERE namespace=:namespace AND user=:user AND mailboxName=:mailboxName IF EXISTS;"));
 
-            doQuietly(() -> testee.rename(inboxRenamed).block());
+            doQuietly(testee.rename(inboxRenamed));
 
             SoftAssertions.assertSoftly(Throwing.consumer(softly -> {
                 softly(softly)
@@ -490,7 +489,7 @@ class CassandraMailboxMapperTest {
                     .times(TRY_COUNT_BEFORE_FAILURE)
                     .whenQueryStartsWith("DELETE FROM mailboxPathV3 WHERE namespace=:namespace AND user=:user AND mailboxName=:mailboxName IF EXISTS;"));
 
-            doQuietly(() -> testee.rename(inboxRenamed).block());
+            doQuietly(testee.rename(inboxRenamed));
 
             SoftAssertions.assertSoftly(Throwing.consumer(softly ->
                 softly.assertThat(testee.findMailboxWithPathLike(allMailboxesSearchQuery)
@@ -512,7 +511,7 @@ class CassandraMailboxMapperTest {
                     .times(TRY_COUNT_BEFORE_FAILURE)
                     .whenQueryStartsWith("DELETE FROM mailboxPathV3 WHERE namespace=:namespace AND user=:user AND mailboxName=:mailboxName IF EXISTS;"));
 
-            doQuietly(() -> testee.rename(inboxRenamed).block());
+            doQuietly(testee.rename(inboxRenamed));
 
             SoftAssertions.assertSoftly(Throwing.consumer(softly -> {
                 softly.assertThatThrownBy(() -> testee.findMailboxByPath(inboxPathRenamed).block())
@@ -534,7 +533,7 @@ class CassandraMailboxMapperTest {
                     .times(TRY_COUNT_BEFORE_FAILURE)
                     .whenQueryStartsWith("DELETE FROM mailbox WHERE id=:id;"));
 
-            doQuietly(() -> testee.delete(inbox).block());
+            doQuietly(testee.delete(inbox));
 
             SoftAssertions.assertSoftly(Throwing.consumer(softly -> {
                 softly.assertThatCode(() -> testee.findMailboxById(inboxId).block())
@@ -581,7 +580,7 @@ class CassandraMailboxMapperTest {
                     .times(TRY_COUNT_BEFORE_FAILURE)
                     .whenQueryStartsWith("INSERT INTO mailbox (id,name,uidvalidity,mailboxbase) VALUES (:id,:name,:uidvalidity,:mailboxbase);"));
 
-            doQuietly(() -> testee.create(inboxPath, UID_VALIDITY).block());
+            doQuietly(testee.create(inboxPath, UID_VALIDITY));
 
             Mailbox inbox = testee.create(inboxPath, UID_VALIDITY).block();
 
@@ -609,8 +608,8 @@ class CassandraMailboxMapperTest {
                     .times(TRY_COUNT_BEFORE_FAILURE)
                     .whenQueryStartsWith("INSERT INTO mailbox (id,name,uidvalidity,mailboxbase) VALUES (:id,:name,:uidvalidity,:mailboxbase);"));
 
-            doQuietly(() -> testee.create(inboxPath, UID_VALIDITY).block());
-            doQuietly(() -> testee.delete(new Mailbox(inboxPath, UID_VALIDITY, CassandraId.timeBased())).block());
+            doQuietly(testee.create(inboxPath, UID_VALIDITY));
+            doQuietly(testee.delete(new Mailbox(inboxPath, UID_VALIDITY, CassandraId.timeBased())));
 
             Mailbox inbox = testee.create(inboxPath, UID_VALIDITY).block();
 
@@ -641,9 +640,9 @@ class CassandraMailboxMapperTest {
                     .times(TRY_COUNT_BEFORE_FAILURE)
                     .whenQueryStartsWith("DELETE FROM mailbox WHERE id=:id;"));
 
-            doQuietly(() -> testee.delete(inbox).block());
+            doQuietly(testee.delete(inbox));
 
-            doQuietly(() -> testee.delete(inbox).block());
+            doQuietly(testee.delete(inbox));
 
             SoftAssertions.assertSoftly(Throwing.consumer(softly -> {
                 softly.assertThatThrownBy(() -> testee.findMailboxById(inboxId).block())
@@ -672,9 +671,9 @@ class CassandraMailboxMapperTest {
                     .times(TRY_COUNT_BEFORE_FAILURE)
                     .whenQueryStartsWith("SELECT id,mailboxbase,uidvalidity,name FROM mailbox WHERE id=:id;"));
 
-            doQuietly(() -> testee.rename(inboxRenamed).block());
+            doQuietly(testee.rename(inboxRenamed));
 
-            doQuietly(() -> testee.rename(inboxRenamed).block());
+            doQuietly(testee.rename(inboxRenamed));
 
             SoftAssertions.assertSoftly(Throwing.consumer(softly -> {
                 softly(softly)
@@ -711,9 +710,9 @@ class CassandraMailboxMapperTest {
                     .times(TRY_COUNT_BEFORE_FAILURE)
                     .whenQueryStartsWith("DELETE FROM mailboxPathV3 WHERE namespace=:namespace AND user=:user AND mailboxName=:mailboxName IF EXISTS;"));
 
-            doQuietly(() -> testee.rename(inboxRenamed).block());
+            doQuietly(testee.rename(inboxRenamed));
 
-            doQuietly(() -> testee.rename(inboxRenamed).block());
+            doQuietly(testee.rename(inboxRenamed));
 
             SoftAssertions.assertSoftly(Throwing.consumer(softly -> {
                 softly(softly)
@@ -739,9 +738,9 @@ class CassandraMailboxMapperTest {
             }));
         }
 
-        private void doQuietly(ThrowingRunnable runnable) {
+        private void doQuietly(Mono<?> operation) {
             try {
-                runnable.run();
+                operation.block();
             } catch (Throwable th) {
                 // ignore
             }
