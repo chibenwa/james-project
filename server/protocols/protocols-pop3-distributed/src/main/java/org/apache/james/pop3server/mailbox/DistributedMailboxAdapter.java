@@ -27,6 +27,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Stream;
 
+import javax.inject.Inject;
+
 import org.apache.james.jmap.api.projections.EmailQueryView;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
@@ -45,6 +47,29 @@ import com.google.common.collect.ImmutableList;
 import reactor.core.scheduler.Schedulers;
 
 public class DistributedMailboxAdapter implements Mailbox {
+    public static class Factory implements MailboxAdapterFactory {
+        private final EmailQueryView emailQueryView;
+        private final MessageIdManager messageIdManager;
+        private final MessageId.Factory messageIdFactory;
+        private final MailboxManager mailboxManager;
+
+        @Inject
+        public Factory(EmailQueryView emailQueryView,
+                       MessageIdManager messageIdManager,
+                       MessageId.Factory messageIdFactory,
+                       MailboxManager mailboxManager) {
+            this.emailQueryView = emailQueryView;
+            this.messageIdManager = messageIdManager;
+            this.messageIdFactory = messageIdFactory;
+            this.mailboxManager = mailboxManager;
+        }
+
+        @Override
+        public Mailbox create(MessageManager manager, MailboxSession session) {
+            return new DistributedMailboxAdapter(emailQueryView, messageIdManager, messageIdFactory, mailboxManager, session, manager);
+        }
+    }
+
     private final EmailQueryView emailQueryView;
     private final MessageIdManager messageIdManager;
     private final MessageId.Factory messageIdFactory;
