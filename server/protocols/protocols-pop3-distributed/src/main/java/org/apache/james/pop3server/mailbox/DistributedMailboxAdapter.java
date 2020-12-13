@@ -1,0 +1,155 @@
+/****************************************************************
+ * Licensed to the Apache Software Foundation (ASF) under one   *
+ * or more contributor license agreements.  See the NOTICE file *
+ * distributed with this work for additional information        *
+ * regarding copyright ownership.  The ASF licenses this file   *
+ * to you under the Apache License, Version 2.0 (the            *
+ * "License"); you may not use this file except in compliance   *
+ * with the License.  You may obtain a copy of the License at   *
+ *                                                              *
+ *   http://www.apache.org/licenses/LICENSE-2.0                 *
+ *                                                              *
+ * Unless required by applicable law or agreed to in writing,   *
+ * software distributed under the License is distributed on an  *
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY       *
+ * KIND, either express or implied.  See the License for the    *
+ * specific language governing permissions and limitations      *
+ * under the License.                                           *
+ ****************************************************************/
+
+package org.apache.james.pop3server.mailbox;
+
+import static org.apache.james.util.ReactorUtils.DEFAULT_CONCURRENCY;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Iterator;
+import java.util.List;
+import java.util.stream.Stream;
+
+import org.apache.james.jmap.api.projections.EmailQueryView;
+import org.apache.james.mailbox.MailboxManager;
+import org.apache.james.mailbox.MailboxSession;
+import org.apache.james.mailbox.MessageIdManager;
+import org.apache.james.mailbox.MessageManager;
+import org.apache.james.mailbox.exception.MailboxException;
+import org.apache.james.mailbox.model.FetchGroup;
+import org.apache.james.mailbox.model.MessageId;
+import org.apache.james.mailbox.model.MessageResult;
+import org.apache.james.protocols.pop3.mailbox.Mailbox;
+import org.apache.james.protocols.pop3.mailbox.MessageMetaData;
+
+import com.github.steveash.guavate.Guavate;
+import com.google.common.collect.ImmutableList;
+
+import reactor.core.scheduler.Schedulers;
+
+public class DistributedMailboxAdapter implements Mailbox {
+    private final EmailQueryView emailQueryView;
+    private final MessageIdManager messageIdManager;
+    private final MessageId.Factory messageIdFactory;
+    private final MailboxManager mailboxManager;
+    private final MailboxSession session;
+    private final MessageManager mailbox;
+
+    public DistributedMailboxAdapter(EmailQueryView emailQueryView, MessageIdManager messageIdManager, MessageId.Factory messageIdFactory, MailboxManager mailboxManager, MailboxSession session, MessageManager mailbox) {
+        this.emailQueryView = emailQueryView;
+        this.messageIdManager = messageIdManager;
+        this.messageIdFactory = messageIdFactory;
+        this.mailboxManager = mailboxManager;
+        this.session = session;
+        this.mailbox = mailbox;
+    }
+
+    @Override
+    public InputStream getMessageBody(String uid) throws IOException {
+        try {
+        MessageId messageId = messageIdFactory.fromString(uid);
+        Iterator<MessageResult> messages = messageIdManager.getMessage(messageId, FetchGroup.BODY_CONTENT, session).iterator();
+        if (messages.hasNext()) {
+            return messages.next().getBody().getInputStream();
+        } else {
+            return null;
+        }
+        } catch (MailboxException e) {
+            throw new IOException("Unable to retrieve message body for uid " + uid, e);
+        }
+    }
+
+    @Override
+    public InputStream getMessageHeaders(String uid) throws IOException {
+        try {
+            MessageId messageId = messageIdFactory.fromString(uid);
+            Iterator<MessageResult> messages = messageIdManager.getMessage(messageId, FetchGroup.HEADERS, session).iterator();
+            if (messages.hasNext()) {
+                return messages.next().getBody().getInputStream();
+            } else {
+                return null;
+            }
+        } catch (MailboxException e) {
+            throw new IOException("Unable to retrieve message body for uid " + uid, e);
+        }
+    }
+
+    @Override
+    public InputStream getMessage(String uid) throws IOException {
+        try {
+            MessageId messageId = messageIdFactory.fromString(uid);
+            Iterator<MessageResult> messages = messageIdManager.getMessage(messageId, FetchGroup.FULL_CONTENT, session).iterator();
+            if (messages.hasNext()) {
+                return messages.next().getFullContent().getInputStream();
+            } else {
+                return null;
+            }
+        } catch (MailboxException e) {
+            throw new IOException("Unable to retrieve message body for uid " + uid, e);
+        }
+    }
+
+    @Override
+    public List<MessageMetaData> getMessages() {
+        return emailQueryView.listMailboxContent(mailbox.getId())
+            .flatMap(messageId -> messageIdManager.getMessagesReactive(ImmutableList.of(messageId), FetchGroup.MINIMAL, session), DEFAULT_CONCURRENCY)
+            .distinct(MessageResult::getMessageId)
+            .map(message -> new MessageMetaData(message.getMessageId().serialize(), message.getSize()))
+            .collect(Guavate.toImmutableList())
+            .subscribeOn(Schedulers.elastic())
+            .block();
+    }
+
+    @Override
+    public void remove(String... uids) throws IOException {
+        ImmutableList<MessageId> messageIds = Stream.of(uids)
+            .map(messageIdFactory::fromString)
+            .collect(Guavate.toImmutableList());
+        try {
+            messageIdManager.delete(messageIds, session);
+        } catch (MailboxException e) {
+            throw new IOException("Unable to delete " + messageIds, e);
+        }
+    }
+
+    @Override
+    public String getIdentifier() throws IOException {
+        try {
+            mailboxManager.startProcessingRequest(session);
+            long validity = mailbox.getMailboxEntity()
+                .getUidValidity()
+                .asLong();
+            return Long.toString(validity);
+        } catch (MailboxException e) {
+            throw new IOException("Unable to retrieve indentifier for mailbox", e);
+        } finally {
+            mailboxManager.endProcessingRequest(session);
+        }
+    }
+
+    @Override
+    public void close() {
+        try {
+            mailboxManager.logout(session);
+        } finally {
+            mailboxManager.endProcessingRequest(session);
+        }
+    }
+}
