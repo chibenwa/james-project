@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import javax.inject.Inject;
+import javax.inject.Named;
 
 import org.apache.james.jmap.api.projections.EmailQueryView;
 import org.apache.james.mailbox.MailboxManager;
@@ -43,6 +44,7 @@ import org.apache.james.protocols.pop3.mailbox.MessageMetaData;
 
 import com.github.steveash.guavate.Guavate;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 
 import reactor.core.scheduler.Schedulers;
 
@@ -57,7 +59,7 @@ public class DistributedMailboxAdapter implements Mailbox {
         public Factory(EmailQueryView emailQueryView,
                        MessageIdManager messageIdManager,
                        MessageId.Factory messageIdFactory,
-                       MailboxManager mailboxManager) {
+                       @Named("mailboxmanager") MailboxManager mailboxManager) {
             this.emailQueryView = emailQueryView;
             this.messageIdManager = messageIdManager;
             this.messageIdFactory = messageIdFactory;
@@ -138,6 +140,7 @@ public class DistributedMailboxAdapter implements Mailbox {
             .distinct(MessageResult::getMessageId)
             .map(message -> new MessageMetaData(message.getMessageId().serialize(), message.getSize()))
             .collect(Guavate.toImmutableList())
+            .map(Lists::reverse) // in order to have a similar ordering
             .subscribeOn(Schedulers.elastic())
             .block();
     }

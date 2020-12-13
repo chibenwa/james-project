@@ -65,11 +65,11 @@ class POP3ServerTest {
     private static final DomainList NO_DOMAIN_LIST = null;
 
     private POP3TestConfiguration pop3Configuration;
-    private final MemoryUsersRepository usersRepository = MemoryUsersRepository.withoutVirtualHosting(NO_DOMAIN_LIST);
+    protected final MemoryUsersRepository usersRepository = MemoryUsersRepository.withoutVirtualHosting(NO_DOMAIN_LIST);
     private POP3Client pop3Client = null;
     protected MockFileSystem fileSystem;
     protected MockProtocolHandlerLoader protocolHandlerChain;
-    private StoreMailboxManager mailboxManager;
+    protected StoreMailboxManager mailboxManager;
     private final byte[] content = ("Return-path: return@test.com\r\n"
             + "Content-Transfer-Encoding: plain\r\n"
             + "Subject: test\r\n\r\n"
