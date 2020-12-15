@@ -27,6 +27,8 @@ import io.restassured.RestAssured._
 import io.restassured.http.ContentType.JSON
 import javax.mail.Flags
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
+import net.javacrumbs.jsonunit.core.Option
+import net.javacrumbs.jsonunit.core.internal.Options
 import org.apache.http.HttpStatus.SC_OK
 import org.apache.james.GuiceJamesServer
 import org.apache.james.core.quota.{QuotaCountLimit, QuotaSizeLimit}
@@ -146,7 +148,9 @@ trait MailboxGetMethodContract {
       .body
       .asString
 
-    assertThatJson(response).isEqualTo(
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].state")
+      .isEqualTo(
       s"""{
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [[
@@ -215,7 +219,9 @@ trait MailboxGetMethodContract {
       .body
       .asString
 
-    assertThatJson(response).isEqualTo(
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].state")
+      .isEqualTo(
       s"""{
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [[
@@ -289,7 +295,9 @@ trait MailboxGetMethodContract {
       .body
       .asString
 
-    assertThatJson(response).isEqualTo(
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].state")
+      .isEqualTo(
       s"""{
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [[
@@ -364,7 +372,9 @@ trait MailboxGetMethodContract {
       .body
       .asString
 
-    assertThatJson(response).isEqualTo(
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].state")
+      .isEqualTo(
       s"""{
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [[
@@ -431,7 +441,9 @@ trait MailboxGetMethodContract {
       .body
       .asString
 
-    assertThatJson(response).isEqualTo(
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].state")
+      .isEqualTo(
       s"""{
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [[
@@ -480,7 +492,9 @@ trait MailboxGetMethodContract {
       .body
       .asString
 
-    assertThatJson(response).isEqualTo(
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].state")
+      .isEqualTo(
       s"""{
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [[
@@ -530,7 +544,9 @@ trait MailboxGetMethodContract {
       .body
       .asString
 
-    assertThatJson(response).isEqualTo(
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].state")
+      .isEqualTo(
       s"""{
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [[
@@ -581,7 +597,9 @@ trait MailboxGetMethodContract {
       .body
       .asString
 
-    assertThatJson(response).isEqualTo(
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].state")
+      .isEqualTo(
       s"""{
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [[
@@ -627,7 +645,9 @@ trait MailboxGetMethodContract {
       .body
       .asString
 
-    assertThatJson(response).isEqualTo(
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].state")
+      .isEqualTo(
       s"""{
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [[
@@ -667,7 +687,9 @@ trait MailboxGetMethodContract {
       .body
       .asString
 
-    assertThatJson(response).isEqualTo(
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].state")
+      .isEqualTo(
       s"""{
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [[
@@ -1208,7 +1230,9 @@ trait MailboxGetMethodContract {
       .body
       .asString
 
-    assertThatJson(response).isEqualTo(
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].state")
+      .isEqualTo(
       s"""{
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [[
@@ -1282,7 +1306,9 @@ trait MailboxGetMethodContract {
       .body
       .asString
 
-    assertThatJson(response).isEqualTo(
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].state")
+      .isEqualTo(
       s"""{
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [[
@@ -1524,5 +1550,60 @@ trait MailboxGetMethodContract {
          |    },
          |    "c1"]]
          |}""".stripMargin)
+  }
+
+  @Test
+  def mailboxStateShouldBeTheLatestOne(server: GuiceJamesServer): Unit = {
+    val mailboxProbe: MailboxProbeImpl = server.getProbe(classOf[MailboxProbeImpl])
+    mailboxProbe.createMailbox(MailboxPath.inbox(BOB))
+
+    val response = `given`
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(
+        s"""{
+           |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail"],
+           |  "methodCalls": [[
+           |     "Mailbox/get",
+           |     {
+           |       "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |       "ids": null,
+           |       "properties": ["id"]
+           |     },
+           |     "c1"],[
+           |      "Mailbox/changes",
+           |      {
+           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "#sinceState": {
+           |           "resultOf":"c1",
+           |           "name":"Mailbox/get",
+           |           "path":"state"
+           |         }
+           |      },
+           |      "c2"]]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .extract()
+      .body()
+      .asString()
+
+    // No changes as Mailbox/get state property is the latest one
+    assertThatJson(response)
+      .withOptions(new Options(Option.IGNORING_ARRAY_ORDER))
+      .whenIgnoringPaths("methodResponses[1][1].oldState", "methodResponses[1][1].newState")
+      .inPath("methodResponses[1][1]")
+      .isEqualTo(
+        s"""{
+           |  "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |  "oldState": "0eea6f03-4da9-4deb-b728-bb405cf329ea",
+           |  "newState": "0eea6f03-4da9-4deb-b728-bb405cf329ea",
+           |  "hasMoreChanges": false,
+           |  "updatedProperties": [],
+           |  "created": [],
+           |  "updated": [],
+           |  "destroyed": []
+           |}""".stripMargin)
   }
 }

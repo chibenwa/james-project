@@ -89,7 +89,9 @@ trait BackReferenceContract {
       .body()
       .asString()
 
-    assertThatJson(response).isEqualTo(
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].state", "methodResponses[1][1].state")
+      .isEqualTo(
       s"""{
          |    "sessionState": "${SESSION_STATE.value}",
          |    "methodResponses": [
@@ -168,7 +170,9 @@ trait BackReferenceContract {
       .body()
       .asString()
 
-    assertThatJson(response).isEqualTo(
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].state")
+      .isEqualTo(
       s"""{
          |    "sessionState": "${SESSION_STATE.value}",
          |    "methodResponses": [
@@ -238,7 +242,9 @@ trait BackReferenceContract {
       .body()
       .asString()
 
-    assertThatJson(response).isEqualTo(
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].state")
+      .isEqualTo(
       s"""{
          |    "sessionState": "${SESSION_STATE.value}",
          |    "methodResponses": [
@@ -308,7 +314,9 @@ trait BackReferenceContract {
       .body()
       .asString()
 
-    assertThatJson(response).isEqualTo(
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].state")
+      .isEqualTo(
       s"""{
          |    "sessionState": "${SESSION_STATE.value}",
          |    "methodResponses": [
@@ -378,7 +386,9 @@ trait BackReferenceContract {
       .body()
       .asString()
 
-    assertThatJson(response).isEqualTo(
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].state")
+      .isEqualTo(
       s"""{
          |    "sessionState": "${SESSION_STATE.value}",
          |    "methodResponses": [
