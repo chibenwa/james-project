@@ -157,7 +157,6 @@ trait MailboxGetMethodContract {
          |    "Mailbox/get",
          |    {
          |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-         |      "state": "${INSTANCE.value}",
          |      "list": [
          |        {
          |          "id": "${mailboxId}",
@@ -228,7 +227,6 @@ trait MailboxGetMethodContract {
          |    "Mailbox/get",
          |    {
          |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-         |      "state": "${INSTANCE.value}",
          |      "list": [
          |        {
          |          "id": "${mailboxId}",
@@ -304,7 +302,6 @@ trait MailboxGetMethodContract {
          |    "Mailbox/get",
          |    {
          |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-         |      "state": "${INSTANCE.value}",
          |      "list": [
          |        {
          |          "id": "${mailboxId}",
@@ -381,7 +378,6 @@ trait MailboxGetMethodContract {
          |    "Mailbox/get",
          |    {
          |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-         |      "state": "${INSTANCE.value}",
          |      "list": [
          |        {
          |          "id": "${mailboxId}",
@@ -450,7 +446,6 @@ trait MailboxGetMethodContract {
          |    "Mailbox/get",
          |    {
          |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-         |      "state": "${INSTANCE.value}",
          |      "list": [
          |        {
          |          "id": "${mailboxId}"
@@ -501,7 +496,6 @@ trait MailboxGetMethodContract {
          |    "Mailbox/get",
          |    {
          |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-         |      "state": "${INSTANCE.value}",
          |      "list": [
          |        {
          |          "id": "${mailboxId}",
@@ -553,7 +547,6 @@ trait MailboxGetMethodContract {
          |    "Mailbox/get",
          |    {
          |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-         |      "state": "${INSTANCE.value}",
          |      "list": [
          |        {
          |          "id": "${mailboxId}",
@@ -606,7 +599,6 @@ trait MailboxGetMethodContract {
          |    "Mailbox/get",
          |    {
          |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-         |      "state": "${INSTANCE.value}",
          |      "list": [
          |        {
          |          "id": "${mailboxId}",
@@ -654,7 +646,6 @@ trait MailboxGetMethodContract {
          |    "Mailbox/get",
          |    {
          |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-         |      "state": "${INSTANCE.value}",
          |      "list": [],
          |      "notFound": ["invalid"]
          |    },
@@ -696,7 +687,6 @@ trait MailboxGetMethodContract {
          |    "Mailbox/get",
          |    {
          |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-         |      "state": "${INSTANCE.value}",
          |      "list": [],
          |      "notFound": ["#C42"]
          |    },
@@ -1239,7 +1229,6 @@ trait MailboxGetMethodContract {
          |    "Mailbox/get",
          |      {
          |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-         |        "state": "${INSTANCE.value}",
          |        "list": [
          |          {
          |            "id": "${mailboxId}",
@@ -1315,7 +1304,6 @@ trait MailboxGetMethodContract {
          |    "Mailbox/get",
          |      {
          |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-         |        "state": "${INSTANCE.value}",
          |        "list": [
          |          {
          |            "id": "${mailboxId}",
@@ -1597,8 +1585,6 @@ trait MailboxGetMethodContract {
       .isEqualTo(
         s"""{
            |  "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-           |  "oldState": "0eea6f03-4da9-4deb-b728-bb405cf329ea",
-           |  "newState": "0eea6f03-4da9-4deb-b728-bb405cf329ea",
            |  "hasMoreChanges": false,
            |  "updatedProperties": [],
            |  "created": [],
