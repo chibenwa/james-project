@@ -20,7 +20,6 @@
 package org.apache.james.transport.matchers;
 
 import static org.apache.mailet.DsnParameters.Notify.DELAY;
-import static org.apache.mailet.DsnParameters.Notify.SUCCESS;
 
 import java.util.Collection;
 import java.util.Optional;
