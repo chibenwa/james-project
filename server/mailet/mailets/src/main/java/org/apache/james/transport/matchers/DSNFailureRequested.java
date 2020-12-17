@@ -66,7 +66,7 @@ public class DSNFailureRequested extends GenericMatcher {
     @Override
     public void init() throws MessagingException {
         Preconditions.checkState(Strings.isNullOrEmpty(getCondition()) || CONDITION.equals(getCondition()),
-            "DSNSuccessRequested condition, when specified, should be '%s'", CONDITION);
+            "DSNFailureRequested condition, when specified, should be '%s'", CONDITION);
         shouldBeMatchedByDefault = Optional.ofNullable(getCondition())
             .map(CONDITION::equals)
             .map(FunctionalUtils.negate())
