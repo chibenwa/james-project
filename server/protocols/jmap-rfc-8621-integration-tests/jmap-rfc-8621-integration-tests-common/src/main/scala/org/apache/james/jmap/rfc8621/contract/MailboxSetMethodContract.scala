@@ -1362,7 +1362,7 @@ trait MailboxSetMethodContract {
          |	"methodResponses": [
          |		["Mailbox/set", {
          |			"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-         |			"newState": "${INSTANCE.value}",
+
          |			"created": {
          |				"C42": {
          |					"id": "$mailboxId",
@@ -1573,7 +1573,7 @@ trait MailboxSetMethodContract {
          |  "methodResponses": [
          |    ["Mailbox/set", {
          |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-         |      "newState": "${INSTANCE.value}",
+
          |      "created": {
          |        "C42": {
          |          "id": "$mailboxId",
@@ -2195,7 +2195,7 @@ trait MailboxSetMethodContract {
          |    "Mailbox/set",
          |    {
          |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-         |      "newState": "${INSTANCE.value}",
+
          |      "destroyed": ["${mailboxId.serialize}"]
          |    },
          |    "c1"]]
@@ -2976,7 +2976,6 @@ trait MailboxSetMethodContract {
          |  "methodResponses": [
          |    ["Mailbox/set", {
          |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-         |      "newState": "${INSTANCE.value}",
          |      "notDestroyed": {
          |        "#": {
          |          "type": "invalidArguments",
@@ -3139,7 +3138,6 @@ trait MailboxSetMethodContract {
          |    }, "c1"],
          |    ["Mailbox/set", {
          |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-         |      "newState": "${INSTANCE.value}",
          |      "updated": {
          |        "$mailboxId": {}
          |      }
@@ -3784,7 +3782,6 @@ trait MailboxSetMethodContract {
          |  "methodResponses": [
          |    ["Mailbox/set", {
          |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-         |      "newState": "${INSTANCE.value}",
          |      "updated": {
          |        "${childId.serialize}": {}
          |      }
@@ -3858,7 +3855,6 @@ trait MailboxSetMethodContract {
          |  "methodResponses": [
          |    ["Mailbox/set", {
          |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-         |      "newState": "${INSTANCE.value}",
          |      "updated": {
          |        "${parentId.serialize}": {}
          |      }
@@ -4337,7 +4333,6 @@ trait MailboxSetMethodContract {
          |  "methodResponses": [
          |    ["Mailbox/set", {
          |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-         |      "newState": "${INSTANCE.value}",
          |      "updated": {
          |        "${mailboxId.serialize}": {}
          |      }
@@ -4410,7 +4405,6 @@ trait MailboxSetMethodContract {
          |  "methodResponses": [
          |    ["Mailbox/set", {
          |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-         |      "newState": "${INSTANCE.value}",
          |      "updated": {
          |        "${mailboxId.serialize}": {}
          |      }
@@ -4495,14 +4489,12 @@ trait MailboxSetMethodContract {
          |  "methodResponses": [
          |    ["Mailbox/set", {
          |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-         |      "newState": "${INSTANCE.value}",
          |      "updated": {
          |        "${mailboxId.serialize}": {}
          |      }
          |    }, "c2"],
          |    ["Mailbox/set", {
          |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-         |      "newState": "${INSTANCE.value}",
          |      "updated": {
          |        "${mailboxId.serialize}": {}
          |      }
@@ -4631,7 +4623,6 @@ trait MailboxSetMethodContract {
          |  "methodResponses": [
          |    ["Mailbox/set", {
          |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-         |      "newState": "${INSTANCE.value}",
          |      "updated": {
          |        "${andreId.serialize}": {},
          |        "${bobId.serialize}": {}
@@ -6462,7 +6453,6 @@ trait MailboxSetMethodContract {
          |  "methodResponses": [
          |    ["Mailbox/set", {
          |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-         |      "newState": "${INSTANCE.value}",
          |      "updated": {
          |        "${mailboxId.serialize}": {}
          |      }
@@ -6750,7 +6740,6 @@ trait MailboxSetMethodContract {
          |  "methodResponses": [
          |    ["Mailbox/set", {
          |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-         |      "newState": "${INSTANCE.value}",
          |      "updated": {
          |        "${mailboxId.serialize}": {}
          |      }
@@ -7679,7 +7668,6 @@ trait MailboxSetMethodContract {
       .body
       .asString
 
-    // No changes as Mailbox/get state property is the latest one
     assertThatJson(response)
       .withOptions(new Options(Option.IGNORING_ARRAY_ORDER))
       .whenIgnoringPaths("methodResponses[1][1].oldState", "methodResponses[1][1].newState")
@@ -7741,7 +7729,6 @@ trait MailboxSetMethodContract {
       .body
       .asString
 
-    // No changes as Mailbox/get state property is the latest one
     assertThatJson(response)
       .withOptions(new Options(Option.IGNORING_ARRAY_ORDER))
       .whenIgnoringPaths("methodResponses[1][1].oldState", "methodResponses[1][1].newState")
