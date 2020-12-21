@@ -17,28 +17,34 @@
  * under the License.                                           *
  ****************************************************************/
 
-package org.apache.james.jmap.rfc8621.memory;
+package org.apache.james.jmap.api.change;
 
-import static org.apache.james.MemoryJamesServerMain.IN_MEMORY_SERVER_AGGREGATE_MODULE;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import org.apache.james.GuiceJamesServer;
-import org.apache.james.JamesServerBuilder;
-import org.apache.james.JamesServerExtension;
-import org.apache.james.jmap.api.change.State;
-import org.apache.james.jmap.rfc8621.contract.MailboxChangesMethodContract;
-import org.apache.james.modules.TestJMAPServerModule;
-import org.junit.jupiter.api.extension.RegisterExtension;
+import java.util.UUID;
 
-public class MemoryMailboxChangesMethodTest implements MailboxChangesMethodContract {
-    @RegisterExtension
-    static JamesServerExtension testExtension = new JamesServerBuilder<>(JamesServerBuilder.defaultConfigurationProvider())
-        .server(configuration -> GuiceJamesServer.forConfiguration(configuration)
-            .combineWith(IN_MEMORY_SERVER_AGGREGATE_MODULE)
-            .overrideWith(new TestJMAPServerModule()))
-        .build();
+import org.junit.jupiter.api.Test;
 
-    @Override
-    public State.Factory stateFactory() {
-        return new State.DefaultFactory();
+import nl.jqno.equalsverifier.EqualsVerifier;
+
+class StateTest {
+    @Test
+    void shouldMatchBeanContract() {
+        EqualsVerifier.forClass(State.class)
+            .verify();
+    }
+
+    @Test
+    void ofShouldThrowOnNull() {
+        assertThatThrownBy(() -> State.of(null))
+            .isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void getValueShouldReturnSuppliedValue() {
+        UUID uuid = UUID.randomUUID();
+        assertThat(State.of(uuid).getValue())
+            .isEqualTo(uuid);
     }
 }

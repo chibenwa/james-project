@@ -17,28 +17,23 @@
  * under the License.                                           *
  ****************************************************************/
 
-package org.apache.james.jmap.rfc8621.memory;
+package org.apache.james.jmap.api.change;
 
-import static org.apache.james.MemoryJamesServerMain.IN_MEMORY_SERVER_AGGREGATE_MODULE;
+import com.google.common.base.Preconditions;
 
-import org.apache.james.GuiceJamesServer;
-import org.apache.james.JamesServerBuilder;
-import org.apache.james.JamesServerExtension;
-import org.apache.james.jmap.api.change.State;
-import org.apache.james.jmap.rfc8621.contract.MailboxChangesMethodContract;
-import org.apache.james.modules.TestJMAPServerModule;
-import org.junit.jupiter.api.extension.RegisterExtension;
+public class Limit {
+    public static Limit of(int value) {
+        Preconditions.checkArgument(value > 0, "'limit' needs to be strictly positive");
+        return new Limit(value);
+    }
 
-public class MemoryMailboxChangesMethodTest implements MailboxChangesMethodContract {
-    @RegisterExtension
-    static JamesServerExtension testExtension = new JamesServerBuilder<>(JamesServerBuilder.defaultConfigurationProvider())
-        .server(configuration -> GuiceJamesServer.forConfiguration(configuration)
-            .combineWith(IN_MEMORY_SERVER_AGGREGATE_MODULE)
-            .overrideWith(new TestJMAPServerModule()))
-        .build();
+    private final int value;
 
-    @Override
-    public State.Factory stateFactory() {
-        return new State.DefaultFactory();
+    private Limit(int value) {
+        this.value = value;
+    }
+
+    public int getValue() {
+        return value;
     }
 }
