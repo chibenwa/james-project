@@ -23,12 +23,12 @@ import java.util.Comparator;
 import java.util.Optional;
 import java.util.function.Predicate;
 
-import org.apache.james.jmap.api.change.MailboxChange;
 import org.apache.james.jmap.api.change.Limit;
-import org.apache.james.jmap.api.change.State;
+import org.apache.james.jmap.api.change.MailboxChange;
 import org.apache.james.jmap.api.change.MailboxChangeRepository;
 import org.apache.james.jmap.api.change.MailboxChanges;
 import org.apache.james.jmap.api.change.MailboxChanges.MailboxChangesBuilder.MailboxChangeCollector;
+import org.apache.james.jmap.api.change.State;
 import org.apache.james.jmap.api.exception.ChangeNotFoundException;
 import org.apache.james.jmap.api.model.AccountId;
 
