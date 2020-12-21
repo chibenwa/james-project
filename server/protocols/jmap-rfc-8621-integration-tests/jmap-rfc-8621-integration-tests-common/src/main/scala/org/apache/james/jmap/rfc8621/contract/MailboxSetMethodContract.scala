@@ -1363,7 +1363,6 @@ trait MailboxSetMethodContract {
          |	"methodResponses": [
          |		["Mailbox/set", {
          |			"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-
          |			"created": {
          |				"C42": {
          |					"id": "$mailboxId",
@@ -1574,7 +1573,6 @@ trait MailboxSetMethodContract {
          |  "methodResponses": [
          |    ["Mailbox/set", {
          |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-
          |      "created": {
          |        "C42": {
          |          "id": "$mailboxId",
@@ -2196,7 +2194,6 @@ trait MailboxSetMethodContract {
          |    "Mailbox/set",
          |    {
          |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-
          |      "destroyed": ["${mailboxId.serialize}"]
          |    },
          |    "c1"]]
