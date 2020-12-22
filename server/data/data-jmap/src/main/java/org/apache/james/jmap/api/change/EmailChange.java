@@ -34,22 +34,22 @@ import com.google.common.collect.ImmutableList;
 public class EmailChange {
     public static class Builder {
         @FunctionalInterface
-        public interface  RequireAccountId {
+        public interface RequireAccountId {
             RequireState accountId(AccountId accountId);
         }
 
         @FunctionalInterface
-        public interface  RequireState {
+        public interface RequireState {
             RequireDate state(State state);
         }
 
         @FunctionalInterface
-        public interface  RequireDate {
+        public interface RequireDate {
             RequireIsDelegated date(ZonedDateTime date);
         }
 
         @FunctionalInterface
-        public interface  RequireIsDelegated {
+        public interface RequireIsDelegated {
             Builder isDelegated(boolean isDelegated);
         }
 
