@@ -552,8 +552,7 @@ public abstract class AbstractMessageSearchIndexTest {
                     .setBody("benwa@apache.org email address do not exist", StandardCharsets.UTF_8)
                     .build()),
             session).getId();
-
-
+        
         await();
 
         assertThat(Flux.from(messageManager.search(SearchQuery.of(SearchQuery.bodyContains("alice@apache.org")), session)).toStream())
