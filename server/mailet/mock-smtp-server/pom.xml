@@ -121,12 +121,12 @@
                 <artifactId>jib-maven-plugin</artifactId>
                 <configuration>
                     <from>
-                        <image>openjdk:8u222-jre</image>
+                        <image>adoptopenjdk:11-jre-hotspot</image>
                     </from>
                     <to>
                         <image>linagora/mock-smtp-server</image>
                         <tags>
-                            <tag>latest</tag>
+                            <tag>0.2</tag>
                         </tags>
                     </to>
                     <container>
