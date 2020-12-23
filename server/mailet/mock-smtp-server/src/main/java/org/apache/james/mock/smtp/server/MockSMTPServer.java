@@ -20,6 +20,7 @@
 package org.apache.james.mock.smtp.server;
 
 import org.apache.james.util.Port;
+import org.subethamail.smtp.command.EhloCommand;
 import org.subethamail.smtp.server.SMTPServer;
 
 class MockSMTPServer {
@@ -38,6 +39,7 @@ class MockSMTPServer {
     private MockSMTPServer(SMTPBehaviorRepository behaviorRepository, ReceivedMailRepository mailRepository, int port) {
         this.server = new SMTPServer(ctx -> new MockMessageHandler(mailRepository, behaviorRepository));
         this.server.setPort(port);
+        this.server.getCommandHandler().addCommand(new ExtendedEhloCommand(behaviorRepository));
     }
 
     void start() {
