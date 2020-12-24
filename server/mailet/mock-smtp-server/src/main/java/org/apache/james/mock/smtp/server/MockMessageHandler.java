@@ -22,6 +22,7 @@ package org.apache.james.mock.smtp.server;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Collection;
 import java.util.Optional;
 
 import javax.mail.internet.AddressException;
@@ -29,6 +30,7 @@ import javax.mail.internet.AddressException;
 import org.apache.commons.io.IOUtils;
 import org.apache.james.core.MailAddress;
 import org.apache.james.mock.smtp.server.model.Mail;
+import org.apache.james.mock.smtp.server.model.Mail.Parameter;
 import org.apache.james.mock.smtp.server.model.MockSMTPBehavior;
 import org.apache.james.mock.smtp.server.model.MockSMTPBehaviorInformation;
 import org.apache.james.mock.smtp.server.model.Response;
@@ -119,12 +121,31 @@ public class MockMessageHandler implements MessageHandler {
             .behave(parse(from));
     }
 
+    public void from(String from, Collection<Parameter> parameters) throws RejectException {
+        Optional<Behavior<MailAddress>> fromBehavior = firstMatchedBehavior(SMTPCommand.MAIL_FROM, from);
+
+        fromBehavior
+            .orElseGet(() -> mailAddress -> envelopeBuilder.from(mailAddress).mailParameters(parameters))
+            .behave(parse(from));
+    }
+
     @Override
     public void recipient(String recipient) throws RejectException {
         Optional<Behavior<MailAddress>> recipientBehavior = firstMatchedBehavior(SMTPCommand.RCPT_TO, recipient);
 
         recipientBehavior
             .orElseGet(() -> envelopeBuilder::addRecipientMailAddress)
+            .behave(parse(recipient));
+    }
+
+    public void recipient(String recipient, Collection<Parameter> parameters) throws RejectException {
+        Optional<Behavior<MailAddress>> recipientBehavior = firstMatchedBehavior(SMTPCommand.RCPT_TO, recipient);
+
+        recipientBehavior
+            .orElseGet(() -> address -> envelopeBuilder.addRecipient(Mail.Recipient.builder()
+                .parameters(parameters)
+                .address(address)
+                .build()))
             .behave(parse(recipient));
     }
 
