@@ -20,7 +20,6 @@
 package org.apache.james.mock.smtp.server;
 
 import org.apache.james.util.Port;
-import org.subethamail.smtp.command.EhloCommand;
 import org.subethamail.smtp.server.SMTPServer;
 
 class MockSMTPServer {
