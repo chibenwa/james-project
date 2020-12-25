@@ -338,7 +338,7 @@ public class CassandraMessageMapper implements MessageMapper {
 
     private Mono<MailboxMessage> addUidAndModseq(MailboxMessage message, CassandraId mailboxId) {
         Mono<MessageUid> messageUidMono = uidProvider
-            .nextUid(mailboxId)
+            .nextUids(mailboxId)
             .switchIfEmpty(Mono.error(() -> new MailboxException("Can not find a UID to save " + message.getMessageId() + " in " + mailboxId)));
 
         Mono<ModSeq> nextModSeqMono = modSeqProvider.nextModSeq(mailboxId)
@@ -479,7 +479,7 @@ public class CassandraMessageMapper implements MessageMapper {
     private List<MessageMetaData> setInMailbox(Mailbox mailbox, List<MailboxMessage> messages) throws MailboxException {
         CassandraId mailboxId = (CassandraId) mailbox.getMailboxId();
 
-        Mono<List<MessageUid>> uids = uidProvider.nextUid(mailboxId, messages.size());
+        Mono<List<MessageUid>> uids = uidProvider.nextUids(mailboxId, messages.size());
         Mono<ModSeq> nextModSeq = modSeqProvider.nextModSeq(mailboxId);
 
         Mono<List<MailboxMessage>> messagesWithUidAndModSeq = nextModSeq.flatMap(modSeq -> uids.map(uidList -> Pair.of(uidList, modSeq)))
