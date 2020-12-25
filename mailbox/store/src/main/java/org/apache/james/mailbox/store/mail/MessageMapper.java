@@ -42,7 +42,6 @@ import org.apache.james.mailbox.store.FlagsUpdateCalculator;
 import org.apache.james.mailbox.store.mail.model.MailboxMessage;
 import org.apache.james.mailbox.store.mail.model.Property;
 import org.apache.james.mailbox.store.transaction.Mapper;
-import org.apache.james.util.GuavaUtils;
 import org.apache.james.util.streams.Iterators;
 
 import com.github.fge.lambdas.Throwing;
