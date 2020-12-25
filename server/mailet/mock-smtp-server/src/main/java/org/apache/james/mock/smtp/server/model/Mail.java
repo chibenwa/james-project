@@ -74,9 +74,6 @@ public class Mail {
         private final String value;
 
         private Parameter(String name, String value) {
-            Preconditions.checkNotNull(name, "'name' field cannot be null");
-            Preconditions.checkNotNull(value, "'value' field cannot be null");
-
             this.name = name;
             this.value = value;
         }
