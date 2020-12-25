@@ -53,7 +53,7 @@ public class CassandraMailboxChangeRepository implements MailboxChangeRepository
     }
 
     @Override
-    public Mono<MailboxChange.State> getLatestStateWithDelegation(AccountId accountId) {
-        return Mono.just(MailboxChange.State.INITIAL);
+    public Mono<State> getLatestStateWithDelegation(AccountId accountId) {
+        return Mono.just(State.INITIAL);
     }
 }
