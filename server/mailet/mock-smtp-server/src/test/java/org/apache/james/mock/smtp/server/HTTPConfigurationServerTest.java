@@ -83,7 +83,7 @@ class HTTPConfigurationServerTest {
         void shouldExposeVersion() {
             given()
                 .basePath("/version")
-                .get().prettyPeek()
+                .get()
             .then()
                 .body(equalTo("0.2"));
         }
@@ -187,7 +187,7 @@ class HTTPConfigurationServerTest {
             mailRepository.store(MailsFixutre.MAIL_1);
 
             String response = when()
-                    .get().prettyPeek()
+                    .get()
                 .then()
                     .contentType(ContentType.JSON)
                     .extract()
@@ -204,7 +204,7 @@ class HTTPConfigurationServerTest {
             mailRepository.store(MailsFixutre.MAIL_2);
 
             String response = when()
-                    .get().prettyPeek()
+                    .get()
                 .then()
                     .contentType(ContentType.JSON)
                     .extract()
