@@ -46,6 +46,7 @@ import org.apache.james.util.streams.Limit;
 import org.assertj.core.api.SoftAssertions;
 import org.awaitility.Awaitility;
 import org.awaitility.Duration;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -62,6 +63,11 @@ class CassandraMessageMapperTest extends MessageMapperTest {
         return new CassandraMapperProvider(
             cassandraCluster.getCassandraCluster(),
             cassandraCluster.getCassandraConsistenciesConfiguration());
+    }
+
+    @BeforeEach
+    void debug(CassandraCluster cassandra) {
+        cassandra.getConf().printStatements();
     }
 
     @Nested
