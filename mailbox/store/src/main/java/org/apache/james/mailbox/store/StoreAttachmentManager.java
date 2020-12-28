@@ -103,7 +103,7 @@ public class StoreAttachmentManager implements AttachmentManager {
             Set<AttachmentId> referencedByMessages = referencedInUserMessages(attachmentIds, mailboxSession);
             ImmutableSet<AttachmentId> owned = Sets.difference(ImmutableSet.copyOf(attachmentIds), referencedByMessages)
                 .stream()
-                .filter(Throwing.<AttachmentId>predicate(id -> isReferencedInUserMessages(id, mailboxSession)).sneakyThrow())
+                .filter(Throwing.<AttachmentId>predicate(id -> isExplicitlyAOwner(id, mailboxSession)).sneakyThrow())
                 .collect(Guavate.toImmutableSet());
 
             return ImmutableSet.<AttachmentId>builder()
