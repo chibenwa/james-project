@@ -45,7 +45,12 @@ import reactor.util.retry.Retry;
 import spark.Service;
 
 public class WebAdminUtils {
+    public interface Startable {
+        WebAdminServer start() ;
+    }
+
     private static class ConcurrentSafeWebAdminServerFactory {
+
         private final WebAdminConfiguration configuration;
         private final List<Routes> privateRoutes;
         private final AuthenticationFilter authenticationFilter;
@@ -62,8 +67,8 @@ public class WebAdminUtils {
          * JVM-wide synchronized start method to avoid the all too common random port allocation conflict
          * that occurs when parallelly testing webadmin maven modules.
          */
-        public WebAdminServer createServer() {
-            return Mono.fromCallable(this::createServerSingleTry)
+        public Startable createServer() {
+            return () -> Mono.fromCallable(this::createServerSingleTry)
                 .retryWhen(Retry.backoff(10, Duration.ofMillis(10)))
                 .block();
         }
@@ -80,7 +85,7 @@ public class WebAdminUtils {
         }
     }
 
-    public static WebAdminServer createWebAdminServer(Routes... routes) {
+    public static Startable createWebAdminServer(Routes... routes) {
         return new ConcurrentSafeWebAdminServerFactory(
                 WebAdminConfiguration.TEST_CONFIGURATION,
                 ImmutableList.copyOf(routes),
