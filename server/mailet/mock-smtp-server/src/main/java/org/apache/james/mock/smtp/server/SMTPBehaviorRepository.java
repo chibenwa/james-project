@@ -51,7 +51,7 @@ class SMTPBehaviorRepository {
     }
 
     void clearExtensions() {
-        synchronized (behaviorsInformation) {
+        synchronized (smtpExtensions) {
             this.smtpExtensions.clear();
         }
     }
