@@ -29,11 +29,9 @@ import static com.sun.mail.smtp.SMTPMessage.RETURN_HDRS;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.EnumSet;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 
-import javax.mail.Address;
 import javax.mail.MessagingException;
 import javax.mail.Session;
 import javax.mail.internet.InternetAddress;
@@ -42,7 +40,6 @@ import javax.mail.internet.MimeMessage;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.james.core.MailAddress;
-import org.apache.james.mailbox.model.MailboxACL;
 import org.apache.mailet.DsnParameters;
 import org.apache.mailet.HostAddress;
 import org.apache.mailet.Mail;
@@ -99,6 +96,7 @@ public class MailDelivrerToHost {
         }
         return ExecutionResult.success();
     }
+
     private void sendDSNAwareEmail(Mail mail, SMTPTransport transport, Collection<InternetAddress> addresses) {
         addresses.stream()
             .map(address -> Pair.of(
