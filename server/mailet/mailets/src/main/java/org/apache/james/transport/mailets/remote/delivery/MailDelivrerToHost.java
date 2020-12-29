@@ -29,6 +29,7 @@ import static com.sun.mail.smtp.SMTPMessage.RETURN_HDRS;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.EnumSet;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 
@@ -39,7 +40,9 @@ import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
 
 import org.apache.commons.lang3.NotImplementedException;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.james.core.MailAddress;
+import org.apache.james.mailbox.model.MailboxACL;
 import org.apache.mailet.DsnParameters;
 import org.apache.mailet.HostAddress;
 import org.apache.mailet.Mail;
@@ -49,6 +52,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.github.fge.lambdas.Throwing;
+import com.github.steveash.guavate.Guavate;
 import com.sun.mail.smtp.SMTPMessage;
 import com.sun.mail.smtp.SMTPTransport;
 
@@ -96,20 +100,24 @@ public class MailDelivrerToHost {
         return ExecutionResult.success();
     }
     private void sendDSNAwareEmail(Mail mail, SMTPTransport transport, Collection<InternetAddress> addresses) {
-        addresses.forEach(Throwing.<InternetAddress>consumer(
-            address -> {
-                SMTPMessage smtpMessage = asSmtpMessage(mail, transport);
+        addresses.stream()
+            .map(address -> Pair.of(
                 mail.dsnParameters()
                     .flatMap(Throwing.<DsnParameters, Optional<DsnParameters.RecipientDsnParameters>>function(
                         dsn -> Optional.ofNullable(dsn.getRcptParameters().get(new MailAddress(address.toString()))))
                         .sneakyThrow())
                     .flatMap(DsnParameters.RecipientDsnParameters::getNotifyParameter)
-                    .map(this::toJavaxNotify)
-                    .ifPresent(smtpMessage::setNotifyOptions);
-                InternetAddress[] rcpt = new InternetAddress[]{address};
-                transport.sendMessage(smtpMessage, rcpt);
-            }
-        ).sneakyThrow());
+                    .map(this::toJavaxNotify),
+                address))
+            .collect(Guavate.toImmutableListMultimap(
+                Pair::getKey,
+                Pair::getValue))
+            .asMap()
+            .forEach(Throwing.<Optional<Integer>, Collection<InternetAddress>>biConsumer((maybeNotify, recipients) -> {
+                SMTPMessage smtpMessage = asSmtpMessage(mail, transport);
+                maybeNotify.ifPresent(smtpMessage::setNotifyOptions);
+                transport.sendMessage(smtpMessage, recipients.toArray(InternetAddress[]::new));
+            }).sneakyThrow());
     }
 
     private SMTPMessage asSmtpMessage(Mail mail, SMTPTransport transport) throws MessagingException {
