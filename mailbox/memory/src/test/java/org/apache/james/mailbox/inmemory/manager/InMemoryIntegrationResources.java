@@ -23,6 +23,12 @@ import java.util.Collection;
 import java.util.Optional;
 import java.util.function.Function;
 
+import org.apache.james.events.EventBus;
+import org.apache.james.events.EventBusTestFixture;
+import org.apache.james.events.EventListener;
+import org.apache.james.events.InVMEventBus;
+import org.apache.james.events.MemoryEventDeadLetters;
+import org.apache.james.events.delivery.InVmEventDelivery;
 import org.apache.james.mailbox.AttachmentContentLoader;
 import org.apache.james.mailbox.Authenticator;
 import org.apache.james.mailbox.Authorizator;
@@ -31,12 +37,6 @@ import org.apache.james.mailbox.SessionProvider;
 import org.apache.james.mailbox.acl.GroupMembershipResolver;
 import org.apache.james.mailbox.acl.SimpleGroupMembershipResolver;
 import org.apache.james.mailbox.acl.UnionMailboxACLResolver;
-import org.apache.james.mailbox.events.EventBus;
-import org.apache.james.mailbox.events.EventBusTestFixture;
-import org.apache.james.mailbox.events.InVMEventBus;
-import org.apache.james.mailbox.events.MailboxListener;
-import org.apache.james.mailbox.events.MemoryEventDeadLetters;
-import org.apache.james.mailbox.events.delivery.InVmEventDelivery;
 import org.apache.james.mailbox.extension.PreDeletionHook;
 import org.apache.james.mailbox.inmemory.InMemoryMailboxManager;
 import org.apache.james.mailbox.inmemory.InMemoryMailboxSessionMapperFactory;
@@ -208,7 +208,7 @@ public class InMemoryIntegrationResources implements IntegrationResources<StoreM
         private Optional<MessageParser> messageParser;
         private Optional<Function<MailboxManagerSearchIndexStage, MessageSearchIndex>> searchIndexFactory;
         private ImmutableSet.Builder<Function<MailboxManagerPreInstanciationStage, PreDeletionHook>> preDeletionHooksFactories;
-        private ImmutableList.Builder<MailboxListener.GroupMailboxListener> listenersToBeRegistered;
+        private ImmutableList.Builder<EventListener.GroupEventListener> listenersToBeRegistered;
 
         private Builder() {
             this.authenticator = Optional.empty();

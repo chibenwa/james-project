@@ -20,12 +20,14 @@
 package org.apache.james.modules.mailbox;
 
 import org.apache.commons.configuration2.ex.ConfigurationException;
-import org.apache.james.mailbox.events.EventBus;
-import org.apache.james.mailbox.events.InVMEventBus;
-import org.apache.james.mailbox.events.MailboxListener;
-import org.apache.james.mailbox.events.RetryBackoffConfiguration;
-import org.apache.james.mailbox.events.delivery.EventDelivery;
-import org.apache.james.mailbox.events.delivery.InVmEventDelivery;
+import org.apache.james.event.json.MailboxEventSerializer;
+import org.apache.james.events.EventBus;
+import org.apache.james.events.EventListener;
+import org.apache.james.events.EventSerializer;
+import org.apache.james.events.InVMEventBus;
+import org.apache.james.events.RetryBackoffConfiguration;
+import org.apache.james.events.delivery.EventDelivery;
+import org.apache.james.events.delivery.InVmEventDelivery;
 import org.apache.james.modules.EventDeadLettersProbe;
 import org.apache.james.server.core.configuration.ConfigurationProvider;
 import org.apache.james.utils.GuiceProbe;
@@ -42,6 +44,9 @@ import com.google.inject.multibindings.ProvidesIntoSet;
 public class DefaultEventModule extends AbstractModule {
     @Override
     protected void configure() {
+        bind(MailboxEventSerializer.class).in(Scopes.SINGLETON);
+        bind(EventSerializer.class).to(MailboxEventSerializer.class);
+
         bind(MailboxListenerFactory.class).in(Scopes.SINGLETON);
         bind(MailboxListenersLoaderImpl.class).in(Scopes.SINGLETON);
         bind(InVmEventDelivery.class).in(Scopes.SINGLETON);
@@ -54,8 +59,8 @@ public class DefaultEventModule extends AbstractModule {
 
         bind(RetryBackoffConfiguration.class).toInstance(RetryBackoffConfiguration.DEFAULT);
 
-        Multibinder.newSetBinder(binder(), MailboxListener.GroupMailboxListener.class);
-        Multibinder.newSetBinder(binder(), MailboxListener.ReactiveGroupMailboxListener.class);
+        Multibinder.newSetBinder(binder(), EventListener.GroupEventListener.class);
+        Multibinder.newSetBinder(binder(), EventListener.ReactiveGroupEventListener.class);
     }
 
     @Provides

@@ -23,7 +23,7 @@ import static io.restassured.RestAssured.given;
 import static io.restassured.RestAssured.when;
 import static io.restassured.RestAssured.with;
 import static net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson;
-import static org.apache.james.mailbox.events.EventDeadLetters.InsertionId;
+import static org.apache.james.events.EventDeadLetters.InsertionId;
 import static org.assertj.core.api.Java6Assertions.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
@@ -32,19 +32,19 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 
 import org.apache.james.core.Username;
-import org.apache.james.event.json.EventSerializer;
+import org.apache.james.event.json.MailboxEventSerializer;
+import org.apache.james.events.Event;
+import org.apache.james.events.EventBus;
+import org.apache.james.events.EventBusTestFixture;
+import org.apache.james.events.EventDeadLetters;
+import org.apache.james.events.Group;
+import org.apache.james.events.InVMEventBus;
+import org.apache.james.events.MemoryEventDeadLetters;
+import org.apache.james.events.RetryBackoffConfiguration;
+import org.apache.james.events.delivery.InVmEventDelivery;
 import org.apache.james.json.DTOConverter;
 import org.apache.james.mailbox.MailboxSession;
-import org.apache.james.mailbox.events.Event;
-import org.apache.james.mailbox.events.EventBus;
-import org.apache.james.mailbox.events.EventBusTestFixture;
-import org.apache.james.mailbox.events.EventDeadLetters;
-import org.apache.james.mailbox.events.Group;
-import org.apache.james.mailbox.events.InVMEventBus;
-import org.apache.james.mailbox.events.MailboxListener;
-import org.apache.james.mailbox.events.MemoryEventDeadLetters;
-import org.apache.james.mailbox.events.RetryBackoffConfiguration;
-import org.apache.james.mailbox.events.delivery.InVmEventDelivery;
+import org.apache.james.mailbox.events.MailboxEvents.MailboxAdded;
 import org.apache.james.mailbox.inmemory.InMemoryId;
 import org.apache.james.mailbox.inmemory.InMemoryMessageId;
 import org.apache.james.mailbox.model.MailboxPath;
@@ -81,14 +81,14 @@ class EventDeadLettersRoutesTest {
     private static final String UUID_1 = "6e0dd59d-660e-4d9b-b22f-0354479f47b4";
     private static final String UUID_2 = "6e0dd59d-660e-4d9b-b22f-0354479f47b5";
     private static final String INSERTION_UUID_1 = "6e0dd59d-660e-4d9b-b22f-0354479f47b7";
-    private static final MailboxListener.MailboxAdded EVENT_1 = EventFactory.mailboxAdded()
+    private static final MailboxAdded EVENT_1 = EventFactory.mailboxAdded()
         .eventId(Event.EventId.of(UUID_1))
         .user(BOB)
         .sessionId(MailboxSession.SessionId.of(452))
         .mailboxId(InMemoryId.of(453))
         .mailboxPath(MailboxPath.forUser(BOB, "Important-mailbox"))
         .build();
-    private static final MailboxListener.MailboxAdded EVENT_2 = EventFactory.mailboxAdded()
+    private static final MailboxAdded EVENT_2 = EventFactory.mailboxAdded()
         .eventId(Event.EventId.of(UUID_2))
         .user(BOB)
         .sessionId(MailboxSession.SessionId.of(455))
@@ -119,7 +119,7 @@ class EventDeadLettersRoutesTest {
     void beforeEach() {
         deadLetters = new MemoryEventDeadLetters();
         JsonTransformer jsonTransformer = new JsonTransformer();
-        EventSerializer eventSerializer = new EventSerializer(new InMemoryId.Factory(), new InMemoryMessageId.Factory(), new DefaultUserQuotaRootResolver.DefaultQuotaRootDeserializer());
+        MailboxEventSerializer eventSerializer = new MailboxEventSerializer(new InMemoryId.Factory(), new InMemoryMessageId.Factory(), new DefaultUserQuotaRootResolver.DefaultQuotaRootDeserializer());
         eventBus = new InVMEventBus(new InVmEventDelivery(new RecordingMetricFactory()), RetryBackoffConfiguration.DEFAULT, deadLetters);
         EventDeadLettersRedeliverService redeliverService = new EventDeadLettersRedeliverService(eventBus, deadLetters);
         EventDeadLettersService service = new EventDeadLettersService(redeliverService, deadLetters);
