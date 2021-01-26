@@ -169,19 +169,20 @@ class EmailSetUpdatePerformer @Inject() (serializer: EmailSetSerializer,
 
   private def updateByRange(ranges: List[MessageRange],
                             metaData: Map[MessageId, Traversable[ComposedMessageIdWithMetaData]],
-                            operation: Consumer[MessageRange]): SMono[Seq[EmailUpdateResult]] = SFlux.fromIterable(ranges)
-                              .concatMap(range => {
-                                val messageIds = metaData.filter(entry => entry._2.exists(composedId => range.includes(composedId.getComposedMessageId.getUid)))
-                                  .keys
-                                  .toSeq
-                                SMono.fromCallable[Seq[EmailUpdateResult]](() => {
-                                  operation.accept(range)
-                                  messageIds.map(EmailUpdateSuccess)
-                                })
-                                  .onErrorResume(e => SMono.just(messageIds.map(id => EmailUpdateFailure(EmailSet.asUnparsed(id), e))))
-                                  .subscribeOn(Schedulers.elastic())
-                              })
-                              .reduce(Seq[EmailUpdateResult]())( _ ++ _)
+                            operation: Consumer[MessageRange]): SMono[Seq[EmailUpdateResult]] =
+    SFlux.fromIterable(ranges)
+      .concatMap(range => {
+        val messageIds = metaData.filter(entry => entry._2.exists(composedId => range.includes(composedId.getComposedMessageId.getUid)))
+          .keys
+          .toSeq
+        SMono.fromCallable[Seq[EmailUpdateResult]](() => {
+          operation.accept(range)
+          messageIds.map(EmailUpdateSuccess)
+        })
+          .onErrorResume(e => SMono.just(messageIds.map(id => EmailUpdateFailure(EmailSet.asUnparsed(id), e))))
+          .subscribeOn(Schedulers.elastic())
+      })
+      .reduce(Seq[EmailUpdateResult]())( _ ++ _)
 
   private def updateEachMessage(validUpdates: List[(MessageId, ValidatedEmailSetUpdate)],
                                 metaData: Map[MessageId, Traversable[ComposedMessageIdWithMetaData]],
