@@ -23,7 +23,6 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
-import java.time.temporal.TemporalUnit;
 
 import javax.inject.Inject;
 import javax.inject.Named;
