@@ -61,7 +61,7 @@ Here is a sample xref:distributed/configure/mailetcontainer.adoc[mailetcontainer
         </processor>
 
         <processor state="error" enableJmx="true">
-            <mailet match="DSNFailureRequested" class="Bounce">
+            <mailet match="DSNFailureRequested" class="DSNBounce">
                 <prefix>[FAILED]</prefix>
                 <passThrough>true</passThrough>
                 <messageString>Hi. This is the James mail server at [machine].
@@ -70,7 +70,7 @@ This is a permanent error; I've given up. Sorry it didn't work out.  Below
 I include the list of recipients, and the reason why I was unable to deliver
 your message.</messageString>
                 <action>failed</action>
-                <defaultStatus>5.0.0/defaultStatus>
+                <defaultStatus>5.0.0</defaultStatus>
             </mailet>
             <mailet match="All" class="ToRepository">
                 <repositoryPath>cassandra://var/mail/error/</repositoryPath>
@@ -84,15 +84,15 @@ your message.</messageString>
                 <consume>false</consume>
             </mailet>
             <!-- Tell the world we succeeded -->
-            <mailet match="DSNSuccessRequested" class="Bounce">
+            <mailet match="DSNSuccessRequested" class="DSNBounce">
                 <prefix>[SUCCESS]</prefix>
                 <passThrough>true</passThrough>
                 <messageString>Hi. This is the James mail server at [machine].
-I successfully delivered your message to the following addresses.</messageString>
+I successfully delivered your message to the following addresses.
 Note that it indicates your recipients received the message but do
-not imply they read it.
+not imply they read it.</messageString>
                 <action>delivered</action>
-                <defaultStatus>2.0.0/defaultStatus>
+                <defaultStatus>2.0.0</defaultStatus>
             </mailet>
             <mailet match="All" class="Null"/> <!-- ignore people not having requesting a dsn success bounce -->
         </processor>
@@ -109,7 +109,7 @@ not imply they read it.
                 <bounceProcessor>remote-delivery-error</bounceProcessor>
             </mailet>
             <!-- When retries are exceeded, consider the mail as a permanent failure -->
-            <mailet match="DSNFailureRequested" class="Bounce">
+            <mailet match="DSNFailureRequested" class="DSNBounce">
                 <prefix>[FAILED]</prefix>
                 <passThrough>true</passThrough>
                 <messageString>Hi. This is the James mail server at [machine].
@@ -119,7 +119,7 @@ The remote server we should relay this mail to keep on failing.
 Below I include the list of recipients, and the reason why I was unable to deliver
 your message.</messageString>
                 <action>failed</action>
-                <defaultStatus>5.0.0/defaultStatus>
+                <defaultStatus>5.0.0</defaultStatus>
             </mailet>
             <mailet match="All" class="ToRepository">
                 <repositoryPath>cassandra://var/mail/error/remote-delivery/permanent/</repositoryPath>
@@ -136,7 +136,7 @@ your message.</messageString>
                 <matcher match="DSNDelayRequested"/>
             </matcher>
 
-            <mailet match="dsn-permanent" class="Bounce">
+            <mailet match="dsn-permanent" class="DSNBounce">
                 <prefix>[FAILED]</prefix>
                 <passThrough>true</passThrough>
                 <messageString>Hi. This is the James mail server at [machine].
@@ -146,10 +146,10 @@ The remote server we should relay this mail to returns a permanent error.
 Below I include the list of recipients, and the reason why I was unable to deliver
 your message.</messageString>
                 <action>failed</action>
-                <defaultStatus>5.0.0/defaultStatus>
+                <defaultStatus>5.0.0</defaultStatus>
             </mailet>
 
-            <mailet match="dsn-temporary" class="Bounce">
+            <mailet match="dsn-temporary" class="DSNBounce">
                 <prefix>[DELAYED]</prefix>
                 <passThrough>true</passThrough>
                 <messageString>Hi. This is the James mail server at [machine].
@@ -158,14 +158,14 @@ This is a temporary error: I will keep on trying.
 Below I include the list of recipients, and the reason why I was unable to deliver
 your message.</messageString>
                 <action>delayed</action>
-                <defaultStatus>4.0.0/defaultStatus>
+                <defaultStatus>4.0.0</defaultStatus>
             </mailet>
 
             <!-- Error management for remote delivery error handling as described in remote-delivery-error-handling.adoc -->
         </processor>
 
         <processor state="local-address-error" enableJmx="true">
-            <mailet match="DSNFailureRequested" class="Bounce">
+            <mailet match="DSNFailureRequested" class="DSNBounce">
                 <prefix>[FAILED]</prefix>
                 <passThrough>true</passThrough>
                 <messageString>Hi. This is the James mail server at [machine].
@@ -173,7 +173,7 @@ I'm afraid I wasn't able to deliver your message to the following addresses.
 This is a permanent error; I've given up. Sorry it didn't work out.
 The following addresses do not exist here. Sorry.</messageString>
                 <action>failed</action>
-                <defaultStatus>5.0.0/defaultStatus>
+                <defaultStatus>5.0.0</defaultStatus>
             </mailet>
             <mailet match="All" class="ToRepository">
                 <repositoryPath>cassandra://var/mail/address-error/</repositoryPath>
@@ -194,7 +194,7 @@ The following addresses do not exist here. Sorry.</messageString>
                 <passThrough>true</passThrough>
             </mailet>
             <mailet match="IsSenderInRRTLoop" class="Null"/>
-            <mailet match="DSNFailureRequested" class="Bounce">
+            <mailet match="DSNFailureRequested" class="DSNBounce">
                 <prefix>[FAILED]</prefix>
                 <passThrough>true</passThrough>
                 <messageString>Hi. This is the James mail server at [machine].
