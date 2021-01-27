@@ -44,7 +44,7 @@ class JMAPApi (methods: Set[Method]) {
   }
 
   def process(requestObject: RequestObject,
-                      mailboxSession: MailboxSession): SMono[ResponseObject] = {
+              mailboxSession: MailboxSession): SMono[ResponseObject] = {
     val processingContext: ProcessingContext = ProcessingContext(Map.empty, Map.empty)
     val unsupportedCapabilities = requestObject.using.toSet -- DefaultCapabilities.SUPPORTED_CAPABILITY_IDENTIFIERS
     val capabilities: Set[CapabilityIdentifier] = requestObject.using.toSet
