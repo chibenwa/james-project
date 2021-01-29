@@ -20,11 +20,13 @@ package org.apache.james.jmap.rfc8621.contract
 
 import java.net.URI
 import java.util
+import java.util.concurrent.TimeUnit
+
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import org.apache.james.GuiceJamesServer
 import org.apache.james.jmap.draft.JmapGuiceProbe
 import org.apache.james.jmap.rfc8621.contract.Fixture._
-import org.apache.james.jmap.rfc8621.contract.WebSocketContract.LOGGER
+import org.apache.james.jmap.rfc8621.contract.WebSocketContract.{LOGGER, await}
 import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
@@ -34,17 +36,15 @@ import org.java_websocket.handshake.ServerHandshake
 import org.junit.jupiter.api.{BeforeEach, Tag, Test}
 import org.slf4j.{Logger, LoggerFactory}
 
-import java.util.concurrent.TimeUnit
-
 object WebSocketContract {
   val LOGGER: Logger = LoggerFactory.getLogger(classOf[WebSocketContract])
+
+  val await = Awaitility.await
+    .atMost(1, TimeUnit.SECONDS)
+    .pollInterval(100, TimeUnit.MILLISECONDS)
 }
 
 trait WebSocketContract {
-
-  lazy val await = Awaitility.await
-    .atMost(1, TimeUnit.SECONDS)
-    .pollInterval(100, TimeUnit.MILLISECONDS)
 
   @BeforeEach
   def setUp(server: GuiceJamesServer): Unit = {
