@@ -54,39 +54,24 @@ trait WebSocketContract {
       .addUser(BOB.asString(), BOB_PASSWORD)
   }
 
-  class ExampleClient(uri: URI) extends WebSocketClient(uri) {
+  class TestClient(uri: URI) extends WebSocketClient(uri) {
     val receivedResponses: util.LinkedList[String] = new util.LinkedList[String]()
-    var closeCode: Option[Integer] = None
     var closeString: Option[String] = None
 
     override def onOpen(serverHandshake: ServerHandshake): Unit = {}
 
-    override def onMessage(s: String): Unit = {
-      receivedResponses.add(s)
-    }
+    override def onMessage(s: String): Unit = receivedResponses.add(s)
 
-    override def onClose(i: Int, s: String, b: Boolean): Unit = {
-      closeCode = Some(i)
-      closeString = Some(s)
-    }
+    override def onClose(i: Int, s: String, b: Boolean): Unit = closeString = Some(s)
 
-    override def onError(e: Exception): Unit = {
-      LOGGER.error("WebSocket error: " + e.getMessage)
-    }
+    override def onError(e: Exception): Unit = LOGGER.error("WebSocket error", e)
   }
 
   @Test
   @Tag(CategoryTags.BASIC_FEATURE)
   def apiRequestsShouldBeProcessed(server: GuiceJamesServer): Unit = {
-    val port = server.getProbe(classOf[JmapGuiceProbe])
-      .getJmapPort
-      .getValue
-    val client = new ExampleClient(new URI(s"ws://127.0.0.1:$port/jmap/ws"))
-    client.addHeader("Authorization", "Basic Ym9iQGRvbWFpbi50bGQ6Ym9icGFzc3dvcmQ=")
-    client.addHeader("Accept", ACCEPT_RFC8621_VERSION_HEADER)
-
+    val client: TestClient = authenticatedWebSocketClient(server)
     client.connectBlocking()
-
     client.send("""{
                   |  "@type": "Request",
                   |  "requestId": "req-36",
@@ -104,28 +89,18 @@ trait WebSocketContract {
                   |}""".stripMargin)
 
     await.until(() => client.receivedResponses.size() == 1)
-    assertThatJson(client.receivedResponses.get(0)).isEqualTo(
-      """
-        |{
+    assertThatJson(client.receivedResponses.get(0)).isEqualTo("""{
         |  "@type":"Response",
         |  "requestId":"req-36",
         |  "sessionState":"2c9f1b12-b35a-43e6-9af2-0106fb53a943",
         |  "methodResponses":[["Core/echo",{"arg1":"arg1data","arg2":"arg2data"},"c1"]]
-        |}
-        |""".stripMargin)
+        |}""".stripMargin)
   }
 
   @Test
   def apiRequestsShouldBeProcessedWhenNoRequestId(server: GuiceJamesServer): Unit = {
-    val port = server.getProbe(classOf[JmapGuiceProbe])
-      .getJmapPort
-      .getValue
-    val client = new ExampleClient(new URI(s"ws://127.0.0.1:$port/jmap/ws"))
-    client.addHeader("Authorization", "Basic Ym9iQGRvbWFpbi50bGQ6Ym9icGFzc3dvcmQ=")
-    client.addHeader("Accept", ACCEPT_RFC8621_VERSION_HEADER)
-
+    val client: TestClient = authenticatedWebSocketClient(server)
     client.connectBlocking()
-
     client.send("""{
                   |  "@type": "Request",
                   |  "using": [ "urn:ietf:params:jmap:core"],
@@ -141,54 +116,34 @@ trait WebSocketContract {
                   |  ]
                   |}""".stripMargin)
 
-    await.until(() => client.receivedResponses.size() == 1)
-    assertThat(client.receivedResponses).hasSize(1)
-    assertThatJson(client.receivedResponses.get(0)).isEqualTo(
-      """
-        |{
+    await.untilAsserted(() => assertThat(client.receivedResponses).hasSize(1))
+    assertThatJson(client.receivedResponses.get(0)).isEqualTo("""{
         |  "@type":"Response",
         |  "requestId":null,
         |  "sessionState":"2c9f1b12-b35a-43e6-9af2-0106fb53a943",
         |  "methodResponses":[["Core/echo",{"arg1":"arg1data","arg2":"arg2data"},"c1"]]
-        |}
-        |""".stripMargin)
+        |}""".stripMargin)
   }
 
   @Test
   def nonJsonPayloadShouldTriggerError(server: GuiceJamesServer): Unit = {
-    val port = server.getProbe(classOf[JmapGuiceProbe])
-      .getJmapPort
-      .getValue
-    val client = new ExampleClient(new URI(s"ws://127.0.0.1:$port/jmap/ws"))
-    client.addHeader("Authorization", "Basic Ym9iQGRvbWFpbi50bGQ6Ym9icGFzc3dvcmQ=")
-    client.addHeader("Accept", ACCEPT_RFC8621_VERSION_HEADER)
-
+    val client: TestClient = authenticatedWebSocketClient(server)
     client.connectBlocking()
-
     client.send("The quick brown fox".stripMargin)
 
-    await.until(() => client.receivedResponses.size() == 1)
-    assertThat(client.receivedResponses).hasSize(1)
-    assertThatJson(client.receivedResponses.get(0)).isEqualTo(
-      """
-        |{
+    await.untilAsserted(() => assertThat(client.receivedResponses).hasSize(1))
+    assertThatJson(client.receivedResponses.get(0)).isEqualTo("""{
         |  "status":400,
         |  "detail":"The request was successfully parsed as JSON but did not match the type signature of the Request object: List((,List(JsonValidationError(List(Unrecognized token 'The': was expecting ('true', 'false' or 'null')\n at [Source: (String)\"The quick brown fox\"; line: 1, column: 4]),ArraySeq()))))",
         |  "type":"urn:ietf:params:jmap:error:notRequest",
         |  "requestId":null,
         |  "@type":"RequestError"
-        |}
-        |""".stripMargin)
+        |}""".stripMargin)
   }
 
   @Test
   def handshakeShouldBeAuthenticated(server: GuiceJamesServer): Unit = {
-    val port = server.getProbe(classOf[JmapGuiceProbe])
-      .getJmapPort
-      .getValue
-    val client = new ExampleClient(new URI(s"ws://127.0.0.1:$port/jmap/ws"))
-    client.addHeader("Accept", ACCEPT_RFC8621_VERSION_HEADER)
-
+    val client: TestClient = unauthenticatedWebSocketClient(server)
     client.connectBlocking()
 
     assertThat(client.isClosed).isTrue
@@ -197,15 +152,8 @@ trait WebSocketContract {
 
   @Test
   def noTypeFiledShouldTriggerError(server: GuiceJamesServer): Unit = {
-    val port = server.getProbe(classOf[JmapGuiceProbe])
-      .getJmapPort
-      .getValue
-    val client = new ExampleClient(new URI(s"ws://127.0.0.1:$port/jmap/ws"))
-    client.addHeader("Authorization", "Basic Ym9iQGRvbWFpbi50bGQ6Ym9icGFzc3dvcmQ=")
-    client.addHeader("Accept", ACCEPT_RFC8621_VERSION_HEADER)
-
+    val client: TestClient = authenticatedWebSocketClient(server)
     client.connectBlocking()
-
     client.send("""{
                   |  "requestId": "req-36",
                   |  "using": [ "urn:ietf:params:jmap:core"],
@@ -222,31 +170,19 @@ trait WebSocketContract {
                   |}""".stripMargin)
 
     await.until(() => client.receivedResponses.size() == 1)
-    assertThat(client.receivedResponses).hasSize(1)
-    assertThatJson(client.receivedResponses.get(0)).isEqualTo(
-      """
-        |{
+    assertThatJson(client.receivedResponses.get(0)).isEqualTo("""{
         |  "status":400,
         |  "detail":"The request was successfully parsed as JSON but did not match the type signature of the Request object: List((,List(JsonValidationError(List(Missing @type filed on a webSocket inbound message),ArraySeq()))))",
         |  "type":"urn:ietf:params:jmap:error:notRequest",
         |  "requestId":null,
         |  "@type":"RequestError"
-        |}
-        |""".stripMargin
-    )
+        |}""".stripMargin)
   }
 
   @Test
   def badTypeFieldShouldTriggerError(server: GuiceJamesServer): Unit = {
-    val port = server.getProbe(classOf[JmapGuiceProbe])
-      .getJmapPort
-      .getValue
-    val client = new ExampleClient(new URI(s"ws://127.0.0.1:$port/jmap/ws"))
-    client.addHeader("Authorization", "Basic Ym9iQGRvbWFpbi50bGQ6Ym9icGFzc3dvcmQ=")
-    client.addHeader("Accept", ACCEPT_RFC8621_VERSION_HEADER)
-
+    val client: TestClient = authenticatedWebSocketClient(server)
     client.connectBlocking()
-
     client.send("""{
                   |  "@type": 42,
                   |  "requestId": "req-36",
@@ -263,33 +199,21 @@ trait WebSocketContract {
                   |  ]
                   |}""".stripMargin)
 
-    await.until(() => client.receivedResponses.size() == 1)
-    assertThat(client.receivedResponses).hasSize(1)
+    await.untilAsserted(() => assertThat(client.receivedResponses).hasSize(1))
     assertThatJson(client.receivedResponses.get(0)).isEqualTo(
-      """
-        |{
+      """{
         |  "status":400,
         |  "detail":"The request was successfully parsed as JSON but did not match the type signature of the Request object: List((,List(JsonValidationError(List(Invalid @type filed on a webSocket inbound message: expecting a JsString, got 42),ArraySeq()))))",
         |  "type":"urn:ietf:params:jmap:error:notRequest",
         |  "requestId":null,
         |  "@type":"RequestError"
-        |}
-        |""".stripMargin
-    )
-
+        |}""".stripMargin)
   }
 
   @Test
   def unknownTypeFieldShouldTriggerError(server: GuiceJamesServer): Unit = {
-    val port = server.getProbe(classOf[JmapGuiceProbe])
-      .getJmapPort
-      .getValue
-    val client = new ExampleClient(new URI(s"ws://127.0.0.1:$port/jmap/ws"))
-    client.addHeader("Authorization", "Basic Ym9iQGRvbWFpbi50bGQ6Ym9icGFzc3dvcmQ=")
-    client.addHeader("Accept", ACCEPT_RFC8621_VERSION_HEADER)
-
+    val client: TestClient = authenticatedWebSocketClient(server)
     client.connectBlocking()
-
     client.send(
       """{
         |  "@type": "unknown",
@@ -307,33 +231,21 @@ trait WebSocketContract {
         |  ]
         |}""".stripMargin)
 
-    await.until(() => client.receivedResponses.size() == 1)
-    assertThat(client.receivedResponses).hasSize(1)
-    assertThatJson(client.receivedResponses.get(0)).isEqualTo(
-      """
-        |{
+    await.untilAsserted(() => assertThat(client.receivedResponses).hasSize(1))
+    assertThatJson(client.receivedResponses.get(0)).isEqualTo("""{
         |  "status":400,
         |  "detail":"The request was successfully parsed as JSON but did not match the type signature of the Request object: List((,List(JsonValidationError(List(Unknown @type filed on a webSocket inbound message: unknown),ArraySeq()))))",
         |  "type":"urn:ietf:params:jmap:error:notRequest",
         |  "requestId":null,
         |  "@type":"RequestError"
-        |}
-        |""".stripMargin
-    )
+        |}""".stripMargin)
   }
 
 
   @Test
   def clientSendingARespondTypeFieldShouldTriggerError(server: GuiceJamesServer): Unit = {
-    val port = server.getProbe(classOf[JmapGuiceProbe])
-      .getJmapPort
-      .getValue
-    val client = new ExampleClient(new URI(s"ws://127.0.0.1:$port/jmap/ws"))
-    client.addHeader("Authorization", "Basic Ym9iQGRvbWFpbi50bGQ6Ym9icGFzc3dvcmQ=")
-    client.addHeader("Accept", ACCEPT_RFC8621_VERSION_HEADER)
-
+    val client: TestClient = authenticatedWebSocketClient(server)
     client.connectBlocking()
-
     client.send(
       """{
         |  "@type": "Response",
@@ -351,33 +263,20 @@ trait WebSocketContract {
         |  ]
         |}""".stripMargin)
 
-    await.until(() => client.receivedResponses.size() == 1)
-    assertThat(client.receivedResponses).hasSize(1)
-    assertThatJson(client.receivedResponses.get(0)).isEqualTo(
-      """
-        |{
+    await.untilAsserted(() => assertThat(client.receivedResponses).hasSize(1))
+    assertThatJson(client.receivedResponses.get(0)).isEqualTo("""{
         |  "status":400,
         |  "detail":"The request was successfully parsed as JSON but did not match the type signature of the Request object: List((,List(JsonValidationError(List(Unknown @type filed on a webSocket inbound message: Response),ArraySeq()))))",
         |  "type":"urn:ietf:params:jmap:error:notRequest",
         |  "requestId":null,
         |  "@type":"RequestError"
-        |}
-        |""".stripMargin
-    )
-
+        |}""".stripMargin)
   }
 
   @Test
   def requestLevelErrorShouldReturnAPIError(server: GuiceJamesServer): Unit = {
-    val port = server.getProbe(classOf[JmapGuiceProbe])
-      .getJmapPort
-      .getValue
-    val client = new ExampleClient(new URI(s"ws://127.0.0.1:$port/jmap/ws"))
-    client.addHeader("Authorization", "Basic Ym9iQGRvbWFpbi50bGQ6Ym9icGFzc3dvcmQ=")
-    client.addHeader("Accept", ACCEPT_RFC8621_VERSION_HEADER)
-
+    val client: TestClient = authenticatedWebSocketClient(server)
     client.connectBlocking()
-
     client.send(s"""{
                    |  "@type": "Request",
                    |  "using": [
@@ -392,16 +291,27 @@ trait WebSocketContract {
                    |      "c1"]]
                    |}""".stripMargin)
 
-    await.until(() => client.receivedResponses.size() == 1)
-    assertThat(client.receivedResponses).hasSize(1)
-    assertThatJson(client.receivedResponses.get(0)).isEqualTo(
-      """
-        |{
+    await.untilAsserted(() => assertThat(client.receivedResponses).hasSize(1))
+    assertThatJson(client.receivedResponses.get(0)).isEqualTo("""{
         |  "@type": "Response",
         |  "requestId": null,
         |  "sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
         |  "methodResponses": [["error",{"type":"invalidArguments","description":"The following properties [invalidProperty] do not exist."},"c1"]]
-        |}
-        |""".stripMargin)
+        |}""".stripMargin)
+  }
+
+  private def unauthenticatedWebSocketClient(server: GuiceJamesServer): TestClient = {
+    val port = server.getProbe(classOf[JmapGuiceProbe])
+      .getJmapPort
+      .getValue
+    val client = new TestClient(new URI(s"ws://127.0.0.1:$port/jmap/ws"))
+    client.addHeader("Accept", ACCEPT_RFC8621_VERSION_HEADER)
+    client
+  }
+
+  private def authenticatedWebSocketClient(server: GuiceJamesServer): TestClient = {
+    val client = unauthenticatedWebSocketClient(server)
+    client.addHeader("Authorization", "Basic Ym9iQGRvbWFpbi50bGQ6Ym9icGFzc3dvcmQ=")
+    client
   }
 }
