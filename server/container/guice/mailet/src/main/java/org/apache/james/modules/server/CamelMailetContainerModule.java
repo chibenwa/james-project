@@ -242,8 +242,11 @@ public class CamelMailetContainerModule extends AbstractModule {
     @FunctionalInterface
     public interface ProcessorsCheck {
         static ProcessorsCheck noCheck() {
-            return any -> {
+            return new ProcessorsCheck() {
+                @Override
+                public void check(Multimap<String, MatcherMailetPair> processors) {
 
+                }
             };
         }
 
