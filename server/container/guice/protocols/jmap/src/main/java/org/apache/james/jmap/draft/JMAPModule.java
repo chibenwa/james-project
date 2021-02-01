@@ -107,9 +107,6 @@ public class JMAPModule extends AbstractModule {
             Mail.LOCAL_DELIVERY,
             All.class,
             JMAPFiltering.class));
-    public static final ProcessorsCheck NO_CHECK = any -> {
-
-    };
 
     @Override
     protected void configure() {
@@ -149,7 +146,7 @@ public class JMAPModule extends AbstractModule {
         if (configuration.isEnabled()) {
             return VACATION_MAILET_CHECK;
         }
-        return NO_CHECK;
+        return ProcessorsCheck.noCheck();
     }
 
     @ProvidesIntoSet
@@ -157,7 +154,7 @@ public class JMAPModule extends AbstractModule {
         if (configuration.isEnabled()) {
             return FILTERING_MAILET_CHECK;
         }
-        return NO_CHECK;
+        return ProcessorsCheck.noCheck();
     }
 
     @ProvidesIntoSet

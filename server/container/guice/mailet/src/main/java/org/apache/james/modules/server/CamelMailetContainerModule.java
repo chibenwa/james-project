@@ -241,6 +241,12 @@ public class CamelMailetContainerModule extends AbstractModule {
 
     @FunctionalInterface
     public interface ProcessorsCheck {
+        static ProcessorsCheck noCheck() {
+            return any -> {
+
+            };
+        }
+
         void check(Multimap<String, MatcherMailetPair> processors) throws ConfigurationException;
 
         class Or implements ProcessorsCheck {
