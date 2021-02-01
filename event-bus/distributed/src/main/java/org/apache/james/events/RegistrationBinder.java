@@ -19,17 +19,17 @@
 
 package org.apache.james.events;
 
-import static org.apache.james.events.RabbitMQEventBus.MAILBOX_EVENT_EXCHANGE_NAME;
-
 import reactor.core.publisher.Mono;
 import reactor.rabbitmq.BindingSpecification;
 import reactor.rabbitmq.Sender;
 
 class RegistrationBinder {
+    private final NamingStrategy namingStrategy;
     private final Sender sender;
     private final RegistrationQueueName registrationQueue;
 
-    RegistrationBinder(Sender sender, RegistrationQueueName registrationQueue) {
+    RegistrationBinder(NamingStrategy namingStrategy, Sender sender, RegistrationQueueName registrationQueue) {
+        this.namingStrategy = namingStrategy;
         this.sender = sender;
         this.registrationQueue = registrationQueue;
     }
@@ -47,7 +47,7 @@ class RegistrationBinder {
     private BindingSpecification bindingSpecification(RegistrationKey key) {
         RoutingKeyConverter.RoutingKey routingKey = RoutingKeyConverter.RoutingKey.of(key);
         return BindingSpecification.binding()
-            .exchange(MAILBOX_EVENT_EXCHANGE_NAME)
+            .exchange(namingStrategy.exchange())
             .queue(registrationQueue.asString())
             .routingKey(routingKey.asString());
     }
