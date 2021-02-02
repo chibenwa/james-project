@@ -132,11 +132,11 @@ public interface EventBusTestFixture {
         }
     }
 
-    class UnsupportedEventEvent implements Event {
+    class UnsupportedEvent implements Event {
         private final EventId eventId;
         private final Username username;
 
-        public UnsupportedEventEvent(EventId eventId, Username username) {
+        public UnsupportedEvent(EventId eventId, Username username) {
             this.eventId = eventId;
             this.username = username;
         }
@@ -158,8 +158,8 @@ public interface EventBusTestFixture {
 
         @Override
         public boolean equals(Object o) {
-            if (o instanceof UnsupportedEventEvent) {
-                UnsupportedEventEvent that = (UnsupportedEventEvent) o;
+            if (o instanceof UnsupportedEvent) {
+                UnsupportedEvent that = (UnsupportedEvent) o;
 
                 return Objects.equals(this.eventId, that.eventId)
                     && Objects.equals(this.username, that.username);
@@ -176,7 +176,7 @@ public interface EventBusTestFixture {
     class TestEventSerializer implements EventSerializer {
         @Override
         public String toJson(Event event) {
-            Preconditions.checkArgument(event instanceof TestEvent || event instanceof UnsupportedEventEvent);
+            Preconditions.checkArgument(event instanceof TestEvent || event instanceof UnsupportedEvent);
             return event.getClass().getCanonicalName() + "&" + event.getEventId().getId().toString() + "&" + event.getUsername().asString();
         }
 
@@ -237,7 +237,7 @@ public interface EventBusTestFixture {
     Event.EventId EVENT_ID_2 = Event.EventId.of("5a7a9f3f-5f03-44be-b457-a51e93760645");
     Event EVENT = new TestEvent(EVENT_ID, USERNAME);
     Event EVENT_2 = new TestEvent(EVENT_ID_2, USERNAME);
-    Event EVENT_UNSUPPORTED_BY_LISTENER = new UnsupportedEventEvent(EVENT_ID_2, USERNAME);
+    Event EVENT_UNSUPPORTED_BY_LISTENER = new UnsupportedEvent(EVENT_ID_2, USERNAME);
 
     java.time.Duration ONE_SECOND = java.time.Duration.ofSeconds(1);
     java.time.Duration FIVE_HUNDRED_MS = java.time.Duration.ofMillis(500);
