@@ -39,7 +39,7 @@ import org.apache.james.jmap.{Endpoint, JMAPRoute, JMAPRoutes, InjectionKeys => 
 import org.apache.james.mailbox.MailboxSession
 import org.slf4j.{Logger, LoggerFactory}
 import play.api.libs.json.Json
-import reactor.core.publisher.Sinks.EmitFailureHandler
+import reactor.core.publisher.Sinks.EmitFailureHandler.FAIL_FAST
 import reactor.core.publisher.{Mono, Sinks}
 import reactor.core.scala.publisher.{SFlux, SMono}
 import reactor.core.scheduler.Schedulers
@@ -51,17 +51,14 @@ object WebSocketRoutes {
 }
 
 case class ClientContext(outbound: Sinks.Many[WebSocketOutboundMessage], pushRegistration: AtomicReference[Registration], session: MailboxSession) {
+  def withRegistration(registration: Registration): Unit = withRegistration(Some(registration))
 
-  def withRegistration(registration: Registration): Unit = Option(pushRegistration.getAndSet(registration))
+  def clean(): Unit = withRegistration(None)
+
+  def withRegistration(registration: Option[Registration]): Unit = Option(pushRegistration.getAndSet(registration.orNull))
     .foreach(oldRegistration => SMono.fromCallable(() => oldRegistration.unregister())
       .subscribeOn(Schedulers.elastic())
       .subscribe())
-
-  def clean(): Unit =
-    Option(pushRegistration.getAndSet(null))
-      .foreach(registration => SMono.fromCallable(() => registration.unregister())
-        .subscribeOn(Schedulers.elastic())
-        .subscribe())
 }
 
 class WebSocketRoutes @Inject() (@Named(InjectionKeys.RFC_8621) val authenticator: Authenticator,
@@ -91,7 +88,7 @@ class WebSocketRoutes @Inject() (@Named(InjectionKeys.RFC_8621) val authenticato
   }
 
   private def handleWebSocketConnection(session: MailboxSession)(in: WebsocketInbound, out: WebsocketOutbound): Mono[Void] = {
-    val sink: Sinks.Many[WebSocketOutboundMessage] = Sinks.many().unicast().onBackpressureError()
+    val sink: Sinks.Many[WebSocketOutboundMessage] = Sinks.many().multicast().onBackpressureBuffer()
 
     out.sendString(sink.asFlux()
       .map(ResponseSerializer.serialize)
@@ -119,7 +116,7 @@ class WebSocketRoutes @Inject() (@Named(InjectionKeys.RFC_8621) val authenticato
     ResponseSerializer.deserializeWebSocketInboundMessage(message)
       .fold(invalid => {
         val error = asError(None)(new IllegalArgumentException(invalid.toString()))
-        SMono.fromCallable(() => clientContext.outbound.emitNext(error, EmitFailureHandler.FAIL_FAST))
+        SMono.fromCallable(() => clientContext.outbound.emitNext(error, FAIL_FAST))
       }, {
           case request: WebSocketRequest =>
             jmapApi.process(request.requestObject, clientContext.session)
@@ -127,7 +124,7 @@ class WebSocketRoutes @Inject() (@Named(InjectionKeys.RFC_8621) val authenticato
               .onErrorResume(e => SMono.just(asError(request.requestId)(e)))
               .subscribeOn(Schedulers.elastic)
               .onErrorResume(e => SMono.just[WebSocketOutboundMessage](asError(None)(e)))
-              .doOnNext(next => clientContext.outbound.emitNext(next, EmitFailureHandler.FAIL_FAST))
+              .doOnNext(next => clientContext.outbound.emitNext(next, FAIL_FAST))
               .`then`()
           case pushEnable: WebSocketPushEnable =>
             SMono(eventBus.register(
