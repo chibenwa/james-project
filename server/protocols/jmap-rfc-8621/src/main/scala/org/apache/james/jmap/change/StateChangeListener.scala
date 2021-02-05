@@ -31,10 +31,10 @@ case class StateChangeListener(types: Set[TypeName], sink: Sinks.Many[WebSocketO
   override def reactiveEvent(event: Event): Publisher[Void] =
     event match {
       case stateChangeEvent: StateChangeEvent =>
-        SMono.fromCallable(() => {
-          val stateChange = stateChangeEvent.asStateChange.filter(types)
-          stateChange.foreach(next => sink.emitNext(next, FAIL_FAST))
-        }).asJava().`then`()
+        SMono.fromCallable(() =>
+          stateChangeEvent.asStateChange.filter(types)
+            .foreach(next => sink.emitNext(next, FAIL_FAST)))
+          .asJava().`then`()
       case _ => SMono.empty
     }
 
