@@ -19,9 +19,14 @@
 
 package org.apache.james.jmap.change
 
+import java.util.concurrent.atomic.AtomicReference
+
 import org.apache.james.core.Username
 import org.apache.james.events.Event.EventId
+import org.apache.james.events.Registration
 import org.apache.james.jmap.core.{AccountId, State, StateChange, WebSocketOutboundMessage}
+import org.apache.james.jmap.routes.ClientContext
+import org.apache.james.mailbox.MailboxSession
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import reactor.core.publisher.Sinks
@@ -30,6 +35,7 @@ import reactor.core.scala.publisher.SMono
 import reactor.core.scheduler.Schedulers
 
 class StateChangeListenerTest {
+  private val session: MailboxSession = null
   private val mailboxState = State.fromStringUnchecked("2f9f1b12-b35a-43e6-9af2-0106fb53a943")
   private val emailState = State.fromStringUnchecked("2d9f1b12-b35a-43e6-9af2-0106fb53a943")
   private val eventId = EventId.of("6e0dd59d-660e-4d9b-b22f-0354479f47b4")
@@ -40,8 +46,9 @@ class StateChangeListenerTest {
     val event = StateChangeEvent(eventId = eventId,
       username = Username.of("bob"),
       mailboxState = Some(mailboxState),
-      emailState = Some(emailState))
-    val listener = StateChangeListener(Set(MailboxTypeName, EmailTypeName), sink)
+      emailState = Some(emailState),
+      emailDeliveryState = None)
+    val listener = StateChangeListener(Set(MailboxTypeName, EmailTypeName), ClientContext(sink, new AtomicReference[Registration](), session))
 
     SMono(listener.reactiveEvent(event)).subscribeOn(Schedulers.elastic()).block()
     sink.emitComplete(EmitFailureHandler.FAIL_FAST)
@@ -58,8 +65,9 @@ class StateChangeListenerTest {
     val event = StateChangeEvent(eventId = eventId,
       username = Username.of("bob"),
       mailboxState = Some(mailboxState),
-      emailState = Some(emailState))
-    val listener = StateChangeListener(Set(MailboxTypeName), sink)
+      emailState = Some(emailState),
+      emailDeliveryState = None)
+    val listener = StateChangeListener(Set(MailboxTypeName), ClientContext(sink, new AtomicReference[Registration](), session))
 
     SMono(listener.reactiveEvent(event)).subscribeOn(Schedulers.elastic()).block()
     sink.emitComplete(EmitFailureHandler.FAIL_FAST)
@@ -75,8 +83,9 @@ class StateChangeListenerTest {
     val event = StateChangeEvent(eventId = eventId,
       username = Username.of("bob"),
       mailboxState = None,
-      emailState = Some(emailState))
-    val listener = StateChangeListener(Set(MailboxTypeName), sink)
+      emailState = Some(emailState),
+      emailDeliveryState = None)
+    val listener = StateChangeListener(Set(MailboxTypeName), ClientContext(sink, new AtomicReference[Registration](), session))
 
     SMono(listener.reactiveEvent(event)).subscribeOn(Schedulers.elastic()).block()
     sink.emitComplete(EmitFailureHandler.FAIL_FAST)

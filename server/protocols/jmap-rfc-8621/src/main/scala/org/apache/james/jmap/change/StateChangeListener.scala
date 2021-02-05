@@ -21,19 +21,17 @@ package org.apache.james.jmap.change
 
 import org.apache.james.events.Event
 import org.apache.james.events.EventListener.ReactiveEventListener
-import org.apache.james.jmap.core.WebSocketOutboundMessage
+import org.apache.james.jmap.routes.ClientContext
 import org.reactivestreams.Publisher
-import reactor.core.publisher.Sinks
-import reactor.core.publisher.Sinks.EmitFailureHandler.FAIL_FAST
 import reactor.core.scala.publisher.SMono
 
-case class StateChangeListener(types: Set[TypeName], sink: Sinks.Many[WebSocketOutboundMessage]) extends ReactiveEventListener {
+case class StateChangeListener(types: Set[TypeName], clientContext: ClientContext) extends ReactiveEventListener {
   override def reactiveEvent(event: Event): Publisher[Void] =
     event match {
       case stateChangeEvent: StateChangeEvent =>
         SMono.fromCallable(() =>
           stateChangeEvent.asStateChange.filter(types)
-            .foreach(next => sink.emitNext(next, FAIL_FAST)))
+            .foreach(next => clientContext.emit(next)))
           .asJava().`then`()
       case _ => SMono.empty
     }

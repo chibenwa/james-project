@@ -21,6 +21,7 @@ package org.apache.james.jmap.routes
 
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.locks.ReentrantLock
 import java.util.stream
 
 import io.netty.handler.codec.http.HttpHeaderNames.CONTENT_TYPE
@@ -51,6 +52,8 @@ object WebSocketRoutes {
 }
 
 case class ClientContext(outbound: Sinks.Many[WebSocketOutboundMessage], pushRegistration: AtomicReference[Registration], session: MailboxSession) {
+  private val lock = new ReentrantLock()
+
   def withRegistration(registration: Registration): Unit = withRegistration(Some(registration))
 
   def clean(): Unit = withRegistration(None)
@@ -59,6 +62,15 @@ case class ClientContext(outbound: Sinks.Many[WebSocketOutboundMessage], pushReg
     .foreach(oldRegistration => SMono.fromCallable(() => oldRegistration.unregister())
       .subscribeOn(Schedulers.elastic())
       .subscribe())
+
+  def emit(next: WebSocketOutboundMessage): Unit = {
+    try {
+      lock.lock()
+      outbound.emitNext(next, FAIL_FAST)
+    } finally {
+      lock.unlock()
+    }
+  }
 }
 
 class WebSocketRoutes @Inject() (@Named(InjectionKeys.RFC_8621) val authenticator: Authenticator,
@@ -116,7 +128,7 @@ class WebSocketRoutes @Inject() (@Named(InjectionKeys.RFC_8621) val authenticato
     ResponseSerializer.deserializeWebSocketInboundMessage(message)
       .fold(invalid => {
         val error = asError(None)(new IllegalArgumentException(invalid.toString()))
-        SMono.fromCallable(() => clientContext.outbound.emitNext(error, FAIL_FAST))
+        SMono.fromCallable(() => clientContext.emit(error))
       }, {
           case request: WebSocketRequest =>
             jmapApi.process(request.requestObject, clientContext.session)
@@ -124,11 +136,11 @@ class WebSocketRoutes @Inject() (@Named(InjectionKeys.RFC_8621) val authenticato
               .onErrorResume(e => SMono.just(asError(request.requestId)(e)))
               .subscribeOn(Schedulers.elastic)
               .onErrorResume(e => SMono.just[WebSocketOutboundMessage](asError(None)(e)))
-              .doOnNext(next => clientContext.outbound.emitNext(next, FAIL_FAST))
+              .doOnNext(next => clientContext.emit(next))
               .`then`()
           case pushEnable: WebSocketPushEnable =>
             SMono(eventBus.register(
-                StateChangeListener(pushEnable.dataTypes.getOrElse(TypeName.ALL), clientContext.outbound),
+                StateChangeListener(pushEnable.dataTypes.getOrElse(TypeName.ALL), clientContext),
                 AccountIdRegistrationKey.of(clientContext.session.getUser)))
               .doOnNext(newRegistration => clientContext.withRegistration(newRegistration))
               .`then`()
