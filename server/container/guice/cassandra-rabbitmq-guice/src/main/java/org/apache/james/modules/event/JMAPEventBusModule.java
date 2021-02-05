@@ -33,10 +33,8 @@ import org.apache.james.events.RabbitMQEventBus;
 import org.apache.james.events.RetryBackoffConfiguration;
 import org.apache.james.events.RoutingKeyConverter;
 import org.apache.james.jmap.InjectionKeys;
-import org.apache.james.jmap.change.EventDTOModule;
 import org.apache.james.jmap.change.Factory;
 import org.apache.james.jmap.change.JmapEventSerializer;
-import org.apache.james.jmap.change.StateChangeEventDTO$;
 import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.utils.InitializationOperation;
 import org.apache.james.utils.InitilizationOperationBuilder;
@@ -45,7 +43,6 @@ import com.google.common.collect.ImmutableSet;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
-import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.google.inject.name.Names;
 
@@ -57,9 +54,6 @@ public class JMAPEventBusModule extends AbstractModule {
     @Override
     protected void configure() {
         bind(EventBusId.class).annotatedWith(Names.named(InjectionKeys.JMAP)).toInstance(EventBusId.random());
-
-        Multibinder.newSetBinder(binder(), EventDTOModule.class).addBinding()
-            .toInstance(StateChangeEventDTO$.MODULE$.dtoModule());
     }
 
     @ProvidesIntoSet
