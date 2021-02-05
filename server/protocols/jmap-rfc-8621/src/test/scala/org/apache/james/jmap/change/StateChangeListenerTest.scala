@@ -47,6 +47,7 @@ class StateChangeListenerTest {
       username = Username.of("bob"),
       mailboxState = Some(mailboxState),
       emailState = Some(emailState),
+      vacationResponseState = None,
       emailDeliveryState = None)
     val listener = StateChangeListener(Set(MailboxTypeName, EmailTypeName), ClientContext(sink, new AtomicReference[Registration](), session))
 
@@ -66,6 +67,7 @@ class StateChangeListenerTest {
       username = Username.of("bob"),
       mailboxState = Some(mailboxState),
       emailState = Some(emailState),
+      vacationResponseState = None,
       emailDeliveryState = None)
     val listener = StateChangeListener(Set(MailboxTypeName), ClientContext(sink, new AtomicReference[Registration](), session))
 
@@ -84,6 +86,7 @@ class StateChangeListenerTest {
       username = Username.of("bob"),
       mailboxState = None,
       emailState = Some(emailState),
+      vacationResponseState = None,
       emailDeliveryState = None)
     val listener = StateChangeListener(Set(MailboxTypeName), ClientContext(sink, new AtomicReference[Registration](), session))
 
