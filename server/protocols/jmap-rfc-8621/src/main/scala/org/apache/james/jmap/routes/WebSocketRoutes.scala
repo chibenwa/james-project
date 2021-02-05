@@ -90,9 +90,10 @@ class WebSocketRoutes @Inject() (@Named(InjectionKeys.RFC_8621) val authenticato
   private def handleWebSocketConnection(session: MailboxSession)(in: WebsocketInbound, out: WebsocketOutbound): Mono[Void] = {
     val sink: Sinks.Many[WebSocketOutboundMessage] = Sinks.many().multicast().onBackpressureBuffer()
 
-    out.sendString(sink.asFlux()
-      .map(ResponseSerializer.serialize)
-      .map(Json.stringify),
+    out.sendString(
+      sink.asFlux()
+        .map(ResponseSerializer.serialize)
+        .map(Json.stringify),
       StandardCharsets.UTF_8).`then`
       .subscribeOn(Schedulers.elastic())
       .subscribe()
