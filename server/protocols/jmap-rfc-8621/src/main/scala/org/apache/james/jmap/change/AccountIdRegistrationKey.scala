@@ -24,7 +24,7 @@ import org.apache.james.events.RegistrationKey
 import org.apache.james.jmap.api.model.AccountId
 
 case class Factory() extends RegistrationKey.Factory {
-  override def forClass(): Class[_ <: RegistrationKey] = classOf[AccountIdRegistrationKey]
+  override val forClass: Class[_ <: RegistrationKey] = classOf[AccountIdRegistrationKey]
 
   override def fromString(asString: String): RegistrationKey = AccountIdRegistrationKey(AccountId.fromString(asString))
 }
