@@ -21,7 +21,6 @@ package org.apache.james.jmap.routes
 
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.atomic.AtomicReference
-import java.util.concurrent.locks.ReentrantLock
 import java.util.stream
 
 import io.netty.handler.codec.http.HttpHeaderNames.CONTENT_TYPE
@@ -52,8 +51,6 @@ object WebSocketRoutes {
 }
 
 case class ClientContext(outbound: Sinks.Many[WebSocketOutboundMessage], pushRegistration: AtomicReference[Registration], session: MailboxSession) {
-  private val lock = new ReentrantLock()
-
   def withRegistration(registration: Registration): Unit = withRegistration(Some(registration))
 
   def clean(): Unit = withRegistration(None)
@@ -63,14 +60,7 @@ case class ClientContext(outbound: Sinks.Many[WebSocketOutboundMessage], pushReg
       .subscribeOn(Schedulers.elastic())
       .subscribe())
 
-  def emit(next: WebSocketOutboundMessage): Unit = {
-    try {
-      lock.lock()
-      outbound.emitNext(next, FAIL_FAST)
-    } finally {
-      lock.unlock()
-    }
-  }
+  def emit(next: WebSocketOutboundMessage): Unit = outbound.emitNext(next, FAIL_FAST)
 }
 
 class WebSocketRoutes @Inject() (@Named(InjectionKeys.RFC_8621) val authenticator: Authenticator,
@@ -100,7 +90,7 @@ class WebSocketRoutes @Inject() (@Named(InjectionKeys.RFC_8621) val authenticato
   }
 
   private def handleWebSocketConnection(session: MailboxSession)(in: WebsocketInbound, out: WebsocketOutbound): Mono[Void] = {
-    val sink: Sinks.Many[WebSocketOutboundMessage] = Sinks.many().multicast().onBackpressureBuffer()
+    val sink: Sinks.Many[WebSocketOutboundMessage] = Sinks.many().unicast().onBackpressureBuffer()
 
     out.sendString(sink.asFlux()
       .map(ResponseSerializer.serialize)
