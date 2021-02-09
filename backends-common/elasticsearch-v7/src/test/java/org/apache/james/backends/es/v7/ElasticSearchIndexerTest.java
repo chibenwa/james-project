@@ -22,13 +22,13 @@ package org.apache.james.backends.es.v7;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.awaitility.Duration.ONE_HUNDRED_MILLISECONDS;
+import static org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS;
+import static org.awaitility.Durations.TEN_SECONDS;
 import static org.elasticsearch.index.query.QueryBuilders.termQuery;
 
 import java.io.IOException;
 
 import org.awaitility.Awaitility;
-import org.awaitility.Duration;
 import org.awaitility.core.ConditionFactory;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.search.SearchRequest;
@@ -170,7 +170,7 @@ class ElasticSearchIndexerTest {
         testee.deleteAllMatchingQuery(termQuery("property", "1"), routingKey).block();
         elasticSearch.awaitForElasticSearch();
         
-        CALMLY_AWAIT.atMost(Duration.TEN_SECONDS)
+        CALMLY_AWAIT.atMost(TEN_SECONDS)
             .until(() -> client.search(
                     new SearchRequest(INDEX_NAME.getValue())
                         .source(new SearchSourceBuilder().query(QueryBuilders.matchAllQuery())),
@@ -201,7 +201,7 @@ class ElasticSearchIndexerTest {
         testee.deleteAllMatchingQuery(termQuery("property", "1"), ROUTING).block();
         elasticSearch.awaitForElasticSearch();
         
-        CALMLY_AWAIT.atMost(Duration.TEN_SECONDS)
+        CALMLY_AWAIT.atMost(TEN_SECONDS)
             .until(() -> client.search(
                     new SearchRequest(INDEX_NAME.getValue())
                         .source(new SearchSourceBuilder().query(QueryBuilders.matchAllQuery())),
