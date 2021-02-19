@@ -27,10 +27,9 @@ import org.apache.james.jmap.core.{ClientId, Id, Invocation, ServerId}
 import org.apache.james.jmap.json.BackReferenceDeserializer
 import play.api.libs.json.{JsArray, JsError, JsObject, JsResult, JsString, JsSuccess, JsValue, Reads}
 
+import scala.collection.{IndexedSeq, Map}
+import scala.collection.mutable.{Map => MutableMap}
 import scala.util.Try
-import scala.collection.IndexedSeq
-import scala.collection.Map
-import scala.collection.immutable.{Map => ImmutableMap}
 
 sealed trait JsonPathPart
 
@@ -138,12 +137,22 @@ case class BackReference(name: MethodName, path: JsonPath, resultOf: MethodCallI
 
 case class InvalidResultReferenceException(message: String) extends IllegalArgumentException
 
-case class ProcessingContext(private val creationIds: ImmutableMap[ClientId, ServerId],
-                             private val invocations: ImmutableMap[MethodCallId, Invocation]) {
+object ProcessingContext {
+  def empty: ProcessingContext = ProcessingContext(MutableMap(), MutableMap())
+}
 
-  def recordCreatedId(clientId: ClientId, serverId: ServerId): ProcessingContext = ProcessingContext(creationIds + (clientId -> serverId), invocations)
+case class ProcessingContext(private val creationIds: MutableMap[ClientId, ServerId],
+                             private val invocations: MutableMap[MethodCallId, Invocation]) {
 
-  def recordInvocation(invocation: Invocation): ProcessingContext = ProcessingContext(creationIds, invocations + (invocation.methodCallId -> invocation))
+  def recordCreatedId(clientId: ClientId, serverId: ServerId): ProcessingContext = {
+    creationIds.put(clientId, serverId)
+    this
+  }
+
+  def recordInvocation(invocation: Invocation): ProcessingContext = {
+    invocations.put(invocation.methodCallId, invocation)
+    this
+  }
 
   def resolveBackReferences(invocation: Invocation): Either[InvalidResultReferenceException, Invocation] =
     backReferenceResolver.reads(invocation.arguments.value) match {

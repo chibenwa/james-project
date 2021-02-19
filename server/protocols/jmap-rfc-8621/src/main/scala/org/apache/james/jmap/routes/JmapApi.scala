@@ -21,7 +21,7 @@ package org.apache.james.jmap.routes
 import javax.inject.Inject
 import org.apache.james.jmap.core.CapabilityIdentifier.CapabilityIdentifier
 import org.apache.james.jmap.core.Invocation.MethodName
-import org.apache.james.jmap.core.{Capability, DefaultCapabilities, ErrorCode, Invocation, MissingCapabilityException, RequestObject, ResponseObject}
+import org.apache.james.jmap.core.{Capability, ErrorCode, Invocation, MissingCapabilityException, RequestObject, ResponseObject}
 import org.apache.james.jmap.method.{InvocationWithContext, Method}
 import org.apache.james.mailbox.MailboxSession
 import org.slf4j.{Logger, LoggerFactory}
@@ -45,7 +45,7 @@ class JMAPApi (methods: Set[Method], defaultCapabilities: Set[Capability]) {
 
   def process(requestObject: RequestObject,
               mailboxSession: MailboxSession): SMono[ResponseObject] = {
-    val processingContext: ProcessingContext = ProcessingContext(Map.empty, Map.empty)
+    val processingContext: ProcessingContext = ProcessingContext.empty
     val unsupportedCapabilities = requestObject.using.toSet -- defaultCapabilities.map(_.identifier())
     val capabilities: Set[CapabilityIdentifier] = requestObject.using.toSet
 
