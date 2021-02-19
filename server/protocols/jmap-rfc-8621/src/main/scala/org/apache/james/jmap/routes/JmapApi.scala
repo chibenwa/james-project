@@ -57,19 +57,10 @@ class JMAPApi (methods: Set[Method], defaultCapabilities: Set[Capability]) {
     }
   }
 
-  private def processSequentiallyAndUpdateContext(requestObject: RequestObject, mailboxSession: MailboxSession, processingContext: ProcessingContext, capabilities: Set[CapabilityIdentifier]): SMono[Seq[(InvocationWithContext)]] =
+  private def processSequentiallyAndUpdateContext(requestObject: RequestObject, mailboxSession: MailboxSession, processingContext: ProcessingContext, capabilities: Set[CapabilityIdentifier]): SMono[Seq[InvocationWithContext]] =
     SFlux.fromIterable(requestObject.methodCalls)
-      .fold(List[SFlux[InvocationWithContext]]())((acc, elem) => {
-        val lastProcessingContext: SMono[ProcessingContext] = acc.headOption
-          .map(last => SMono.fromPublisher(Flux.from(last.map(_.processingContext)).last()))
-          .getOrElse(SMono.just(processingContext))
-        val invocation: SFlux[InvocationWithContext] = lastProcessingContext.flatMapMany(context => process(capabilities, mailboxSession, InvocationWithContext(elem, context)))
-        invocation.cache() :: acc
-      })
-      .map(_.reverse)
-      .flatMap(list => SFlux.fromIterable(list)
-        .concatMap(e => e)
-        .collectSeq())
+      .concatMap(invocation => process(capabilities, mailboxSession, InvocationWithContext(invocation, processingContext)))
+      .collectSeq()
 
   private def process(capabilities: Set[CapabilityIdentifier], mailboxSession: MailboxSession, invocation: InvocationWithContext) : SFlux[InvocationWithContext] =
     SFlux.fromPublisher(
