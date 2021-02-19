@@ -25,7 +25,6 @@ import org.apache.james.jmap.core.{Capability, DefaultCapabilities, ErrorCode, I
 import org.apache.james.jmap.method.{InvocationWithContext, Method}
 import org.apache.james.mailbox.MailboxSession
 import org.slf4j.{Logger, LoggerFactory}
-import reactor.core.publisher.Flux
 import reactor.core.scala.publisher.{SFlux, SMono}
 
 import scala.jdk.CollectionConverters._
@@ -50,7 +49,7 @@ class JMAPApi (methods: Set[Method], defaultCapabilities: Set[Capability]) {
     val capabilities: Set[CapabilityIdentifier] = requestObject.using.toSet
 
     if (unsupportedCapabilities.nonEmpty) {
-      SMono.raiseError(UnsupportedCapabilitiesException(unsupportedCapabilities))
+      SMono.error(UnsupportedCapabilitiesException(unsupportedCapabilities))
     } else {
       processSequentiallyAndUpdateContext(requestObject, mailboxSession, processingContext, capabilities)
         .map(invocations => ResponseObject(ResponseObject.SESSION_STATE, invocations.map(_.invocation)))
@@ -72,7 +71,6 @@ class JMAPApi (methods: Set[Method], defaultCapabilities: Set[Capability]) {
         .collectSeq())
 
   private def process(capabilities: Set[CapabilityIdentifier], mailboxSession: MailboxSession, invocation: InvocationWithContext) : SFlux[InvocationWithContext] =
-    SFlux.fromPublisher(
       invocation.processingContext.resolveBackReferences(invocation.invocation) match {
         case Left(e) => SFlux.just[InvocationWithContext](InvocationWithContext(Invocation.error(
           errorCode = ErrorCode.InvalidResultReference,
@@ -80,7 +78,7 @@ class JMAPApi (methods: Set[Method], defaultCapabilities: Set[Capability]) {
           methodCallId = invocation.invocation.methodCallId), invocation.processingContext))
         case Right(resolvedInvocation) => processMethodWithMatchName(capabilities, InvocationWithContext(resolvedInvocation, invocation.processingContext), mailboxSession)
           .map(_.recordInvocation)
-      })
+      }
 
   private def processMethodWithMatchName(capabilities: Set[CapabilityIdentifier], invocation: InvocationWithContext, mailboxSession: MailboxSession): SFlux[InvocationWithContext] =
     methodsByName.get(invocation.invocation.methodName)
