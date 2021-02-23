@@ -25,7 +25,7 @@ Change list:
  - [Cassandra Schema update to V10](#cassandra-schema-update-to-v10)
  - [JMS mail queue no longer relies on java serialization](#jms-mail-queue-no-longer-relies-on-java-serialization)
 
-### JMS mail queue no longer relies on java serialization
+### Upgrade to Cassandra 3.11.10
 
 Date: 07/12/2020
 
@@ -43,6 +43,29 @@ Upgrades should be done with an empty mail queue. To do so:
  - Flush your MailQueues
  - Await the mail processing to finish, monitoring the size of your mail queue
  - Upgrade, then restart SMTP + JMAP traffic
+
+### Recommended upgrade to Cassandra 3.11.10
+
+Date: 15/02/2021
+
+JIRA: https://issues.apache.org/jira/browse/JAMES-2514
+
+Concerned products: Cassandra Guice server (with and without rabbitMQ)
+
+James is no longer tested against Cassandra 3.11.3 but instead against Cassandra 3.11.10. Users are recommended to upgrade to this
+version as well.
+
+This [link](https://www.instaclustr.com/support/documentation/cassandra/cassandra-cluster-operations/cassandra-version-upgrades/#) describes a possible update procedure:
+
+ - Take a backup of the cluster
+ - On each node, perform a rolling update
+ - For each node flush the data (`nodetool flush`)
+ - Stop C* on this nod and upgrade to target version (approx 5-10 minutes duration)
+ - Start upgraded C* on this node.
+ - Confirm the application behaves normally
+ - Upgrade remaining nodes
+ - No upgradesstables is required for this minor version
+ - Perform final verifications.
 
 ### Cassandra Schema update to V10
 
