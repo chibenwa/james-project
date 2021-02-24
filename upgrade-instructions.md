@@ -23,9 +23,10 @@ Change list:
  - [Cassandra Schema update to V8](#cassandra-schema-update-to-v8)
  - [Cassandra Schema update to V9](#cassandra-schema-update-to-v9)
  - [Cassandra Schema update to V10](#cassandra-schema-update-to-v10)
+ - [Recommended upgrade to Cassandra 3.11.10](#recommended-upgrade-to-cassandra-3-1110)
  - [JMS mail queue no longer relies on java serialization](#jms-mail-queue-no-longer-relies-on-java-serialization)
 
-### Upgrade to Cassandra 3.11.10
+### JMS mail queue no longer relies on java serialization
 
 Date: 07/12/2020
 
