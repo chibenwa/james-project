@@ -73,6 +73,7 @@ public class MimeMessageStore {
     static class MimeMessageEncoder implements Store.Impl.Encoder<MimeMessage> {
         @Override
         public Stream<Pair<BlobType, Store.Impl.ValueToSave>> encode(MimeMessage message) {
+            Preconditions.checkNotNull(message);
             return Stream.of(
                 Pair.of(HEADER_BLOB_TYPE, (bucketName, blobStore) -> {
                     try {
