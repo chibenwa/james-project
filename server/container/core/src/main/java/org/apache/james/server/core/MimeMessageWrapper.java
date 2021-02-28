@@ -39,6 +39,7 @@ import javax.mail.internet.InternetHeaders;
 import javax.mail.internet.MimeMessage;
 import javax.mail.util.SharedByteArrayInputStream;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.james.lifecycle.api.Disposable;
 import org.apache.james.lifecycle.api.LifecycleUtil;
 
@@ -417,6 +418,12 @@ public class MimeMessageWrapper extends MimeMessage implements Disposable {
                 return source.getMessageSize();
             } catch (IOException ioe) {
                 throw new MessagingException("Error retrieving message size", ioe);
+            }
+        } else if (source != null && !bodyModified) {
+            try  (InternetHeadersInputStream headerStream = new InternetHeadersInputStream(headers)) {
+                return source.getMessageSize() - initialHeaderSize + IOUtils.consume(headerStream);
+            } catch (IOException e) {
+                throw new MessagingException("Error retrieving message size", e);
             }
         } else {
             return MimeMessageUtil.calculateMessageSize(this);
