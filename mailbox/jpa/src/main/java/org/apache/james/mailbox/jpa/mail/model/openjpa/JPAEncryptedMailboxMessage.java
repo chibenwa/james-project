@@ -71,8 +71,9 @@ public class JPAEncryptedMailboxMessage extends AbstractJPAMailboxMessage {
                 if (headerEnd < 0) {
                     headerEnd = 0;
                 }
-                this.header = IOUtils.toByteArray(content.getInputStream());
-                this.body = IOUtils.toByteArray(new BoundedInputStream(content.getInputStream(), getBodyStartOctet()));
+                InputStream stream = content.getInputStream();
+                this.header = IOUtils.toByteArray(new BoundedInputStream(stream, getBodyStartOctet()));
+                this.body = IOUtils.toByteArray(stream);
 
             } catch (IOException e) {
                 throw new MailboxException("Unable to parse message",e);

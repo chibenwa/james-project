@@ -67,8 +67,10 @@ public class JPAStreamingMailboxMessage extends AbstractJPAMailboxMessage {
         this.content = content;
 
         try {
-            this.header = content.getInputStream();
-            this.body = new BoundedInputStream(content.getInputStream(), getBodyStartOctet());
+            this.header = new BoundedInputStream(content.getInputStream(), getBodyStartOctet());
+            InputStream bodyStream = content.getInputStream();
+            bodyStream.skip(getBodyStartOctet());
+            this.body = bodyStream;
 
         } catch (IOException e) {
             throw new MailboxException("Unable to parse message",e);
