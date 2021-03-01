@@ -57,6 +57,7 @@ public class MimeMessageWrapper extends MimeMessage implements Disposable {
      * or via a temporary file. Default is the file
      */
     public static final String USE_MEMORY_COPY = "james.message.usememorycopy";
+    private static final int UNKNOWN = -1;
 
     /**
      * Can provide an input stream to the data
@@ -361,7 +362,7 @@ public class MimeMessageWrapper extends MimeMessage implements Disposable {
                 throw new MessagingException("Unable to calculate message size");
             }
         } else {
-            return -1;
+            return UNKNOWN;
         }
     }
 
@@ -375,10 +376,10 @@ public class MimeMessageWrapper extends MimeMessage implements Disposable {
         try {
             in = getContentStream();
         } catch (Exception e) {
-            return -1;
+            return UNKNOWN;
         }
         if (in == null) {
-            return -1;
+            return UNKNOWN;
         }
         // Wrap input stream in LineNumberReader
         // Not sure what encoding to use really...
@@ -387,13 +388,13 @@ public class MimeMessageWrapper extends MimeMessage implements Disposable {
             // Read through all the data
             char[] block = new char[4096];
             try (LineNumberReader counter = new LineNumberReader(isr)) {
-                while (counter.read(block) > -1) {
+                while (counter.read(block) > UNKNOWN) {
                     // Just keep reading
                 }
                 return counter.getLineNumber();
             }
         } catch (IOException ioe) {
-            return -1;
+            return UNKNOWN;
         }
     }
 
