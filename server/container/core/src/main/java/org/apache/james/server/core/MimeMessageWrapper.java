@@ -43,8 +43,6 @@ import org.apache.commons.io.IOUtils;
 import org.apache.james.lifecycle.api.Disposable;
 import org.apache.james.lifecycle.api.LifecycleUtil;
 
-import com.google.common.io.CountingInputStream;
-
 /**
  * This object wraps a MimeMessage, only loading the underlying MimeMessage
  * object when needed. Also tracks if changes were made to reduce unnecessary
@@ -419,11 +417,8 @@ public class MimeMessageWrapper extends MimeMessage implements Disposable {
                 throw new MessagingException("Error retrieving message size", ioe);
             }
         } else if (source != null && !bodyModified) {
-            try (InputStream in = source.getInputStream()) {
-                CountingInputStream countingInputStream = new CountingInputStream(in);
-                new MailHeaders(countingInputStream);
-                long previousHeaderLength = countingInputStream.getCount();
-                return source.getMessageSize() - previousHeaderLength + IOUtils.consume(new InternetHeadersInputStream(getAllHeaderLines()));
+            try  (InternetHeadersInputStream headerStream = new InternetHeadersInputStream(headers)) {
+                return source.getMessageSize() - initialHeaderSize + IOUtils.consume(headerStream);
             } catch (IOException e) {
                 throw new MessagingException("Error retrieving message size", e);
             }
