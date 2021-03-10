@@ -56,6 +56,19 @@ public class InternetHeadersInputStream extends InputStream {
         return currLine[pos++];
     }
 
+    @Override
+    public int read(byte[] b, int off, int len) {
+        if (currLine == null || pos == currLine.length) {
+            if (!readNextLine()) {
+                return -1;
+            }
+        }
+        int bytesToRead = Math.min(len, currLine.length - pos);
+        System.arraycopy(currLine, pos, b, off, bytesToRead);
+        pos += bytesToRead;
+        return bytesToRead;
+    }
+
     /**
      * Load the next header line if possible
      * 
