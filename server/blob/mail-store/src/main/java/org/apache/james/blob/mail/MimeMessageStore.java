@@ -150,8 +150,8 @@ public class MimeMessageStore {
         @Override
         public InputStream getInputStream() throws IOException {
             return new SequenceInputStream(
-                headers.openStream(),
-                body.openStream());
+                headers.openBufferedStream(),
+                body.openBufferedStream());
         }
 
         @Override
