@@ -359,7 +359,7 @@ public class MimeMessageWrapper extends MimeMessage implements Disposable {
                     loadHeaders();
                 }
                 // 2 == CRLF
-                return (int) (fullSize - initialHeaderSize - HEADER_BODY_SEPARATOR_SIZE);
+                return (int) (fullSize - initialHeaderSize);
 
             } catch (IOException e) {
                 throw new MessagingException("Unable to calculate message size");
@@ -419,11 +419,8 @@ public class MimeMessageWrapper extends MimeMessage implements Disposable {
                 throw new MessagingException("Error retrieving message size", ioe);
             }
         } else if (source != null && !bodyModified) {
-            try (InputStream in = source.getInputStream()) {
-                CountingInputStream countingInputStream = new CountingInputStream(in);
-                new MailHeaders(countingInputStream);
-                long previousHeaderLength = countingInputStream.getCount();
-                return source.getMessageSize() - previousHeaderLength + IOUtils.consume(new InternetHeadersInputStream(getAllHeaderLines()));
+            try {
+                return source.getMessageSize() - initialHeaderSize + IOUtils.consume(new InternetHeadersInputStream(getAllHeaderLines()));
             } catch (IOException e) {
                 throw new MessagingException("Error retrieving message size", e);
             }
@@ -603,16 +600,17 @@ public class MimeMessageWrapper extends MimeMessage implements Disposable {
          * returnPathHeaders[1]);
          */
 
-        // Keep this: skip the headers from the stream
-        // we could put that code in the else and simple write an "header"
-        // skipping
-        // reader for the others.
-        MailHeaders newHeaders = new MailHeaders(is);
-
         if (headers != null) {
+            // Keep this: skip the headers from the stream
+            // we could put that code in the else and simple write an "header"
+            // skipping
+            // reader for the others.
+            new MailHeaders(is);
             return headers;
         } else {
-            initialHeaderSize = newHeaders.getSize();
+            CountingInputStream countingInputStream  = new CountingInputStream(is);
+            MailHeaders newHeaders = new MailHeaders(countingInputStream);
+            initialHeaderSize = countingInputStream.getCount();
 
             return newHeaders;
         }
