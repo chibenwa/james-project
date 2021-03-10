@@ -19,6 +19,7 @@
 
 package org.apache.james.server.core;
 
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -135,7 +136,7 @@ public class MimeMessageInputStreamSource extends MimeMessageSource implements D
         if (out.isInMemory()) {
             in = new SharedByteArrayInputStream(out.getData());
         } else {
-            in = new SharedFileInputStream(out.getFile());
+            in = new BufferedInputStream(new SharedFileInputStream(out.getFile()));
         }
         streams.add(in);
         return in;
