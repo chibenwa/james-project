@@ -113,7 +113,7 @@ public interface Store<T, I> {
             FileBackedOutputStream out = new FileBackedOutputStream(FILE_THRESHOLD);
             try {
                 CountingOutputStream countingOutputStream = new CountingOutputStream(out);
-                blobStore.read(bucketName, blobId, storagePolicy).transferTo(out);
+                blobStore.read(bucketName, blobId, storagePolicy).transferTo(countingOutputStream);
                 return new DelegateCloseableByteSource(out.asByteSource(), out::reset, countingOutputStream.getCount());
             } catch (IOException e) {
                 throw new RuntimeException(e);
