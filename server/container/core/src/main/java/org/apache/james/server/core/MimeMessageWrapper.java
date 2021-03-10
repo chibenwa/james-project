@@ -43,8 +43,6 @@ import org.apache.commons.io.IOUtils;
 import org.apache.james.lifecycle.api.Disposable;
 import org.apache.james.lifecycle.api.LifecycleUtil;
 
-import com.google.common.io.CountingInputStream;
-
 /**
  * This object wraps a MimeMessage, only loading the underlying MimeMessage
  * object when needed. Also tracks if changes were made to reduce unnecessary
@@ -60,7 +58,6 @@ public class MimeMessageWrapper extends MimeMessage implements Disposable {
      */
     public static final String USE_MEMORY_COPY = "james.message.usememorycopy";
     private static final int UNKNOWN = -1;
-    private static final int HEADER_BODY_SEPARATOR_SIZE = 2;
 
     /**
      * Can provide an input stream to the data
@@ -612,9 +609,8 @@ public class MimeMessageWrapper extends MimeMessage implements Disposable {
             }
             return headers;
         } else {
-            CountingInputStream countingInputStream  = new CountingInputStream(is);
-            MailHeaders newHeaders = new MailHeaders(countingInputStream);
-            initialHeaderSize = countingInputStream.getCount();
+            MailHeaders newHeaders = new MailHeaders(is);
+            initialHeaderSize = newHeaders.getOriginalSize();
 
             return newHeaders;
         }
