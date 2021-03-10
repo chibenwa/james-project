@@ -22,6 +22,8 @@ package org.apache.james.server.core;
 import java.io.IOException;
 import java.io.InputStream;
 
+import org.apache.commons.io.IOUtils;
+
 /**
  * This defines a reusable datasource that can supply an input stream with
  * MimeMessage data. This allows a MimeMessageWrapper or other classes to grab
@@ -59,17 +61,9 @@ public abstract class MimeMessageSource {
      *             if an error is encountered while computing the message size
      */
     public long getMessageSize() throws IOException {
-        int size = 0;
         try (InputStream in = getInputStream()) {
-            int read;
-            byte[] data = new byte[1024];
-            while ((read = in.read(data)) > 0) {
-                size += read;
-            }
+            return IOUtils.consume(in);
         }
-        // Exception ignored because logging is
-        // unavailable
-        return size;
     }
 
 }

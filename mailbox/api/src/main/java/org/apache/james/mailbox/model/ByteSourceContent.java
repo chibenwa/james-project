@@ -23,9 +23,8 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 
-import org.apache.james.mailbox.exception.MailboxException;
-
 import com.google.common.io.ByteSource;
+import com.google.common.io.CountingOutputStream;
 import com.google.common.io.FileBackedOutputStream;
 
 public class ByteSourceContent implements Content, Closeable {
@@ -34,8 +33,9 @@ public class ByteSourceContent implements Content, Closeable {
     public static ByteSourceContent of(InputStream stream) throws IOException {
         FileBackedOutputStream out = new FileBackedOutputStream(FILE_THRESHOLD);
         try {
-            stream.transferTo(out);
-            return new ByteSourceContent(out.asByteSource(), out::reset);
+            CountingOutputStream countingOutputStream = new CountingOutputStream(out);
+            stream.transferTo(countingOutputStream);
+            return new ByteSourceContent(out.asByteSource(), out::reset, countingOutputStream.getCount());
         } catch (IOException ioException) {
             out.reset();
             throw ioException;
@@ -44,10 +44,12 @@ public class ByteSourceContent implements Content, Closeable {
 
     private final ByteSource byteSource;
     private final Closeable closeable;
+    private final long size;
 
-    public ByteSourceContent(ByteSource byteSource, Closeable closeable) {
+    private ByteSourceContent(ByteSource byteSource, Closeable closeable, long size) {
         this.byteSource = byteSource;
         this.closeable = closeable;
+        this.size = size;
     }
 
     @Override
@@ -56,12 +58,8 @@ public class ByteSourceContent implements Content, Closeable {
     }
 
     @Override
-    public long size() throws MailboxException {
-        try {
-            return byteSource.size();
-        } catch (IOException ioException) {
-            throw new MailboxException("Cannot compute size", ioException);
-        }
+    public long size() {
+        return size;
     }
 
     @Override
