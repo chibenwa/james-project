@@ -38,6 +38,7 @@ import com.google.common.io.ByteProcessor;
 import com.google.common.io.ByteSink;
 import com.google.common.io.ByteSource;
 import com.google.common.io.CharSource;
+import com.google.common.io.CountingOutputStream;
 import com.google.common.io.FileBackedOutputStream;
 
 import reactor.core.publisher.Flux;
@@ -111,8 +112,9 @@ public interface Store<T, I> {
         private CloseableByteSource readByteSource(BucketName bucketName, BlobId blobId, StoragePolicy storagePolicy) {
             FileBackedOutputStream out = new FileBackedOutputStream(FILE_THRESHOLD);
             try {
-                blobStore.read(bucketName, blobId, storagePolicy).transferTo(out);
-                return new DelegateCloseableByteSource(out.asByteSource(), out::reset);
+                CountingOutputStream countingOutputStream = new CountingOutputStream(out);
+                blobStore.read(bucketName, blobId, storagePolicy).transferTo(countingOutputStream);
+                return new DelegateCloseableByteSource(out.asByteSource(), out::reset, countingOutputStream.getCount());
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -133,10 +135,12 @@ public interface Store<T, I> {
     class DelegateCloseableByteSource extends CloseableByteSource {
         private final ByteSource wrapped;
         private final Closeable closeable;
+        private final long size;
 
-        DelegateCloseableByteSource(ByteSource wrapped, Closeable closeable) {
+        DelegateCloseableByteSource(ByteSource wrapped, Closeable closeable, long size) {
             this.wrapped = wrapped;
             this.closeable = closeable;
+            this.size = size;
         }
 
         @Override
@@ -171,7 +175,7 @@ public interface Store<T, I> {
 
         @Override
         public long size() throws IOException {
-            return wrapped.size();
+            return size;
         }
 
         @Override
