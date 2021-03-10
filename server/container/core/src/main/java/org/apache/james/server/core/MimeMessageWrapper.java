@@ -224,7 +224,7 @@ public class MimeMessageWrapper extends MimeMessage implements Disposable {
                 sourceIn = source.getInputStream();
 
                 parse(sourceIn);
-                // TODO is it ok?
+                // skipTODO is it ok?
                 saved = true;
 
             } catch (IOException ioe) {
@@ -605,7 +605,11 @@ public class MimeMessageWrapper extends MimeMessage implements Disposable {
             // we could put that code in the else and simple write an "header"
             // skipping
             // reader for the others.
-            new MailHeaders(is);
+            try {
+                is.skip(initialHeaderSize);
+            } catch (IOException e) {
+                throw new MessagingException("Failed skipping headers", e);
+            }
             return headers;
         } else {
             CountingInputStream countingInputStream  = new CountingInputStream(is);
@@ -670,7 +674,7 @@ public class MimeMessageWrapper extends MimeMessage implements Disposable {
                     
                     // skip over headers from original stream we want to use the
                     // in memory ones
-                    new MailHeaders(in);
+                    in.skip(initialHeaderSize);
 
                     // now construct the new stream using the in memory headers
                     // and the body from the original source
