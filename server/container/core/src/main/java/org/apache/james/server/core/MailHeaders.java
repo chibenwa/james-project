@@ -23,7 +23,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
-import java.util.Enumeration;
 
 import javax.mail.MessagingException;
 import javax.mail.internet.InternetHeaders;
@@ -92,16 +91,6 @@ public class MailHeaders extends InternetHeaders implements Serializable, Clonea
     }
 
     /**
-     * Check if a particular header is present.
-     * 
-     * @return true if the header is present, false otherwise
-     */
-    public boolean isSet(String name) {
-        String[] value = super.getHeader(name);
-        return (value != null && value.length != 0);
-    }
-
-    /**
      * If the new header is a Return-Path we get sure that we add it to the top
      * Javamail, at least until 1.4.0 does the wrong thing if it loaded a stream
      * with a return-path in the middle.
@@ -146,35 +135,5 @@ public class MailHeaders extends InternetHeaders implements Serializable, Clonea
     private void modified() {
         modified = true;
         size = -1;
-    }
-
-    /**
-     * Check if all REQUIRED headers fields as specified in RFC 822 are present.
-     * 
-     * @return true if the headers are present, false otherwise
-     */
-    public boolean isValid() {
-        return (isSet(RFC2822Headers.DATE) && isSet(RFC2822Headers.TO) && isSet(RFC2822Headers.FROM));
-    }
-
-    /**
-     * Return the size of the headers
-     * 
-     * @return size
-     */
-    public synchronized long getSize() {
-        if (size == -1 || modified) {
-            long c = 0;
-            Enumeration<String> headerLines = getAllHeaderLines();
-            while (headerLines.hasMoreElements()) {
-                c += headerLines.nextElement().length();
-                // CRLF
-                c += 2;
-            }
-            size = c;
-            modified = false;
-        }
-        return size;
-
     }
 }
