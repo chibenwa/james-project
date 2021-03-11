@@ -40,11 +40,14 @@ import org.apache.james.blob.api.BlobType;
 import org.apache.james.blob.api.Store;
 import org.apache.james.blob.api.Store.CloseableByteSource;
 import org.apache.james.lifecycle.api.Disposable;
+import org.apache.james.server.core.BufferedDeferredFileOutputStream;
 import org.apache.james.server.core.MailHeaders;
 import org.apache.james.server.core.MimeMessageInputStream;
 import org.apache.james.server.core.MimeMessageSource;
 import org.apache.james.server.core.MimeMessageWrapper;
+import org.apache.james.util.MemoizedSupplier;
 
+import com.github.fge.lambdas.Throwing;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.ByteSource;
@@ -151,7 +154,7 @@ public class MimeMessageStore {
         public InputStream getInputStream() throws IOException {
             return new SequenceInputStream(
                 headers.openBufferedStream(),
-                body.openBufferedStream());
+                new BufferedDeferredFileOutputStream.LazyStream(MemoizedSupplier.of(Throwing.supplier(body::openBufferedStream).sneakyThrow())));
         }
 
         @Override
