@@ -19,17 +19,25 @@
 
 package org.apache.james.server.core;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.SequenceInputStream;
 
+import javax.mail.util.SharedByteArrayInputStream;
+import javax.mail.util.SharedFileInputStream;
+
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.commons.io.output.DeferredFileOutputStream;
 import org.apache.commons.io.output.ThresholdingOutputStream;
+import org.apache.james.lifecycle.api.Disposable;
 
 /**
  * An almost copy of {@link DeferredFileOutputStream} with buffered file stream.
@@ -46,7 +54,7 @@ import org.apache.commons.io.output.ThresholdingOutputStream;
   *
   * @link https://issues.apache.org/jira/browse/JAMES-2343
  */
-public class BufferedDeferredFileOutputStream extends ThresholdingOutputStream {
+public class BufferedDeferredFileOutputStream extends ThresholdingOutputStream implements Disposable {
 
     /**
      * The output stream to which data will be written prior to the theshold
@@ -166,14 +174,7 @@ public class BufferedDeferredFileOutputStream extends ThresholdingOutputStream {
             outputFile = File.createTempFile(prefix, suffix, directory);
         }
         final FileOutputStream fos = new FileOutputStream(outputFile);
-        try {
-            memoryOutputStream.writeTo(fos);
-        } catch (IOException e) {
-            fos.close();
-            throw e;
-        }
         currentOutputStream = new BufferedOutputStream(fos, getThreshold());
-        memoryOutputStream = null;
     }
 
     /**
@@ -234,6 +235,14 @@ public class BufferedDeferredFileOutputStream extends ThresholdingOutputStream {
         closed = true;
     }
 
+    @Override
+    public void dispose() {
+        memoryOutputStream = null;
+        if (outputFile != null) {
+            FileUtils.deleteQuietly(outputFile);
+        }
+    }
+
 
     /**
      * Writes the data from this output stream to the specified output stream,
@@ -253,12 +262,23 @@ public class BufferedDeferredFileOutputStream extends ThresholdingOutputStream {
         if (isInMemory()) {
             memoryOutputStream.writeTo(out);
         } else {
+            memoryOutputStream.writeTo(out);
             final FileInputStream fis = new FileInputStream(outputFile);
             try {
                 IOUtils.copy(fis, out);
             } finally {
                 IOUtils.closeQuietly(fis);
             }
+        }
+    }
+
+    public InputStream openStream() throws IOException {
+        if (isInMemory()) {
+            return new SharedByteArrayInputStream(getData());
+        } else {
+            return new SequenceInputStream(
+                new SharedByteArrayInputStream(getData()),
+                new BufferedInputStream(new SharedFileInputStream(outputFile)));
         }
     }
 }

@@ -19,7 +19,6 @@
 
 package org.apache.james.server.core;
 
-import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,10 +27,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import javax.mail.MessagingException;
-import javax.mail.util.SharedByteArrayInputStream;
-import javax.mail.util.SharedFileInputStream;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.output.DeferredFileOutputStream;
 import org.apache.james.lifecycle.api.Disposable;
@@ -84,10 +80,7 @@ public class MimeMessageInputStreamSource extends MimeMessageSource implements D
             IOUtils.copy(in, out);
             sourceId = key;
         } catch (IOException ioe) {
-            File file = out.getFile();
-            if (file != null) {
-                FileUtils.deleteQuietly(file);
-            }
+            out.dispose();
             throw new MessagingException("Unable to retrieve the data: " + ioe.getMessage(), ioe);
         } finally {
             try {
@@ -132,12 +125,7 @@ public class MimeMessageInputStreamSource extends MimeMessageSource implements D
      */
     @Override
     public InputStream getInputStream() throws IOException {
-        InputStream in;
-        if (out.isInMemory()) {
-            in = new SharedByteArrayInputStream(out.getData());
-        } else {
-            in = new BufferedInputStream(new SharedFileInputStream(out.getFile()));
-        }
+        InputStream in = out.openStream();
         streams.add(in);
         return in;
     }
@@ -175,11 +163,7 @@ public class MimeMessageInputStreamSource extends MimeMessageSource implements D
             } catch (IOException e) {
                 //ignore exception during close
             }
-            File file = out.getFile();
-            if (file != null) {
-                FileUtils.deleteQuietly(file);
-                file = null;
-            }
+            out.dispose();
             out = null;
         }
     }

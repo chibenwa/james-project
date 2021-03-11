@@ -19,6 +19,7 @@
 
 package org.apache.james.server.core;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -120,7 +121,7 @@ public class BufferedDeferredFileOutputStreamTest {
             fail("Unexpected IOException");
         }
         assertFalse(dfos.isInMemory());
-        assertNull(dfos.getData());
+        assertNotNull(dfos.getData());
 
         verifyResultFile(testFile);
 
@@ -134,7 +135,7 @@ public class BufferedDeferredFileOutputStreamTest {
      * once, as the threshold is crossed for the first time.
      */
     @Test
-    public void testThresholdReached() {
+    public void testThresholdReached() throws Exception {
         final File testFile = new File("testThresholdReached.dat");
 
         // Ensure that the test starts from a clean base.
@@ -156,9 +157,9 @@ public class BufferedDeferredFileOutputStreamTest {
             fail("Unexpected IOException");
         }
         assertFalse(dfos.isInMemory());
-        assertNull(dfos.getData());
+        assertNotNull(dfos.getData());
 
-        verifyResultFile(testFile);
+        assertThat(dfos.openStream()).hasBinaryContent(testBytes);
 
         // Ensure that the test starts from a clean base.
         testFile.delete();
@@ -265,7 +266,7 @@ public class BufferedDeferredFileOutputStreamTest {
      * Test specifying a temporary file and the threshold is reached.
      */
     @Test
-    public void testTempFileAboveThreshold() {
+    public void testTempFileAboveThreshold() throws Exception {
 
         final String prefix = "commons-io-test";
         final String suffix = ".out";
@@ -282,14 +283,14 @@ public class BufferedDeferredFileOutputStreamTest {
             fail("Unexpected IOException");
         }
         assertFalse(dfos.isInMemory());
-        assertNull(dfos.getData());
+        assertNotNull(dfos.getData());
         assertNotNull("Check file not null", dfos.getFile());
         assertTrue("Check file exists", dfos.getFile().exists());
         assertTrue("Check prefix", dfos.getFile().getName().startsWith(prefix));
         assertTrue("Check suffix", dfos.getFile().getName().endsWith(suffix));
         assertEquals("Check dir", tempDir.getPath(), dfos.getFile().getParent());
 
-        verifyResultFile(dfos.getFile());
+        assertThat(dfos.openStream()).hasBinaryContent(testBytes);
 
         // Delete the temporary file.
         dfos.getFile().delete();
@@ -316,7 +317,7 @@ public class BufferedDeferredFileOutputStreamTest {
             fail("Unexpected IOException");
         }
         assertFalse(dfos.isInMemory());
-        assertNull(dfos.getData());
+        assertNotNull(dfos.getData());
         assertNotNull("Check file not null", dfos.getFile());
         assertTrue("Check file exists", dfos.getFile().exists());
         assertTrue("Check prefix", dfos.getFile().getName().startsWith(prefix));
