@@ -38,6 +38,9 @@ import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.commons.io.output.DeferredFileOutputStream;
 import org.apache.commons.io.output.ThresholdingOutputStream;
 import org.apache.james.lifecycle.api.Disposable;
+import org.apache.james.util.MemoizedSupplier;
+
+import com.github.fge.lambdas.Throwing;
 
 /**
  * An almost copy of {@link DeferredFileOutputStream} with buffered file stream.
@@ -55,6 +58,79 @@ import org.apache.james.lifecycle.api.Disposable;
   * @link https://issues.apache.org/jira/browse/JAMES-2343
  */
 public class BufferedDeferredFileOutputStream extends ThresholdingOutputStream implements Disposable {
+    public static class LazyStream extends InputStream {
+        private final MemoizedSupplier<InputStream> supplier;
+
+        public LazyStream(MemoizedSupplier<InputStream> supplier) {
+            super();
+            this.supplier = supplier;
+        }
+
+        @Override
+        public int read() throws IOException {
+            return supplier.get().read();
+        }
+
+        @Override
+        public int read(byte[] b) throws IOException {
+            return supplier.get().read(b);
+        }
+
+        @Override
+        public int read(byte[] b, int off, int len) throws IOException {
+            return supplier.get().read(b, off, len);
+        }
+
+        @Override
+        public byte[] readAllBytes() throws IOException {
+            return supplier.get().readAllBytes();
+        }
+
+        @Override
+        public byte[] readNBytes(int len) throws IOException {
+            return supplier.get().readNBytes(len);
+        }
+
+        @Override
+        public int readNBytes(byte[] b, int off, int len) throws IOException {
+            return supplier.get().readNBytes(b, off, len);
+        }
+
+        @Override
+        public long skip(long n) throws IOException {
+            return supplier.get().skip(n);
+        }
+
+        @Override
+        public int available() throws IOException {
+            return supplier.get().available();
+        }
+
+        @Override
+        public void close() throws IOException {
+            supplier.get().close();
+        }
+
+        @Override
+        public synchronized void mark(int readlimit) {
+            supplier.get().mark(readlimit);
+        }
+
+        @Override
+        public synchronized void reset() throws IOException {
+            supplier.get().reset();
+        }
+
+        @Override
+        public boolean markSupported() {
+            return supplier.get().markSupported();
+        }
+
+        @Override
+        public long transferTo(OutputStream out) throws IOException {
+            return supplier.get().transferTo(out);
+        }
+    }
 
     public static final int BUFFER_SIZE = 8 * 1024;
     /**
@@ -279,7 +355,8 @@ public class BufferedDeferredFileOutputStream extends ThresholdingOutputStream i
         } else {
             return new SequenceInputStream(
                 new SharedByteArrayInputStream(getData()),
-                new BufferedInputStream(new SharedFileInputStream(outputFile)));
+                new LazyStream(MemoizedSupplier.of(Throwing.<InputStream>supplier(
+                    () -> new BufferedInputStream(new SharedFileInputStream(outputFile))).sneakyThrow())));
         }
     }
 }
