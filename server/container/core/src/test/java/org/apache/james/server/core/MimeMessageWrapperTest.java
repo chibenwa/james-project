@@ -22,10 +22,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.Enumeration;
 import java.util.Properties;
 
@@ -313,5 +315,88 @@ public class MimeMessageWrapperTest extends MimeMessageFromStreamTest {
 
         assertThat(wrapper.getMessageSize()).isEqualTo(
             IOUtils.consume(wrapper.getMessageInputStream()));
+    }
+
+    @Test
+    public void addHeaderShouldSanitizeLineDelimiters() throws Exception {
+        MimeMessageWrapper wrapper = new MimeMessageWrapper(new MimeMessageInputStreamSource(MailImpl.getId(),
+            new ByteArrayInputStream(("MIME-Version: 1.0\n" +
+                "Message-ID: <65586123.0.1615431751598@interview1-HP-ProBook-440-G6>\n" +
+                "Date: Thu, 11 Mar 2021 10:02:31 +0700 (ICT)\r\n\r\n" +
+                "body").getBytes(StandardCharsets.UTF_8))));
+        wrapper.setHeader("header", "vss");
+
+        assertThat(MimeMessageUtil.asString(wrapper))
+            .isEqualTo("MIME-Version: 1.0\r\n" +
+                "header: vss\r\n" +
+                "Message-ID: <65586123.0.1615431751598@interview1-HP-ProBook-440-G6>\r\n" +
+                "Date: Thu, 11 Mar 2021 10:02:31 +0700 (ICT)\r\n\r\n" +
+                "body");
+    }
+
+    @Test
+    public void getSizeShouldNotBeAffectedByLineDelimiterSanitizing() throws Exception {
+        MimeMessageWrapper wrapper = new MimeMessageWrapper(new MimeMessageInputStreamSource(MailImpl.getId(),
+            new ByteArrayInputStream(("MIME-Version: 1.0\n" +
+                "Message-ID: <65586123.0.1615431751598@interview1-HP-ProBook-440-G6>\n" +
+                "Date: Thu, 11 Mar 2021 10:02:31 +0700 (ICT)\r\n\r\n" +
+                "body").getBytes(StandardCharsets.UTF_8))));
+        wrapper.setHeader("header", "vss");
+
+        assertThat(wrapper.getSize())
+            .isEqualTo(IOUtils.consume(wrapper.getRawInputStream()));
+    }
+
+    @Test
+    public void getRawInputStreamShouldNotBeAffectedByLineDelimiterSanitizing() throws Exception {
+        MimeMessageWrapper wrapper = new MimeMessageWrapper(new MimeMessageInputStreamSource(MailImpl.getId(),
+            new ByteArrayInputStream(("MIME-Version: 1.0\n" +
+                "Message-ID: <65586123.0.1615431751598@interview1-HP-ProBook-440-G6>\n" +
+                "Date: Thu, 11 Mar 2021 10:02:31 +0700 (ICT)\r\n\r\n" +
+                "body").getBytes(StandardCharsets.UTF_8))));
+        wrapper.setHeader("header", "vss");
+
+        assertThat(wrapper.getRawInputStream())
+            .hasBinaryContent("body".getBytes(StandardCharsets.UTF_8));
+    }
+
+    @Test
+    public void getMessageSizeShouldNotBeAffectedByLineDelimiterSanitizing() throws Exception {
+        MimeMessageWrapper wrapper = new MimeMessageWrapper(new MimeMessageInputStreamSource(MailImpl.getId(),
+            new ByteArrayInputStream(("MIME-Version: 1.0\n" +
+                "Message-ID: <65586123.0.1615431751598@interview1-HP-ProBook-440-G6>\n" +
+                "Date: Thu, 11 Mar 2021 10:02:31 +0700 (ICT)\r\n\r\n" +
+                "body").getBytes(StandardCharsets.UTF_8))));
+        wrapper.setHeader("header", "vss");
+
+        assertThat(wrapper.getMessageSize())
+            .isEqualTo(IOUtils.consume(wrapper.getMessageInputStream()));
+    }
+
+    @Test
+    public void headersAreNotSanitizedWhenNotModified() throws Exception {
+        MimeMessageWrapper wrapper = new MimeMessageWrapper(new MimeMessageInputStreamSource(MailImpl.getId(),
+            new ByteArrayInputStream(("MIME-Version: 1.0\n" +
+                "Message-ID: <65586123.0.1615431751598@interview1-HP-ProBook-440-G6>\n" +
+                "Date: Thu, 11 Mar 2021 10:02:31 +0700 (ICT)\r\n\r\n" +
+                "body").getBytes(StandardCharsets.UTF_8))));
+
+        assertThat(wrapper.getMessageInputStream())
+            .hasBinaryContent(("MIME-Version: 1.0\n" +
+                "Message-ID: <65586123.0.1615431751598@interview1-HP-ProBook-440-G6>\n" +
+                "Date: Thu, 11 Mar 2021 10:02:31 +0700 (ICT)\r\n\r\n" +
+                "body").getBytes(StandardCharsets.UTF_8));
+    }
+
+    @Test
+    public void getMessageSizeShouldReturnedExactContentLengthWhenUnsanitizedLineSeparator() throws Exception {
+        MimeMessageWrapper wrapper = new MimeMessageWrapper(new MimeMessageInputStreamSource(MailImpl.getId(),
+            new ByteArrayInputStream(("MIME-Version: 1.0\n" +
+                "Message-ID: <65586123.0.1615431751598@interview1-HP-ProBook-440-G6>\n" +
+                "Date: Thu, 11 Mar 2021 10:02:31 +0700 (ICT)\r\n\r\n" +
+                "body").getBytes(StandardCharsets.UTF_8))));
+
+        assertThat(wrapper.getMessageSize())
+            .isEqualTo(IOUtils.consume(wrapper.getMessageInputStream()));
     }
 }
