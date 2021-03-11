@@ -412,13 +412,10 @@ public class MimeMessageWrapper extends MimeMessage implements Disposable {
      * Returns size of message, ie headers and content
      */
     public long getMessageSize() throws MessagingException {
-        if (source != null && !isModified()) {
-            try {
-                return source.getMessageSize();
-            } catch (IOException ioe) {
-                throw new MessagingException("Error retrieving message size", ioe);
+        if (source != null && !bodyModified) {
+            if (headers == null) {
+                loadHeaders();
             }
-        } else if (source != null && !bodyModified) {
             try {
                 return source.getMessageSize() - initialHeaderSize + IOUtils.consume(new InternetHeadersInputStream(getAllHeaderLines()));
             } catch (IOException e) {
@@ -656,39 +653,33 @@ public class MimeMessageWrapper extends MimeMessage implements Disposable {
      */
 
     public InputStream getMessageInputStream() throws MessagingException {
-        if (!messageParsed && !isModified() && source != null) {
-            try {
-                return source.getInputStream();
-            } catch (IOException e) {
-                throw new MessagingException("Unable to get inputstream", e);
-            }
-        } else {
-            try {
-
-                // Try to optimize if possible to prevent OOM on big mails.
-                // See JAMES-1252 for an example
-                if (!bodyModified && source != null) {
-                    // ok only the headers were modified so we don't need to
-                    // copy the whole message content into memory
-                    InputStream in = source.getInputStream();
-                    
-                    // skip over headers from original stream we want to use the
-                    // in memory ones
-                    in.skip(initialHeaderSize);
-
-                    // now construct the new stream using the in memory headers
-                    // and the body from the original source
-                    return new SequenceInputStream(new InternetHeadersInputStream(getAllHeaderLines()), in);
-                } else {
-                    // the body was changed so we have no other solution to copy
-                    // it into memory first :(
-                    ByteArrayOutputStream out = new ByteArrayOutputStream();
-                    writeTo(out);
-                    return new ByteArrayInputStream(out.toByteArray());
+        try {
+            // Try to optimize if possible to prevent OOM on big mails.
+            // See JAMES-1252 for an example
+            if (!bodyModified && source != null) {
+                if (headers == null) {
+                    loadHeaders();
                 }
-            } catch (IOException e) {
-                throw new MessagingException("Unable to get inputstream", e);
+                // ok only the headers were modified so we don't need to
+                // copy the whole message content into memory
+                InputStream in = source.getInputStream();
+
+                // skip over headers from original stream we want to use the
+                // in memory ones
+                in.skip(initialHeaderSize);
+
+                // now construct the new stream using the in memory headers
+                // and the body from the original source
+                return new SequenceInputStream(new InternetHeadersInputStream(getAllHeaderLines()), in);
+            } else {
+                // the body was changed so we have no other solution to copy
+                // it into memory first :(
+                ByteArrayOutputStream out = new ByteArrayOutputStream();
+                writeTo(out);
+                return new ByteArrayInputStream(out.toByteArray());
             }
+        } catch (IOException e) {
+            throw new MessagingException("Unable to get inputstream", e);
         }
     }
 

@@ -382,8 +382,8 @@ public class MimeMessageWrapperTest extends MimeMessageFromStreamTest {
                 "body").getBytes(StandardCharsets.UTF_8))));
 
         assertThat(wrapper.getMessageInputStream())
-            .hasBinaryContent(("MIME-Version: 1.0\n" +
-                "Message-ID: <65586123.0.1615431751598@interview1-HP-ProBook-440-G6>\n" +
+            .hasBinaryContent(("MIME-Version: 1.0\r\n" +
+                "Message-ID: <65586123.0.1615431751598@interview1-HP-ProBook-440-G6>\r\n" +
                 "Date: Thu, 11 Mar 2021 10:02:31 +0700 (ICT)\r\n\r\n" +
                 "body").getBytes(StandardCharsets.UTF_8));
     }
@@ -398,5 +398,34 @@ public class MimeMessageWrapperTest extends MimeMessageFromStreamTest {
 
         assertThat(wrapper.getMessageSize())
             .isEqualTo(IOUtils.consume(wrapper.getMessageInputStream()));
+    }
+
+    @Test
+    public void getMessageInputStreamAndWriteToShouldProduceSameContent() throws Exception {
+        MimeMessageWrapper wrapper = new MimeMessageWrapper(new MimeMessageInputStreamSource(MailImpl.getId(),
+            new ByteArrayInputStream(("MIME-Version: 1.0\n" +
+                "Message-ID: <65586123.0.1615431751598@interview1-HP-ProBook-440-G6>\n" +
+                "Date: Thu, 11 Mar 2021 10:02:31 +0700 (ICT)\r\n\r\n" +
+                "body").getBytes(StandardCharsets.UTF_8))));
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        wrapper.writeTo(out);
+        assertThat(wrapper.getMessageInputStream())
+            .hasBinaryContent(out.toByteArray());
+    }
+
+    @Test
+    public void getMessageInputStreamAndWriteToShouldProduceSameContentWhenAddedHeader() throws Exception {
+        MimeMessageWrapper wrapper = new MimeMessageWrapper(new MimeMessageInputStreamSource(MailImpl.getId(),
+            new ByteArrayInputStream(("MIME-Version: 1.0\n" +
+                "Message-ID: <65586123.0.1615431751598@interview1-HP-ProBook-440-G6>\n" +
+                "Date: Thu, 11 Mar 2021 10:02:31 +0700 (ICT)\r\n\r\n" +
+                "body").getBytes(StandardCharsets.UTF_8))));
+        wrapper.addHeader("header", "vss");
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        wrapper.writeTo(out);
+        assertThat(wrapper.getMessageInputStream())
+            .hasBinaryContent(out.toByteArray());
     }
 }
