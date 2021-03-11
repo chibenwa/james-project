@@ -56,6 +56,7 @@ import org.apache.james.lifecycle.api.Disposable;
  */
 public class BufferedDeferredFileOutputStream extends ThresholdingOutputStream implements Disposable {
 
+    public static final int BUFFER_SIZE = 8 * 1024;
     /**
      * The output stream to which data will be written prior to the theshold
      * being reached.
@@ -174,7 +175,7 @@ public class BufferedDeferredFileOutputStream extends ThresholdingOutputStream i
             outputFile = File.createTempFile(prefix, suffix, directory);
         }
         final FileOutputStream fos = new FileOutputStream(outputFile);
-        currentOutputStream = new BufferedOutputStream(fos, getThreshold());
+        currentOutputStream = new BufferedOutputStream(fos, BUFFER_SIZE);
     }
 
     /**
