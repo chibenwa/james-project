@@ -22,7 +22,6 @@ package org.apache.james.backends.cassandra.utils;
 import static org.apache.james.util.ReactorUtils.publishIfPresent;
 
 import java.util.Optional;
-import java.util.function.Function;
 
 import javax.inject.Inject;
 
