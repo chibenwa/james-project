@@ -190,6 +190,7 @@ public class CassandraRabbitMQJamesServerMain implements JamesServerMain {
             .combineWith(BlobStoreCacheModulesChooser.chooseModules(blobStoreConfiguration))
             .combineWith(SearchModuleChooser.chooseModules(searchConfiguration))
             .combineWith(new UsersRepositoryModuleChooser(new CassandraUsersRepositoryModule())
-                .chooseModules(configuration.getUsersRepositoryImplementation()));
+                .chooseModules(configuration.getUsersRepositoryImplementation()))
+            .overrideWith(new DistributedPop3Module());
     }
 }
