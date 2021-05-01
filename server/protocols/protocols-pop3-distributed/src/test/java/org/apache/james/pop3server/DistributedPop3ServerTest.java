@@ -21,9 +21,6 @@ package org.apache.james.pop3server;
 
 import org.apache.james.filesystem.api.FileSystem;
 import org.apache.james.filesystem.api.mock.MockFileSystem;
-import org.apache.james.jmap.api.projections.EmailQueryView;
-import org.apache.james.jmap.event.PopulateEmailQueryViewListener;
-import org.apache.james.jmap.memory.projections.MemoryEmailQueryView;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MessageIdManager;
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources;
@@ -32,6 +29,9 @@ import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.metrics.tests.RecordingMetricFactory;
 import org.apache.james.pop3server.mailbox.DistributedMailboxAdapter;
 import org.apache.james.pop3server.mailbox.MailboxAdapterFactory;
+import org.apache.james.pop3server.mailbox.MemoryPop3MetadataStore;
+import org.apache.james.pop3server.mailbox.Pop3MetadataStore;
+import org.apache.james.pop3server.mailbox.PopulateMetadataStoreListener;
 import org.apache.james.protocols.lib.mock.MockProtocolHandlerLoader;
 import org.apache.james.user.api.UsersRepository;
 import org.apache.james.user.api.UsersRepositoryException;
@@ -59,23 +59,20 @@ public class DistributedPop3ServerTest extends POP3ServerTest {
             .build();
         mailboxManager = memoryIntegrationResources
             .getMailboxManager();
-        MemoryEmailQueryView emailQueryView = new MemoryEmailQueryView();
         fileSystem = new MockFileSystem();
+        MemoryPop3MetadataStore metadataStore = new MemoryPop3MetadataStore();
         mailboxManager.getEventBus().register(
-            new PopulateEmailQueryViewListener(
-                memoryIntegrationResources.getMessageIdManager(),
-                emailQueryView,
-                mailboxManager));
+            new PopulateMetadataStoreListener(metadataStore));
 
         protocolHandlerChain = MockProtocolHandlerLoader.builder()
             .put(binder -> binder.bind(UsersRepository.class).toInstance(usersRepository))
             .put(binder -> binder.bind(MailboxManager.class).annotatedWith(Names.named("mailboxmanager")).toInstance(mailboxManager))
             .put(binder -> binder.bind(FileSystem.class).toInstance(fileSystem))
             .put(binder -> binder.bind(MailboxAdapterFactory.class).to(DistributedMailboxAdapter.Factory.class))
-            .put(binder -> binder.bind(EmailQueryView.class).toInstance(emailQueryView))
             .put(binder -> binder.bind(MessageIdManager.class).toInstance(memoryIntegrationResources.getMessageIdManager()))
             .put(binder -> binder.bind(MessageId.Factory.class).toInstance(memoryIntegrationResources.getMessageIdFactory()))
             .put(binder -> binder.bind(MetricFactory.class).to(RecordingMetricFactory.class))
+            .put(binder -> binder.bind(Pop3MetadataStore.class).toInstance(metadataStore))
             .build();
     }
 }

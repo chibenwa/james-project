@@ -19,8 +19,6 @@
 
 package org.apache.james.pop3server.mailbox;
 
-import static org.apache.james.util.ReactorUtils.DEFAULT_CONCURRENCY;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Iterator;
@@ -30,7 +28,6 @@ import java.util.stream.Stream;
 import javax.inject.Inject;
 import javax.inject.Named;
 
-import org.apache.james.jmap.api.projections.EmailQueryView;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageIdManager;
@@ -44,23 +41,23 @@ import org.apache.james.protocols.pop3.mailbox.MessageMetaData;
 
 import com.github.steveash.guavate.Guavate;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
 
+import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
 
 public class DistributedMailboxAdapter implements Mailbox {
     public static class Factory implements MailboxAdapterFactory {
-        private final EmailQueryView emailQueryView;
+        private final Pop3MetadataStore metadataStore;
         private final MessageIdManager messageIdManager;
         private final MessageId.Factory messageIdFactory;
         private final MailboxManager mailboxManager;
 
         @Inject
-        public Factory(EmailQueryView emailQueryView,
+        public Factory(Pop3MetadataStore metadataStore,
                        MessageIdManager messageIdManager,
                        MessageId.Factory messageIdFactory,
                        @Named("mailboxmanager") MailboxManager mailboxManager) {
-            this.emailQueryView = emailQueryView;
+            this.metadataStore = metadataStore;
             this.messageIdManager = messageIdManager;
             this.messageIdFactory = messageIdFactory;
             this.mailboxManager = mailboxManager;
@@ -68,19 +65,19 @@ public class DistributedMailboxAdapter implements Mailbox {
 
         @Override
         public Mailbox create(MessageManager manager, MailboxSession session) {
-            return new DistributedMailboxAdapter(emailQueryView, messageIdManager, messageIdFactory, mailboxManager, session, manager);
+            return new DistributedMailboxAdapter(metadataStore, messageIdManager, messageIdFactory, mailboxManager, session, manager);
         }
     }
 
-    private final EmailQueryView emailQueryView;
+    private final Pop3MetadataStore metadataStore;
     private final MessageIdManager messageIdManager;
     private final MessageId.Factory messageIdFactory;
     private final MailboxManager mailboxManager;
     private final MailboxSession session;
     private final MessageManager mailbox;
 
-    public DistributedMailboxAdapter(EmailQueryView emailQueryView, MessageIdManager messageIdManager, MessageId.Factory messageIdFactory, MailboxManager mailboxManager, MailboxSession session, MessageManager mailbox) {
-        this.emailQueryView = emailQueryView;
+    public DistributedMailboxAdapter(Pop3MetadataStore metadataStore, MessageIdManager messageIdManager, MessageId.Factory messageIdFactory, MailboxManager mailboxManager, MailboxSession session, MessageManager mailbox) {
+        this.metadataStore = metadataStore;
         this.messageIdManager = messageIdManager;
         this.messageIdFactory = messageIdFactory;
         this.mailboxManager = mailboxManager;
@@ -135,12 +132,9 @@ public class DistributedMailboxAdapter implements Mailbox {
 
     @Override
     public List<MessageMetaData> getMessages() {
-        return emailQueryView.listMailboxContent(mailbox.getId())
-            .flatMap(messageId -> messageIdManager.getMessagesReactive(ImmutableList.of(messageId), FetchGroup.MINIMAL, session), DEFAULT_CONCURRENCY)
-            .distinct(MessageResult::getMessageId)
+        return Flux.from(metadataStore.stat(mailbox.getId()))
             .map(message -> new MessageMetaData(message.getMessageId().serialize(), message.getSize()))
             .collect(Guavate.toImmutableList())
-            .map(Lists::reverse) // in order to have a similar ordering
             .subscribeOn(Schedulers.elastic())
             .block();
     }
