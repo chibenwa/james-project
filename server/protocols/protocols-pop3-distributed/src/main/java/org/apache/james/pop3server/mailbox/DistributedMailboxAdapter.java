@@ -86,36 +86,6 @@ public class DistributedMailboxAdapter implements Mailbox {
     }
 
     @Override
-    public InputStream getMessageBody(String uid) throws IOException {
-        try {
-        MessageId messageId = messageIdFactory.fromString(uid);
-        Iterator<MessageResult> messages = messageIdManager.getMessage(messageId, FetchGroup.BODY_CONTENT, session).iterator();
-        if (messages.hasNext()) {
-            return messages.next().getBody().getInputStream();
-        } else {
-            return null;
-        }
-        } catch (MailboxException e) {
-            throw new IOException("Unable to retrieve message body for uid " + uid, e);
-        }
-    }
-
-    @Override
-    public InputStream getMessageHeaders(String uid) throws IOException {
-        try {
-            MessageId messageId = messageIdFactory.fromString(uid);
-            Iterator<MessageResult> messages = messageIdManager.getMessage(messageId, FetchGroup.HEADERS, session).iterator();
-            if (messages.hasNext()) {
-                return messages.next().getBody().getInputStream();
-            } else {
-                return null;
-            }
-        } catch (MailboxException e) {
-            throw new IOException("Unable to retrieve message body for uid " + uid, e);
-        }
-    }
-
-    @Override
     public InputStream getMessage(String uid) throws IOException {
         try {
             MessageId messageId = messageIdFactory.fromString(uid);
