@@ -25,6 +25,8 @@ import org.apache.james.data.UsersRepositoryModuleChooser;
 import org.apache.james.eventsourcing.eventstore.cassandra.EventNestedTypes;
 import org.apache.james.json.DTO;
 import org.apache.james.json.DTOModule;
+import org.apache.james.mailbox.store.mail.ModSeqProvider;
+import org.apache.james.mailbox.store.mail.UidProvider;
 import org.apache.james.modules.BlobExportMechanismModule;
 import org.apache.james.modules.CassandraConsistencyTaskSerializationModule;
 import org.apache.james.modules.DistributedTaskManagerModule;
@@ -85,6 +87,7 @@ import org.apache.james.modules.webadmin.InconsistencySolvingRoutesModule;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.inject.Module;
+import com.google.inject.Scopes;
 import com.google.inject.TypeLiteral;
 import com.google.inject.name.Names;
 import com.google.inject.util.Modules;
@@ -191,6 +194,12 @@ public class CassandraRabbitMQJamesServerMain implements JamesServerMain {
             .combineWith(SearchModuleChooser.chooseModules(searchConfiguration))
             .combineWith(new UsersRepositoryModuleChooser(new CassandraUsersRepositoryModule())
                 .chooseModules(configuration.getUsersRepositoryImplementation()))
-            .overrideWith(new DistributedPop3Module());
+            .overrideWith(new DistributedPop3Module())
+            .overrideWith(binder -> {
+                binder.bind(NoLWTCassandraUidProvider.class).in(Scopes.SINGLETON);
+                binder.bind(UidProvider.class).to(NoLWTCassandraUidProvider.class);
+                binder.bind(NoLWTCassandraModSeqProvider.class).in(Scopes.SINGLETON);
+                binder.bind(ModSeqProvider.class).to(NoLWTCassandraModSeqProvider.class);
+            });
     }
 }

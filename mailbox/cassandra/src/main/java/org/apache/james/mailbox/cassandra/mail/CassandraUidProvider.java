@@ -59,12 +59,12 @@ import reactor.util.retry.Retry;
 public class CassandraUidProvider implements UidProvider {
     private static final String CONDITION = "Condition";
 
-    private final CassandraAsyncExecutor executor;
+    protected final CassandraAsyncExecutor executor;
     private final long maxUidRetries;
-    private final PreparedStatement insertStatement;
-    private final PreparedStatement updateStatement;
-    private final PreparedStatement selectStatement;
-    private final ConsistencyLevel consistencyLevel;
+    protected final PreparedStatement insertStatement;
+    protected final PreparedStatement updateStatement;
+    protected final PreparedStatement selectStatement;
+    protected final ConsistencyLevel consistencyLevel;
 
     @Inject
     public CassandraUidProvider(Session session, CassandraConfiguration cassandraConfiguration,
@@ -77,20 +77,20 @@ public class CassandraUidProvider implements UidProvider {
         this.insertStatement = prepareInsert(session);
     }
 
-    private PreparedStatement prepareSelect(Session session) {
+    protected PreparedStatement prepareSelect(Session session) {
         return session.prepare(select(NEXT_UID)
             .from(TABLE_NAME)
             .where(eq(MAILBOX_ID, bindMarker(MAILBOX_ID))));
     }
 
-    private PreparedStatement prepareUpdate(Session session) {
+    protected PreparedStatement prepareUpdate(Session session) {
         return session.prepare(update(TABLE_NAME)
             .onlyIf(eq(NEXT_UID, bindMarker(CONDITION)))
             .with(set(NEXT_UID, bindMarker(NEXT_UID)))
             .where(eq(MAILBOX_ID, bindMarker(MAILBOX_ID))));
     }
 
-    private PreparedStatement prepareInsert(Session session) {
+    protected PreparedStatement prepareInsert(Session session) {
         return session.prepare(insertInto(TABLE_NAME)
             .value(NEXT_UID, bindMarker(NEXT_UID))
             .value(MAILBOX_ID, bindMarker(MAILBOX_ID))
@@ -148,7 +148,7 @@ public class CassandraUidProvider implements UidProvider {
                 .blockOptional();
     }
 
-    private Mono<MessageUid> findHighestUid(CassandraId mailboxId) {
+    protected Mono<MessageUid> findHighestUid(CassandraId mailboxId) {
         return executor.executeSingleRow(
             selectStatement.bind()
                 .setUUID(MAILBOX_ID, mailboxId.asUuid())
@@ -160,7 +160,7 @@ public class CassandraUidProvider implements UidProvider {
         return tryUpdateUid(mailboxId, uid, 1);
     }
 
-    private Mono<MessageUid> tryUpdateUid(CassandraId mailboxId, MessageUid uid, int count) {
+    protected Mono<MessageUid> tryUpdateUid(CassandraId mailboxId, MessageUid uid, int count) {
         MessageUid nextUid = uid.next(count);
         return executor.executeReturnApplied(
                 updateStatement.bind()
@@ -189,7 +189,7 @@ public class CassandraUidProvider implements UidProvider {
             .handle(publishIfPresent());
     }
 
-    private Optional<MessageUid> successToUid(MessageUid uid, Boolean success) {
+    protected Optional<MessageUid> successToUid(MessageUid uid, Boolean success) {
         if (success) {
             return Optional.of(uid);
         }

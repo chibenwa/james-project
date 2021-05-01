@@ -83,10 +83,10 @@ public class CassandraModSeqProvider implements ModSeqProvider {
         }
     }
 
-    private final CassandraAsyncExecutor cassandraAsyncExecutor;
+    protected final CassandraAsyncExecutor cassandraAsyncExecutor;
     private final long maxModSeqRetries;
-    private final PreparedStatement select;
-    private final PreparedStatement update;
+    protected final PreparedStatement select;
+    protected final PreparedStatement update;
     private final PreparedStatement insert;
     private final ConsistencyLevel consistencyLevel;
 
@@ -101,27 +101,25 @@ public class CassandraModSeqProvider implements ModSeqProvider {
         this.select = prepareSelect(session);
     }
 
-    private PreparedStatement prepareInsert(Session session) {
+    protected PreparedStatement prepareInsert(Session session) {
         return session.prepare(insertInto(TABLE_NAME)
             .value(NEXT_MODSEQ, bindMarker(NEXT_MODSEQ))
             .value(MAILBOX_ID, bindMarker(MAILBOX_ID))
             .ifNotExists());
     }
 
-    private PreparedStatement prepareUpdate(Session session) {
+    protected PreparedStatement prepareUpdate(Session session) {
         return session.prepare(update(TABLE_NAME)
             .onlyIf(eq(NEXT_MODSEQ, bindMarker(MOD_SEQ_CONDITION)))
             .with(set(NEXT_MODSEQ, bindMarker(NEXT_MODSEQ)))
             .where(eq(MAILBOX_ID, bindMarker(MAILBOX_ID))));
     }
 
-    private PreparedStatement prepareSelect(Session session) {
+    protected PreparedStatement prepareSelect(Session session) {
         return session.prepare(select(NEXT_MODSEQ)
             .from(TABLE_NAME)
             .where(eq(MAILBOX_ID, bindMarker(MAILBOX_ID))));
     }
-
-
 
     @Override
     public ModSeq nextModSeq(Mailbox mailbox) throws MailboxException {
@@ -148,7 +146,7 @@ public class CassandraModSeqProvider implements ModSeqProvider {
         return unbox(() -> findHighestModSeq((CassandraId) mailboxId).block().orElse(ModSeq.first()));
     }
 
-    private Mono<Optional<ModSeq>> findHighestModSeq(CassandraId mailboxId) {
+    protected Mono<Optional<ModSeq>> findHighestModSeq(CassandraId mailboxId) {
         return cassandraAsyncExecutor.executeSingleRowOptional(
             select.bind()
                 .setUUID(MAILBOX_ID, mailboxId.asUuid())
@@ -156,7 +154,7 @@ public class CassandraModSeqProvider implements ModSeqProvider {
             .map(maybeRow -> maybeRow.map(row -> ModSeq.of(row.getLong(NEXT_MODSEQ))));
     }
 
-    private Mono<ModSeq> tryInsertModSeq(CassandraId mailboxId, ModSeq modSeq) {
+    protected Mono<ModSeq> tryInsertModSeq(CassandraId mailboxId, ModSeq modSeq) {
         ModSeq nextModSeq = modSeq.next();
         return cassandraAsyncExecutor.executeReturnApplied(
             insert.bind()
@@ -177,7 +175,7 @@ public class CassandraModSeqProvider implements ModSeqProvider {
             .handle(publishIfPresent());
     }
 
-    private Optional<ModSeq> successToModSeq(ModSeq modSeq, Boolean success) {
+    protected Optional<ModSeq> successToModSeq(ModSeq modSeq, Boolean success) {
         if (success) {
             return Optional.of(modSeq);
         }
