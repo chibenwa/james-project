@@ -28,6 +28,10 @@ import static com.datastax.driver.core.querybuilder.QueryBuilder.update;
 import static org.apache.james.mailbox.cassandra.table.CassandraMessageIds.IMAP_UID;
 import static org.apache.james.mailbox.cassandra.table.CassandraMessageIds.MAILBOX_ID;
 import static org.apache.james.mailbox.cassandra.table.CassandraMessageIds.MESSAGE_ID;
+import static org.apache.james.mailbox.cassandra.table.CassandraMessageV3Table.BODY_START_OCTET;
+import static org.apache.james.mailbox.cassandra.table.CassandraMessageV3Table.FULL_CONTENT_OCTETS;
+import static org.apache.james.mailbox.cassandra.table.CassandraMessageV3Table.HEADER_CONTENT;
+import static org.apache.james.mailbox.cassandra.table.CassandraMessageV3Table.INTERNAL_DATE;
 import static org.apache.james.mailbox.cassandra.table.Flag.ANSWERED;
 import static org.apache.james.mailbox.cassandra.table.Flag.DELETED;
 import static org.apache.james.mailbox.cassandra.table.Flag.DRAFT;
@@ -36,7 +40,6 @@ import static org.apache.james.mailbox.cassandra.table.Flag.RECENT;
 import static org.apache.james.mailbox.cassandra.table.Flag.SEEN;
 import static org.apache.james.mailbox.cassandra.table.Flag.USER;
 import static org.apache.james.mailbox.cassandra.table.Flag.USER_FLAGS;
-import static org.apache.james.mailbox.cassandra.table.MessageIdToImapUid.FIELDS;
 import static org.apache.james.mailbox.cassandra.table.MessageIdToImapUid.MOD_SEQ;
 import static org.apache.james.mailbox.cassandra.table.MessageIdToImapUid.TABLE_NAME;
 
@@ -50,11 +53,11 @@ import org.apache.james.backends.cassandra.init.configuration.CassandraConfigura
 import org.apache.james.backends.cassandra.init.configuration.CassandraConsistenciesConfiguration;
 import org.apache.james.backends.cassandra.init.configuration.CassandraConsistenciesConfiguration.ConsistencyChoice;
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor;
+import org.apache.james.blob.api.BlobId;
 import org.apache.james.mailbox.MessageUid;
 import org.apache.james.mailbox.ModSeq;
 import org.apache.james.mailbox.cassandra.ids.CassandraId;
 import org.apache.james.mailbox.cassandra.ids.CassandraMessageId;
-import org.apache.james.mailbox.cassandra.ids.CassandraMessageId.Factory;
 import org.apache.james.mailbox.model.ComposedMessageId;
 import org.apache.james.mailbox.model.ComposedMessageIdWithMetaData;
 
@@ -76,7 +79,7 @@ public class CassandraMessageIdToImapUidDAO {
     private static final String MOD_SEQ_CONDITION = "modSeqCondition";
 
     private final CassandraAsyncExecutor cassandraAsyncExecutor;
-    private final Factory messageIdFactory;
+    private final BlobId.Factory blobIdFactory;
     private final PreparedStatement delete;
     private final PreparedStatement insert;
     private final PreparedStatement update;
@@ -87,12 +90,12 @@ public class CassandraMessageIdToImapUidDAO {
     private final CassandraConsistenciesConfiguration consistenciesConfiguration;
 
     @Inject
-    public CassandraMessageIdToImapUidDAO(Session session, CassandraConsistenciesConfiguration consistenciesConfiguration,
-                                          CassandraMessageId.Factory messageIdFactory, CassandraConfiguration cassandraConfiguration) {
+    public CassandraMessageIdToImapUidDAO(Session session, BlobId.Factory blobIdFactory, CassandraConsistenciesConfiguration consistenciesConfiguration,
+                                          CassandraConfiguration cassandraConfiguration) {
         this.cassandraAsyncExecutor = new CassandraAsyncExecutor(session);
+        this.blobIdFactory = blobIdFactory;
         this.consistenciesConfiguration = consistenciesConfiguration;
         this.cassandraConfiguration = cassandraConfiguration;
-        this.messageIdFactory = messageIdFactory;
         this.delete = prepareDelete(session);
         this.insert = prepareInsert(session);
         this.update = prepareUpdate(session);
@@ -121,7 +124,11 @@ public class CassandraMessageIdToImapUidDAO {
             .value(RECENT, bindMarker(RECENT))
             .value(SEEN, bindMarker(SEEN))
             .value(USER, bindMarker(USER))
-            .value(USER_FLAGS, bindMarker(USER_FLAGS));
+            .value(USER_FLAGS, bindMarker(USER_FLAGS))
+            .value(INTERNAL_DATE, bindMarker(INTERNAL_DATE))
+            .value(BODY_START_OCTET, bindMarker(BODY_START_OCTET))
+            .value(FULL_CONTENT_OCTETS, bindMarker(FULL_CONTENT_OCTETS))
+            .value(HEADER_CONTENT, bindMarker(HEADER_CONTENT));
         if (cassandraConfiguration.isMessageWriteStrongConsistency()) {
             return session.prepare(insert.ifNotExists());
         } else {
@@ -153,17 +160,17 @@ public class CassandraMessageIdToImapUidDAO {
     }
 
     private PreparedStatement prepareSelectAll(Session session) {
-        return session.prepare(select(FIELDS)
+        return session.prepare(select()
                 .from(TABLE_NAME)
                 .where(eq(MESSAGE_ID, bindMarker(MESSAGE_ID))));
     }
 
     private PreparedStatement prepareList(Session session) {
-        return session.prepare(select(FIELDS).from(TABLE_NAME));
+        return session.prepare(select().from(TABLE_NAME));
     }
 
     private PreparedStatement prepareSelect(Session session) {
-        return session.prepare(select(FIELDS)
+        return session.prepare(select()
                 .from(TABLE_NAME)
                 .where(eq(MESSAGE_ID, bindMarker(MESSAGE_ID)))
                 .and(eq(MAILBOX_ID, bindMarker(MAILBOX_ID))));
@@ -175,14 +182,14 @@ public class CassandraMessageIdToImapUidDAO {
                 .setUUID(MAILBOX_ID, mailboxId.asUuid()));
     }
 
-    public Mono<Void> insert(ComposedMessageIdWithMetaData composedMessageIdWithMetaData) {
-        ComposedMessageId composedMessageId = composedMessageIdWithMetaData.getComposedMessageId();
-        Flags flags = composedMessageIdWithMetaData.getFlags();
+    public Mono<Void> insert(CassandraMessageMetadata metadata) {
+        ComposedMessageId composedMessageId = metadata.getComposedMessageId().getComposedMessageId();
+        Flags flags = metadata.getComposedMessageId().getFlags();
         return cassandraAsyncExecutor.executeVoid(insert.bind()
                 .setUUID(MESSAGE_ID, ((CassandraMessageId) composedMessageId.getMessageId()).get())
                 .setUUID(MAILBOX_ID, ((CassandraId) composedMessageId.getMailboxId()).asUuid())
                 .setLong(IMAP_UID, composedMessageId.getUid().asLong())
-                .setLong(MOD_SEQ, composedMessageIdWithMetaData.getModSeq().asLong())
+                .setLong(MOD_SEQ, metadata.getComposedMessageId().getModSeq().asLong())
                 .setBool(ANSWERED, flags.contains(Flag.ANSWERED))
                 .setBool(DELETED, flags.contains(Flag.DELETED))
                 .setBool(DRAFT, flags.contains(Flag.DRAFT))
@@ -190,7 +197,11 @@ public class CassandraMessageIdToImapUidDAO {
                 .setBool(RECENT, flags.contains(Flag.RECENT))
                 .setBool(SEEN, flags.contains(Flag.SEEN))
                 .setBool(USER, flags.contains(Flag.USER))
-                .setSet(USER_FLAGS, ImmutableSet.copyOf(flags.getUserFlags())));
+                .setSet(USER_FLAGS, ImmutableSet.copyOf(flags.getUserFlags()))
+                .setTimestamp(INTERNAL_DATE, metadata.getInternalDate().get())
+                .setInt(BODY_START_OCTET, Math.toIntExact(metadata.getBodyStartOctet().get()))
+                .setLong(FULL_CONTENT_OCTETS, metadata.getSize().get())
+                .setString(HEADER_CONTENT, metadata.getHeaderContent().get().asString()));
     }
 
     public Mono<Boolean> updateMetadata(ComposedMessageIdWithMetaData composedMessageIdWithMetaData, ModSeq oldModSeq) {
@@ -220,7 +231,7 @@ public class CassandraMessageIdToImapUidDAO {
         return boundStatement;
     }
 
-    public Flux<ComposedMessageIdWithMetaData> retrieve(CassandraMessageId messageId, Optional<CassandraId> mailboxId, ConsistencyChoice readConsistencyChoice) {
+    public Flux<CassandraMessageMetadata> retrieve(CassandraMessageId messageId, Optional<CassandraId> mailboxId, ConsistencyChoice readConsistencyChoice) {
         return cassandraAsyncExecutor.executeRows(
                     selectStatement(messageId, mailboxId)
                     .setConsistencyLevel(readConsistencyChoice.choose(consistenciesConfiguration)))
@@ -228,24 +239,31 @@ public class CassandraMessageIdToImapUidDAO {
     }
 
     @VisibleForTesting
-    public Flux<ComposedMessageIdWithMetaData> retrieve(CassandraMessageId messageId, Optional<CassandraId> mailboxId) {
+    public Flux<CassandraMessageMetadata> retrieve(CassandraMessageId messageId, Optional<CassandraId> mailboxId) {
         return retrieve(messageId, mailboxId, ConsistencyChoice.STRONG);
     }
 
-    public Flux<ComposedMessageIdWithMetaData> retrieveAllMessages() {
+    public Flux<CassandraMessageMetadata> retrieveAllMessages() {
         return cassandraAsyncExecutor.executeRows(listStatement.bind())
-            .map(row -> toComposedMessageIdWithMetadata(row));
+            .map(this::toComposedMessageIdWithMetadata);
     }
 
-    private ComposedMessageIdWithMetaData toComposedMessageIdWithMetadata(Row row) {
-        return ComposedMessageIdWithMetaData.builder()
+    private CassandraMessageMetadata toComposedMessageIdWithMetadata(Row row) {
+        return CassandraMessageMetadata.builder()
+            .ids(ComposedMessageIdWithMetaData.builder()
                 .composedMessageId(new ComposedMessageId(
                     CassandraId.of(row.getUUID(MAILBOX_ID)),
-                    messageIdFactory.of(row.getUUID(MESSAGE_ID)),
+                    CassandraMessageId.Factory.of(row.getUUID(MESSAGE_ID)),
                     MessageUid.of(row.getLong(IMAP_UID))))
                 .flags(FlagsExtractor.getFlags(row))
                 .modSeq(ModSeq.of(row.getLong(MOD_SEQ)))
-                .build();
+                .build())
+                .bodyStartOctet(row.getInt(BODY_START_OCTET))
+                .internalDate(row.getTimestamp(INTERNAL_DATE))
+                .size(row.getLong(FULL_CONTENT_OCTETS))
+                .headerContent(Optional.ofNullable(row.getString(HEADER_CONTENT))
+                .map(blobIdFactory::from))
+            .build();
     }
 
     private Statement selectStatement(CassandraMessageId messageId, Optional<CassandraId> mailboxId) {
