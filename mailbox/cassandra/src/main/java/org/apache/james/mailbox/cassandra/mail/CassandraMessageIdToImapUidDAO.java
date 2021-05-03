@@ -43,6 +43,7 @@ import static org.apache.james.mailbox.cassandra.table.Flag.USER_FLAGS;
 import static org.apache.james.mailbox.cassandra.table.MessageIdToImapUid.MOD_SEQ;
 import static org.apache.james.mailbox.cassandra.table.MessageIdToImapUid.TABLE_NAME;
 
+import java.time.Duration;
 import java.util.Optional;
 
 import javax.inject.Inject;
@@ -82,6 +83,7 @@ public class CassandraMessageIdToImapUidDAO {
     private final BlobId.Factory blobIdFactory;
     private final PreparedStatement delete;
     private final PreparedStatement insert;
+    private final PreparedStatement insertForced;
     private final PreparedStatement update;
     private final PreparedStatement selectAll;
     private final PreparedStatement select;
@@ -98,6 +100,7 @@ public class CassandraMessageIdToImapUidDAO {
         this.cassandraConfiguration = cassandraConfiguration;
         this.delete = prepareDelete(session);
         this.insert = prepareInsert(session);
+        this.insertForced = prepareInsertForced(session);
         this.update = prepareUpdate(session);
         this.selectAll = prepareSelectAll(session);
         this.select = prepareSelect(session);
@@ -134,6 +137,27 @@ public class CassandraMessageIdToImapUidDAO {
         } else {
             return session.prepare(insert);
         }
+    }
+
+    private PreparedStatement prepareInsertForced(Session session) {
+        Insert insert = insertInto(TABLE_NAME)
+            .value(MESSAGE_ID, bindMarker(MESSAGE_ID))
+            .value(MAILBOX_ID, bindMarker(MAILBOX_ID))
+            .value(IMAP_UID, bindMarker(IMAP_UID))
+            .value(MOD_SEQ, bindMarker(MOD_SEQ))
+            .value(ANSWERED, bindMarker(ANSWERED))
+            .value(DELETED, bindMarker(DELETED))
+            .value(DRAFT, bindMarker(DRAFT))
+            .value(FLAGGED, bindMarker(FLAGGED))
+            .value(RECENT, bindMarker(RECENT))
+            .value(SEEN, bindMarker(SEEN))
+            .value(USER, bindMarker(USER))
+            .value(USER_FLAGS, bindMarker(USER_FLAGS))
+            .value(INTERNAL_DATE, bindMarker(INTERNAL_DATE))
+            .value(BODY_START_OCTET, bindMarker(BODY_START_OCTET))
+            .value(FULL_CONTENT_OCTETS, bindMarker(FULL_CONTENT_OCTETS))
+            .value(HEADER_CONTENT, bindMarker(HEADER_CONTENT));
+        return session.prepare(insert);
     }
 
     private PreparedStatement prepareUpdate(Session session) {
@@ -204,6 +228,28 @@ public class CassandraMessageIdToImapUidDAO {
                 .setString(HEADER_CONTENT, metadata.getHeaderContent().get().asString()));
     }
 
+    public Mono<Void> insertForce(CassandraMessageMetadata metadata) {
+        ComposedMessageId composedMessageId = metadata.getComposedMessageId().getComposedMessageId();
+        Flags flags = metadata.getComposedMessageId().getFlags();
+        return cassandraAsyncExecutor.executeVoid(insertForced.bind()
+                .setUUID(MESSAGE_ID, ((CassandraMessageId) composedMessageId.getMessageId()).get())
+                .setUUID(MAILBOX_ID, ((CassandraId) composedMessageId.getMailboxId()).asUuid())
+                .setLong(IMAP_UID, composedMessageId.getUid().asLong())
+                .setLong(MOD_SEQ, metadata.getComposedMessageId().getModSeq().asLong())
+                .setBool(ANSWERED, flags.contains(Flag.ANSWERED))
+                .setBool(DELETED, flags.contains(Flag.DELETED))
+                .setBool(DRAFT, flags.contains(Flag.DRAFT))
+                .setBool(FLAGGED, flags.contains(Flag.FLAGGED))
+                .setBool(RECENT, flags.contains(Flag.RECENT))
+                .setBool(SEEN, flags.contains(Flag.SEEN))
+                .setBool(USER, flags.contains(Flag.USER))
+                .setSet(USER_FLAGS, ImmutableSet.copyOf(flags.getUserFlags()))
+                .setTimestamp(INTERNAL_DATE, metadata.getInternalDate().get())
+                .setInt(BODY_START_OCTET, Math.toIntExact(metadata.getBodyStartOctet().get()))
+                .setLong(FULL_CONTENT_OCTETS, metadata.getSize().get())
+                .setString(HEADER_CONTENT, metadata.getHeaderContent().get().asString()));
+    }
+
     public Mono<Boolean> updateMetadata(ComposedMessageIdWithMetaData composedMessageIdWithMetaData, ModSeq oldModSeq) {
         ComposedMessageId composedMessageId = composedMessageIdWithMetaData.getComposedMessageId();
         Flags flags = composedMessageIdWithMetaData.getFlags();
@@ -244,7 +290,8 @@ public class CassandraMessageIdToImapUidDAO {
     }
 
     public Flux<CassandraMessageMetadata> retrieveAllMessages() {
-        return cassandraAsyncExecutor.executeRows(listStatement.bind())
+        return cassandraAsyncExecutor.executeRows(listStatement.bind()
+                .setReadTimeoutMillis(Duration.ofDays(1).toMillisPart()))
             .map(this::toComposedMessageIdWithMetadata);
     }
 

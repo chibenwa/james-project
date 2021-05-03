@@ -46,6 +46,7 @@ import static org.apache.james.mailbox.cassandra.table.Flag.USER_FLAGS;
 import static org.apache.james.mailbox.cassandra.table.MessageIdToImapUid.MOD_SEQ;
 import static org.apache.james.util.ReactorUtils.publishIfPresent;
 
+import java.time.Duration;
 import java.util.Optional;
 
 import javax.inject.Inject;
@@ -293,7 +294,8 @@ public class CassandraMessageIdDAO {
     }
 
     public Flux<CassandraMessageMetadata> retrieveAllMessages() {
-        return cassandraAsyncExecutor.executeRows(listStatement.bind())
+        return cassandraAsyncExecutor.executeRows(listStatement.bind()
+                .setReadTimeoutMillis(Duration.ofDays(1).toMillisPart()))
             .map(this::fromRowToComposedMessageIdWithFlags)
             .handle(publishIfPresent());
     }
