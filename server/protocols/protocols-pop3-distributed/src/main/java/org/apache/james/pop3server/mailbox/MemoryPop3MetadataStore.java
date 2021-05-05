@@ -22,40 +22,41 @@ package org.apache.james.pop3server.mailbox;
 import java.util.function.Function;
 
 import org.apache.james.mailbox.model.MailboxId;
+import org.apache.james.mailbox.model.MessageId;
 import org.reactivestreams.Publisher;
 
-import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Multimap;
-import com.google.common.collect.Multimaps;
+import com.google.common.collect.Table;
 
 import reactor.core.publisher.Mono;
 
 public class MemoryPop3MetadataStore implements Pop3MetadataStore {
-    private final Multimap<MailboxId, StatMetadata> data;
+    private final Table<MailboxId, MessageId, Long> data;
 
     public MemoryPop3MetadataStore() {
-        data = Multimaps.synchronizedListMultimap(ArrayListMultimap.create());
+        data = HashBasedTable.create();
     }
 
     @Override
     public Publisher<StatMetadata> stat(MailboxId mailboxId) {
-        return Mono.fromCallable(() -> ImmutableList.copyOf(data.get(mailboxId)))
-            .flatMapIterable(Function.identity());
+        return Mono.fromCallable(() -> ImmutableList.copyOf(data.row(mailboxId).entrySet()))
+            .flatMapIterable(Function.identity())
+            .map(entry -> new StatMetadata(entry.getKey(), entry.getValue()));
     }
 
     @Override
     public Publisher<Void> add(MailboxId mailboxId, StatMetadata statMetadata) {
-        return Mono.fromRunnable(() -> data.put(mailboxId, statMetadata));
+        return Mono.fromRunnable(() -> data.put(mailboxId, statMetadata.getMessageId(), statMetadata.getSize()));
     }
 
     @Override
     public Publisher<Void> remove(MailboxId mailboxId, StatMetadata statMetadata) {
-        return Mono.fromRunnable(() -> data.remove(mailboxId, statMetadata));
+        return Mono.fromRunnable(() -> data.remove(mailboxId, statMetadata.getMessageId()));
     }
 
     @Override
     public Publisher<Void> clear(MailboxId mailboxId) {
-        return Mono.fromRunnable(() -> data.removeAll(mailboxId));
+        return Mono.fromRunnable(() -> data.row(mailboxId).clear());
     }
 }
