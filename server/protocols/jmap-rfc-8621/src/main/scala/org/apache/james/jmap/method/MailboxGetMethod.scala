@@ -40,7 +40,6 @@ import play.api.libs.json.{JsError, JsObject, JsSuccess}
 import reactor.core.scala.publisher.{SFlux, SMono}
 import reactor.core.scheduler.Schedulers
 
-import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 object MailboxGetResults {
@@ -116,18 +115,26 @@ class MailboxGetMethod @Inject() (serializer: MailboxSerializer,
         mailboxGetRequest.ids match {
           case None => getAllMailboxes(capabilities, mailboxSession)
             .map(MailboxGetResults.found)
-          case Some(ids) => SFlux.fromIterable(ids.value)
-            .flatMap(id => Try(mailboxIdFactory.fromString(id.id))
-              .fold(e => SMono.just(MailboxGetResults.notFound(id)),
-                mailboxId => getMailboxResultById(capabilities, mailboxId, mailboxSession)),
-              maxConcurrency = 5)
+          case Some(ids) =>
+            retrieveSubscriptions(mailboxSession)
+              .flatMapMany(subscriptions => SFlux.fromIterable(ids.value)
+                .flatMap(id => Try(mailboxIdFactory.fromString(id.id))
+                  .fold(e => SMono.just(MailboxGetResults.notFound(id)),
+                    mailboxId => getMailboxResultById(capabilities, mailboxId, subscriptions, mailboxSession)),
+                  maxConcurrency = 5))
         })
+
+  private def retrieveSubscriptions(mailboxSession: MailboxSession): SMono[Subscriptions] =
+    SFlux(subscriptionManager.subscriptionsReactive(mailboxSession))
+      .collectSeq()
+      .map(seq => Subscriptions(seq.toSet))
 
   private def getMailboxResultById(capabilities: Set[CapabilityIdentifier],
                                    mailboxId: MailboxId,
+                                   subscriptions: Subscriptions,
                                    mailboxSession: MailboxSession): SMono[MailboxGetResults] =
     quotaFactory.loadFor(mailboxSession)
-      .flatMap(quotaLoader => mailboxFactory.create(mailboxId, mailboxSession, quotaLoader)
+      .flatMap(quotaLoader => mailboxFactory.create(mailboxId, mailboxSession, quotaLoader, subscriptions)
         .map(mailbox => filterShared(capabilities, mailbox))
         .onErrorResume {
           case _: MailboxNotFoundException => SMono.just(MailboxGetResults.notFound(mailboxId))
@@ -147,15 +154,12 @@ class MailboxGetMethod @Inject() (serializer: MailboxSerializer,
   }
 
   private def getAllMailboxes(capabilities: Set[CapabilityIdentifier], mailboxSession: MailboxSession): SFlux[Mailbox] = {
-    val subscriptions: SMono[Subscriptions] = SMono.fromCallable(() =>
-      Subscriptions(subscriptionManager.subscriptions(mailboxSession).asScala.toSet))
-
     SMono.zip(array => (array(0).asInstanceOf[Seq[MailboxMetaData]],
           array(1).asInstanceOf[QuotaLoaderWithPreloadedDefault],
           array(2).asInstanceOf[Subscriptions]),
         getAllMailboxesMetaData(capabilities, mailboxSession),
         quotaFactory.loadFor(mailboxSession),
-        subscriptions)
+        retrieveSubscriptions(mailboxSession))
       .subscribeOn(Schedulers.elastic)
       .flatMapMany {
         case (mailboxes, quotaLoader, subscriptions) => SFlux.fromIterable(mailboxes)
