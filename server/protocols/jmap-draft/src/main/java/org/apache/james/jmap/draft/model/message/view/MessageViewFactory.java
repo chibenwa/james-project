@@ -39,6 +39,8 @@ import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.model.MessageResult;
+import org.apache.james.mime4j.codec.DecodeMonitor;
+import org.apache.james.mime4j.codec.DecoderUtil;
 import org.apache.james.mime4j.dom.Message;
 import org.apache.james.mime4j.stream.Field;
 import org.apache.james.mime4j.stream.MimeConfig;
@@ -111,7 +113,7 @@ public interface MessageViewFactory<T extends MessageView> {
             Function<Map.Entry<String, Collection<Field>>, String> bodyConcatenator = fieldListEntry -> fieldListEntry.getValue()
                 .stream()
                 .map(Field::getBody)
-                .map(MimeUtil::unscrambleHeaderValue)
+                .map(body -> DecoderUtil.decodeEncodedWords(body, DecodeMonitor.SILENT))
                 .collect(Collectors.toList())
                 .stream()
                 .collect(Collectors.joining(JMAP_MULTIVALUED_FIELD_DELIMITER));
