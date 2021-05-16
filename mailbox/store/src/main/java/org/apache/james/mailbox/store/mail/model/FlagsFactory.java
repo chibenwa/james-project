@@ -60,10 +60,7 @@ public class FlagsFactory {
     }
 
     public static Flags createFlags(MailboxMessage mailboxMessage, String[] userFlags) {
-        return builder()
-            .flags(asFlags(mailboxMessage, userFlags))
-            .addUserFlags(userFlags)
-            .build();
+        return asFlags(mailboxMessage, userFlags);
     }
 
     public static Builder builder() {
