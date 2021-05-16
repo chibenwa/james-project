@@ -98,7 +98,7 @@ public class JamesMailSpooler implements Disposable, Configurable, MailSpoolerMB
             TimeMetric timeMetric = metricFactory.timer(SPOOL_PROCESSING);
             return Mono.fromCallable(processingActive::incrementAndGet)
                 .flatMap(ignore -> processMail(queueItem))
-                .doOnSuccess(any -> timeMetric.stopAndPublish().logWhenExceedP99(DEFAULT_100_MS_THRESHOLD))
+                .doOnSuccess(any -> timeMetric.stopAndPublish())
                 .doOnTerminate(processingActive::decrementAndGet);
         }
 

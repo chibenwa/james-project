@@ -99,7 +99,7 @@ public class CamelProcessor {
             }
 
         } finally {
-            timeMetric.stopAndPublish().logWhenExceedP99(DEFAULT_100_MS_THRESHOLD);
+            timeMetric.stopAndPublish();
             MailetPipelineLogging.logEndOfMailetProcess(mailet, mail);
             List<MailetProcessorListener> listeners = processor.getListeners();
             long complete = System.currentTimeMillis() - start;
