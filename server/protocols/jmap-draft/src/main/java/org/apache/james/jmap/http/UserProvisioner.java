@@ -18,8 +18,6 @@
  ****************************************************************/
 package org.apache.james.jmap.http;
 
-import static org.apache.james.metrics.api.TimeMetric.ExecutionResult.DEFAULT_100_MS_THRESHOLD;
-
 import java.util.UUID;
 
 import javax.inject.Inject;

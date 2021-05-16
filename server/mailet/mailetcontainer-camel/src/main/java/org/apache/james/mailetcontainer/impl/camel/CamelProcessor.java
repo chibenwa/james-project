@@ -18,8 +18,6 @@
  ****************************************************************/
 package org.apache.james.mailetcontainer.impl.camel;
 
-import static org.apache.james.metrics.api.TimeMetric.ExecutionResult.DEFAULT_100_MS_THRESHOLD;
-
 import java.io.Closeable;
 import java.util.List;
 import java.util.Locale;

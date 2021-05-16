@@ -18,8 +18,6 @@
  ****************************************************************/
 package org.apache.james.imap.processor;
 
-import static org.apache.james.metrics.api.TimeMetric.ExecutionResult.DEFAULT_100_MS_THRESHOLD;
-
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;

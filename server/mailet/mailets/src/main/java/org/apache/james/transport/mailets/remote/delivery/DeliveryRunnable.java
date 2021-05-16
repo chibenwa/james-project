@@ -19,7 +19,6 @@
 
 package org.apache.james.transport.mailets.remote.delivery;
 
-import static org.apache.james.metrics.api.TimeMetric.ExecutionResult.DEFAULT_100_MS_THRESHOLD;
 import static org.apache.james.transport.mailets.remote.delivery.Bouncer.IS_DELIVERY_PERMANENT_ERROR;
 
 import java.time.Duration;
