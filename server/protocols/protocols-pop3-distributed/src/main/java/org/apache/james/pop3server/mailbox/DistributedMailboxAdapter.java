@@ -43,6 +43,7 @@ import com.github.steveash.guavate.Guavate;
 import com.google.common.collect.ImmutableList;
 
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 public class DistributedMailboxAdapter implements Mailbox {
@@ -115,7 +116,7 @@ public class DistributedMailboxAdapter implements Mailbox {
             .map(messageIdFactory::fromString)
             .collect(Guavate.toImmutableList());
         try {
-            messageIdManager.delete(messageIds, session);
+            Mono.from(messageIdManager.delete(messageIds, session)).block();
         } catch (MailboxException e) {
             throw new IOException("Unable to delete " + messageIds, e);
         }
