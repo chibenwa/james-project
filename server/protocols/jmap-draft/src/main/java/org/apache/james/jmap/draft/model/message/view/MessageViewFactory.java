@@ -44,7 +44,6 @@ import org.apache.james.mime4j.codec.DecoderUtil;
 import org.apache.james.mime4j.dom.Message;
 import org.apache.james.mime4j.stream.Field;
 import org.apache.james.mime4j.stream.MimeConfig;
-import org.apache.james.mime4j.util.MimeUtil;
 import org.apache.james.util.ReactorUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
