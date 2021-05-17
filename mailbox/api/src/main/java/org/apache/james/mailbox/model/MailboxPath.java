@@ -250,12 +250,4 @@ public class MailboxPath {
     public Stream<MailboxPath> getParents(char delimiter) {
         return getHierarchyLevels(delimiter).stream().filter(p -> !p.equals(this));
     }
-
-    public Optional<MailboxPath> getParent(char delimiter) {
-        int lastIndex = name.lastIndexOf(delimiter);
-        if (lastIndex < 0) {
-            return Optional.empty();
-        }
-        return Optional.of(new MailboxPath(namespace, user, name.substring(0, lastIndex)));
-    }
 }

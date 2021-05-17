@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import javax.inject.Inject;
@@ -98,6 +99,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -673,10 +675,14 @@ public class StoreMailboxManager implements MailboxManager {
 
     private Map<MailboxPath, Boolean> parentMap(List<Mailbox> mailboxes, MailboxSession session) {
         return mailboxes.stream().map(Mailbox::generateAssociatedPath)
-            .flatMap(path -> path.getParent(session.getPathDelimiter()).stream())
+            .flatMap(path -> {
+                List<MailboxPath> hierarchyLevels = path.getHierarchyLevels(session.getPathDelimiter());
+                return Lists.reverse(hierarchyLevels).stream().skip(1);
+            })
             .collect(Guavate.toImmutableMap(
                 Function.identity(),
-                any -> true));
+                any -> true,
+                (a, b) -> true));
     }
 
     private Function<Flux<Mailbox>, Flux<MailboxMetaData>> withoutCounters(MailboxSession session, List<Mailbox> mailboxes) {
