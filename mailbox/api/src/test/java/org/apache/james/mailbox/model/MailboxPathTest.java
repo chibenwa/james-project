@@ -86,6 +86,21 @@ class MailboxPathTest {
     }
 
     @Test
+    void getParentShouldReturnParent() {
+        assertThat(MailboxPath.forUser(USER, "inbox.folder.subfolder")
+            .getParent('.'))
+            .contains(
+                MailboxPath.forUser(USER, "inbox.folder"));
+    }
+
+    @Test
+    void getParentShouldReturnEmptyWhenNone() {
+        assertThat(MailboxPath.forUser(USER, "inbox")
+            .getParent('.'))
+            .isEmpty();
+    }
+
+    @Test
     void childShouldConcatenateChildNameWithParentForlder() {
         assertThat(MailboxPath.forUser(USER, "folder")
             .child("toto", '.'))
