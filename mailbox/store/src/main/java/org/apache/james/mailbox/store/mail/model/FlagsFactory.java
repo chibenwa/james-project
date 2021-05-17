@@ -30,8 +30,7 @@ import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 
 public class FlagsFactory {
-
-    private static Flags asFlags(MailboxMessage mailboxMessage, String[] userFlags) {
+    public static Flags createFlags(MailboxMessage mailboxMessage, String[] userFlags) {
         final Flags flags = new Flags();
         if (mailboxMessage.isAnswered()) {
             flags.add(Flags.Flag.ANSWERED);
@@ -57,10 +56,6 @@ public class FlagsFactory {
             }
         }
         return flags;
-    }
-
-    public static Flags createFlags(MailboxMessage mailboxMessage, String[] userFlags) {
-        return asFlags(mailboxMessage, userFlags);
     }
 
     public static Builder builder() {
