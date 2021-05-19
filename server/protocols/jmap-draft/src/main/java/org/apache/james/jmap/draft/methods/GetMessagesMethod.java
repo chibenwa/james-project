@@ -99,10 +99,10 @@ public class GetMessagesMethod implements Method {
 
     private MDCBuilder mdc(GetMessagesRequest getMessagesRequest) {
         return MDCBuilder.create()
-            .addContext(MDCBuilder.ACTION, "GET_MESSAGES")
-            .addContext("accountId", getMessagesRequest.getAccountId())
-            .addContext("ids", getMessagesRequest.getIds())
-            .addContext("properties", getMessagesRequest.getProperties());
+            .addToContext(MDCBuilder.ACTION, "GET_MESSAGES")
+            .addToContextIfPresent("accountId", getMessagesRequest.getAccountId())
+            .addToContext("ids", getMessagesRequest.getIds().toString())
+            .addToContext("properties", getMessagesRequest.getProperties().toString());
     }
 
     private Optional<SimpleFilterProvider> buildOptionalHeadersFilteringFilterProvider(MessageProperties properties) {

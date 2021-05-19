@@ -23,6 +23,7 @@ import static org.apache.james.util.ReactorUtils.context;
 
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
@@ -120,17 +121,20 @@ public class GetMessageListMethod implements Method {
 
     private MDCBuilder mdc(GetMessageListRequest messageListRequest) {
         return MDCBuilder.create()
-            .addContext(MDCBuilder.ACTION, "GET_MESSAGE_LIST")
-            .addContext("accountId", messageListRequest.getAccountId())
-            .addContext("limit", messageListRequest.getLimit())
-            .addContext("anchor", messageListRequest.getAnchor())
-            .addContext("offset", messageListRequest.getAnchorOffset())
-            .addContext("properties", messageListRequest.getFetchMessageProperties())
-            .addContext("position", messageListRequest.getPosition())
-            .addContext("filters", messageListRequest.getFilter())
-            .addContext("sorts", messageListRequest.getSort())
-            .addContext("isFetchMessage", messageListRequest.isFetchMessages())
-            .addContext("isCollapseThread", messageListRequest.isCollapseThreads());
+            .addToContext(MDCBuilder.ACTION, "GET_MESSAGE_LIST")
+            .addToContextIfPresent("accountId", messageListRequest.getAccountId())
+            .addToContextIfPresent("limit", messageListRequest.getLimit()
+                .map(Number::asLong).map(l -> Long.toString(l)))
+            .addToContextIfPresent("anchor", messageListRequest.getAnchor())
+            .addToContextIfPresent("offset", messageListRequest.getAnchorOffset()
+                .map(Number::asLong).map(l -> Long.toString(l)))
+            .addToContext("properties", messageListRequest.getFetchMessageProperties().toString())
+            .addToContextIfPresent("position", messageListRequest.getPosition()
+                .map(Number::asLong).map(l -> Long.toString(l)))
+            .addToContextIfPresent("filters", messageListRequest.getFilter().map(Objects::toString))
+            .addToContext("sorts", messageListRequest.getSort().toString())
+            .addToContextIfPresent("isFetchMessage", messageListRequest.isFetchMessages().map(b -> Boolean.toString(b)))
+            .addToContextIfPresent("isCollapseThread", messageListRequest.isCollapseThreads().map(b -> Boolean.toString(b)));
     }
 
     private Flux<JmapResponse> process(MethodCallId methodCallId, MailboxSession mailboxSession, GetMessageListRequest messageListRequest) {
