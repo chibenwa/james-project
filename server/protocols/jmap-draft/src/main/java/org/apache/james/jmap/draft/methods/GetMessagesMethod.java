@@ -26,6 +26,7 @@ import java.util.Optional;
 
 import javax.inject.Inject;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.james.jmap.draft.exceptions.JmapFieldNotSupportedException;
 import org.apache.james.jmap.draft.json.FieldNamePropertyFilter;
 import org.apache.james.jmap.draft.model.GetMessagesRequest;
@@ -82,6 +83,8 @@ public class GetMessagesMethod implements Method {
 
         GetMessagesRequest getMessagesRequest = (GetMessagesRequest) request;
         MessageProperties outputProperties = getMessagesRequest.getProperties().toOutputProperties();
+        Optional<Pair<Integer, SimpleFilterProvider>> integerSimpleFilterProviderPair = buildOptionalHeadersFilteringFilterProvider(outputProperties)
+            .map(filter -> Pair.of(outputProperties.getOptionalHeadersProperties().hashCode(), filter));
 
         return Flux.from(metricFactory.decoratePublisherWithTimerMetric(JMAP_PREFIX + METHOD_NAME.getName(),
             Flux.from(getMessagesResponse(mailboxSession, getMessagesRequest)
@@ -89,7 +92,7 @@ public class GetMessagesMethod implements Method {
                     .response(response)
                     .responseName(RESPONSE_NAME)
                     .properties(outputProperties.getOptionalMessageProperties())
-                    .filterProvider(buildOptionalHeadersFilteringFilterProvider(outputProperties))
+                    .filterProvider(integerSimpleFilterProviderPair)
                     .build()))
             .subscriberContext(context("GET_MESSAGES", mdc(getMessagesRequest)))));
     }
