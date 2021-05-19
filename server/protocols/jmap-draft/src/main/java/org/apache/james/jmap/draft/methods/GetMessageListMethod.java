@@ -57,6 +57,7 @@ import org.apache.james.util.streams.Limit;
 
 import com.github.fge.lambdas.Throwing;
 import com.github.steveash.guavate.Guavate;
+import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 
@@ -128,11 +129,13 @@ public class GetMessageListMethod implements Method {
             .addToContextIfPresent("anchor", messageListRequest.getAnchor())
             .addToContextIfPresent("offset", messageListRequest.getAnchorOffset()
                 .map(Number::asLong).map(l -> Long.toString(l)))
-            .addToContext("properties", messageListRequest.getFetchMessageProperties().toString())
+            .addToContext("properties", Joiner.on(", ")
+                .join(messageListRequest.getFetchMessageProperties()))
             .addToContextIfPresent("position", messageListRequest.getPosition()
                 .map(Number::asLong).map(l -> Long.toString(l)))
             .addToContextIfPresent("filters", messageListRequest.getFilter().map(Objects::toString))
-            .addToContext("sorts", messageListRequest.getSort().toString())
+            .addToContext("sorts", Joiner.on(", ")
+                .join(messageListRequest.getSort()))
             .addToContextIfPresent("isFetchMessage", messageListRequest.isFetchMessages().map(b -> Boolean.toString(b)))
             .addToContextIfPresent("isCollapseThread", messageListRequest.isCollapseThreads().map(b -> Boolean.toString(b)));
     }
