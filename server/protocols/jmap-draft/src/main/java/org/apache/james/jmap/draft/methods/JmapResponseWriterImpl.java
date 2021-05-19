@@ -40,11 +40,11 @@ import reactor.core.publisher.Flux;
 public class JmapResponseWriterImpl implements JmapResponseWriter {
 
     public static final String PROPERTIES_FILTER = "propertiesFilter";
-    private final ObjectMapper objectMapper;
+    private final ObjectMapperFactory objectMapperFactory;
 
     @Inject
     public JmapResponseWriterImpl(ObjectMapperFactory objectMapperFactory) {
-        this.objectMapper = objectMapperFactory.forWriting();
+        this.objectMapperFactory = objectMapperFactory;
     }
 
     @Override
@@ -60,13 +60,17 @@ public class JmapResponseWriterImpl implements JmapResponseWriter {
     }
     
     private ObjectMapper newConfiguredObjectMapper(JmapResponse jmapResponse) {
+        ObjectMapper objectMapper = objectMapperFactory.forWriting();
+        
         FilterProvider filterProvider = jmapResponse
                 .getFilterProvider()
                 .orElseGet(SimpleFilterProvider::new)
                 .setDefaultFilter(SimpleBeanPropertyFilter.serializeAll())
                 .addFilter(PROPERTIES_FILTER, getPropertiesFilter(jmapResponse.getProperties()));
         
-        return objectMapper.copy().setFilterProvider(filterProvider);
+        objectMapper.setFilterProvider(filterProvider);
+
+        return objectMapper;
     }
     
     private PropertyFilter getPropertiesFilter(Optional<? extends Set<? extends Property>> properties) {
