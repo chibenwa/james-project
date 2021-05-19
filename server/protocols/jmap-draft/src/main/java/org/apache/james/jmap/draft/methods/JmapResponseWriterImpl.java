@@ -91,7 +91,7 @@ public class JmapResponseWriterImpl implements JmapResponseWriter {
             .map(i -> (long) i)
             .orElse((long) jmapResponse.getResponseName().hashCode());
 
-        return lowBits | (highBits >> 32);
+        return lowBits + (highBits >> 32);
     }
     
     private PropertyFilter getPropertiesFilter(Optional<? extends Set<? extends Property>> properties) {
