@@ -36,6 +36,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 
 public class MessageMetadataView implements MessageView {
 
@@ -47,7 +48,7 @@ public class MessageMetadataView implements MessageView {
         protected MessageId id;
         protected BlobId blobId;
         protected String threadId;
-        protected ImmutableList<MailboxId> mailboxIds;
+        protected ImmutableSet<MailboxId> mailboxIds;
         protected Number size;
         protected Optional<Keywords> keywords = Optional.empty();
 
@@ -77,7 +78,7 @@ public class MessageMetadataView implements MessageView {
         }
 
         public S mailboxIds(Collection<MailboxId> mailboxIds) {
-            this.mailboxIds = ImmutableList.copyOf(mailboxIds);
+            this.mailboxIds = ImmutableSet.copyOf(mailboxIds);
             return (S) this;
         }
 
@@ -109,12 +110,12 @@ public class MessageMetadataView implements MessageView {
     private final MessageId id;
     private final BlobId blobId;
     private final String threadId;
-    private final ImmutableList<MailboxId> mailboxIds;
+    private final ImmutableSet<MailboxId> mailboxIds;
     private final Number size;
     private final Keywords keywords;
 
     @VisibleForTesting
-    MessageMetadataView(MessageId id, BlobId blobId, String threadId, ImmutableList<MailboxId> mailboxIds, Number size, Keywords keywords) {
+    MessageMetadataView(MessageId id, BlobId blobId, String threadId, ImmutableSet<MailboxId> mailboxIds, Number size, Keywords keywords) {
         this.id = id;
         this.blobId = blobId;
         this.threadId = threadId;
@@ -135,7 +136,7 @@ public class MessageMetadataView implements MessageView {
         return threadId;
     }
 
-    public ImmutableList<MailboxId> getMailboxIds() {
+    public ImmutableSet<MailboxId> getMailboxIds() {
         return mailboxIds;
     }
 
