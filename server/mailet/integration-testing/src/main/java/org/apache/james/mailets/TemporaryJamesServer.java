@@ -40,6 +40,7 @@ import org.apache.james.MemoryJamesServerMain;
 import org.apache.james.mailets.configuration.CommonProcessors;
 import org.apache.james.mailets.configuration.MailetContainer;
 import org.apache.james.mailets.configuration.SmtpConfiguration;
+import org.apache.james.modules.MailetProcessingModule;
 import org.apache.james.modules.TestJMAPServerModule;
 import org.apache.james.server.core.configuration.Configuration;
 import org.apache.james.utils.GuiceProbe;
@@ -147,6 +148,7 @@ public class TemporaryJamesServer {
         copyResources(Paths.get(workingDir.getAbsolutePath(), "conf"));
 
         jamesServer = GuiceJamesServer.forConfiguration(configuration)
+            .combineWith(new MailetProcessingModule())
             .combineWith(serverBaseModule)
             .overrideWith((binder) -> binder.bind(PersistenceAdapter.class).to(MemoryPersistenceAdapter.class))
             .overrideWith(additionalModules)
