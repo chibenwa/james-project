@@ -27,7 +27,6 @@ import javax.inject.Inject;
 import org.apache.james.lifecycle.api.Disposable;
 import org.apache.james.lifecycle.api.Startable;
 import org.apache.james.queue.api.MailQueue;
-import org.apache.james.queue.api.MailQueue.MailQueueException;
 import org.apache.james.queue.api.MailQueueFactory;
 import org.apache.mailet.Attribute;
 import org.apache.mailet.AttributeValue;
