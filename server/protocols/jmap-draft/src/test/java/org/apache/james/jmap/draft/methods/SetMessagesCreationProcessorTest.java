@@ -360,7 +360,7 @@ public class SetMessagesCreationProcessorTest {
         when(mockedMailboxIdFactory.fromString(mailboxId.serialize()))
             .thenReturn(mailboxId);
 
-        assertThatThrownBy(() -> sut.assertIsUserOwnerOfMailboxes(ImmutableList.of(mailboxId), session));
+        assertThatThrownBy(() -> sut.assertIsUserOwnerOfMailboxes(ImmutableList.of(mailboxId), session).block());
     }
 
     @Test
@@ -374,7 +374,7 @@ public class SetMessagesCreationProcessorTest {
         when(mailbox.getMailboxPath())
             .thenThrow(new MailboxException());
 
-        assertThatThrownBy(() -> sut.assertIsUserOwnerOfMailboxes(ImmutableList.of(mailboxId), session));
+        assertThatThrownBy(() -> sut.assertIsUserOwnerOfMailboxes(ImmutableList.of(mailboxId), session).block());
     }
 
     @Test
@@ -388,7 +388,7 @@ public class SetMessagesCreationProcessorTest {
         when(mailbox.getMailboxPath())
             .thenReturn(MailboxPath.forUser(Username.of("otheruser@example.com"), mailboxId.serialize()));
 
-        assertThatThrownBy(() -> sut.assertIsUserOwnerOfMailboxes(ImmutableList.of(mailboxId), session))
+        assertThatThrownBy(() -> sut.assertIsUserOwnerOfMailboxes(ImmutableList.of(mailboxId), session).block())
             .isInstanceOf(MailboxNotOwnedException.class);
     }
 
@@ -403,7 +403,7 @@ public class SetMessagesCreationProcessorTest {
         when(mailbox.getMailboxPath())
             .thenReturn(MailboxPath.forUser(USER, mailboxId.serialize()));
 
-        sut.assertIsUserOwnerOfMailboxes(ImmutableList.of(mailboxId), session);
+        sut.assertIsUserOwnerOfMailboxes(ImmutableList.of(mailboxId), session).block();
     }
 
     @Test
@@ -414,7 +414,7 @@ public class SetMessagesCreationProcessorTest {
             .email("other@example.com")
             .build();
 
-        assertThatThrownBy(() -> sut.assertUserCanSendFrom(USER, Optional.of(sender)))
+        assertThatThrownBy(() -> sut.assertUserCanSendFrom(USER, Optional.of(sender)).block())
             .isInstanceOf(MailboxSendingNotAllowedException.class);
     }
 
@@ -426,7 +426,7 @@ public class SetMessagesCreationProcessorTest {
             .email(USER.asString())
             .build();
 
-        assertThatCode(() -> sut.assertUserCanSendFrom(USER, Optional.of(sender)))
+        assertThatCode(() -> sut.assertUserCanSendFrom(USER, Optional.of(sender)).block())
             .doesNotThrowAnyException();
     }
 
@@ -440,7 +440,7 @@ public class SetMessagesCreationProcessorTest {
 
         recipientRewriteTable.addAliasMapping(MappingSource.fromUser("alias", "example.com"), OTHER_USER.asString());
 
-        assertThatThrownBy(() -> sut.assertUserCanSendFrom(USER, Optional.of(sender)))
+        assertThatThrownBy(() -> sut.assertUserCanSendFrom(USER, Optional.of(sender)).block())
             .isInstanceOf(MailboxSendingNotAllowedException.class);
     }
 
@@ -454,7 +454,7 @@ public class SetMessagesCreationProcessorTest {
 
         recipientRewriteTable.addAliasMapping(MappingSource.fromUser("alias", "example.com"), USER.asString());
 
-        assertThatCode(() -> sut.assertUserCanSendFrom(USER, Optional.of(sender)))
+        assertThatCode(() -> sut.assertUserCanSendFrom(USER, Optional.of(sender)).block())
             .doesNotThrowAnyException();
     }
 
@@ -468,7 +468,7 @@ public class SetMessagesCreationProcessorTest {
 
            recipientRewriteTable.addMapping(MappingSource.fromDomain(Domain.of("other.org")), Mapping.domainAlias(Domain.of("example.com")));
 
-        assertThatCode(() -> sut.assertUserCanSendFrom(USER, Optional.of(sender)))
+        assertThatCode(() -> sut.assertUserCanSendFrom(USER, Optional.of(sender)).block())
             .doesNotThrowAnyException();
     }
 
@@ -482,7 +482,7 @@ public class SetMessagesCreationProcessorTest {
 
         recipientRewriteTable.addGroupMapping(MappingSource.fromUser("group", "example.com"), USER.asString());
 
-        assertThatThrownBy(() -> sut.assertUserCanSendFrom(USER, Optional.of(sender)))
+        assertThatThrownBy(() -> sut.assertUserCanSendFrom(USER, Optional.of(sender)).block())
             .isInstanceOf(MailboxSendingNotAllowedException.class);
     }
 
