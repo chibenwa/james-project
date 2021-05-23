@@ -37,6 +37,8 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.annotations.VisibleForTesting;
 
+import reactor.core.publisher.Mono;
+
 public class MailSpool implements Startable, Disposable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MailSpool.class);
@@ -62,9 +64,9 @@ public class MailSpool implements Startable, Disposable {
         }
     }
 
-    public void send(Mail mail, MailMetadata metadata) throws MailQueueException {
+    public Mono<Void> send(Mail mail, MailMetadata metadata) {
         mail.setAttribute(new Attribute(MailMetadata.MAIL_METADATA_MESSAGE_ID_ATTRIBUTE, AttributeValue.of(metadata.getMessageId().serialize())));
         mail.setAttribute(new Attribute(MailMetadata.MAIL_METADATA_USERNAME_ATTRIBUTE, AttributeValue.of(metadata.getUsername())));
-        queue.enQueue(mail);
+        return Mono.from(queue.enqueueReactive(mail));
     }
 }
