@@ -42,6 +42,7 @@ import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.model.MessageResult;
 import org.apache.james.mime4j.codec.DecodeMonitor;
 import org.apache.james.mime4j.codec.DecoderUtil;
+import org.apache.james.mime4j.dom.Header;
 import org.apache.james.mime4j.dom.Message;
 import org.apache.james.mime4j.stream.Field;
 import org.apache.james.mime4j.stream.MimeConfig;
@@ -53,7 +54,6 @@ import com.github.fge.lambdas.Throwing;
 import com.github.steveash.guavate.Guavate;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Multimaps;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -108,18 +108,15 @@ public interface MessageViewFactory<T extends MessageView> {
             return field.getBody();
         }
 
-        static ImmutableMap<String, String> toHeaderMap(List<Field> fields) {
-            Function<Map.Entry<String, Collection<Field>>, String> bodyConcatenator = fieldListEntry -> fieldListEntry.getValue()
-                .stream()
-                .map(Field::getBody)
-                .map(body -> DecoderUtil.decodeEncodedWords(body, DecodeMonitor.SILENT))
-                .collect(Collectors.joining(JMAP_MULTIVALUED_FIELD_DELIMITER));
-
-            return Multimaps.index(fields, Field::getName)
-                .asMap()
+        static ImmutableMap<String, String> toHeaderMap(Header header) {
+            return header.getFieldsAsMap()
                 .entrySet()
                 .stream()
-                .collect(Guavate.toImmutableMap(Map.Entry::getKey, bodyConcatenator));
+                .collect(Guavate.toImmutableMap(entry -> entry.getValue().get(0).getName(),
+                    entry -> entry.getValue().stream()
+                        .map(Field::getBody)
+                        .map(body -> DecoderUtil.decodeEncodedWords(body, DecodeMonitor.SILENT))
+                        .collect(Collectors.joining(JMAP_MULTIVALUED_FIELD_DELIMITER))));
         }
 
         static <T extends MessageView>  Function<Collection<MessageResult>, Mono<T>> toMessageViews(FromMessageResult<T> converter) {
