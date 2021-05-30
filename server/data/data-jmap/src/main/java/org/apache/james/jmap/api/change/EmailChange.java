@@ -46,6 +46,9 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
 public class EmailChange implements JmapChange {
     public static class Builder {
         @FunctionalInterface
@@ -185,28 +188,27 @@ public class EmailChange implements JmapChange {
                 .collect(Guavate.toImmutableList());
         }
 
-        public List<JmapChange> fromExpunged(Expunged expunged, ZonedDateTime now, List<Username> sharees) throws MailboxException {
+        public Flux<JmapChange> fromExpunged(Expunged expunged, ZonedDateTime now, List<Username> sharees) {
 
-            EmailChange ownerChange = fromExpunged(expunged, now, expunged.getUsername());
+            Mono<EmailChange> ownerChange = fromExpunged(expunged, now, expunged.getUsername());
 
-            Stream<EmailChange> shareeChanges = sharees.stream()
-                .map(Throwing.<Username, EmailChange>function(shareeId -> fromExpunged(expunged, now, shareeId)).sneakyThrow());
+            Flux<EmailChange> shareeChanges = Flux.fromIterable(sharees)
+                .flatMap(shareeId -> fromExpunged(expunged, now, shareeId));
 
-            return Stream.concat(Stream.of(ownerChange), shareeChanges)
-                .collect(Guavate.toImmutableList());
+            return Flux.concat(ownerChange, shareeChanges);
         }
 
-        private EmailChange fromExpunged(Expunged expunged, ZonedDateTime now, Username username) throws MailboxException {
-            Set<MessageId> accessibleMessageIds = messageIdManager.accessibleMessages(expunged.getMessageIds(), sessionProvider.createSystemSession(username));
-
-            return EmailChange.builder()
-                .accountId(AccountId.fromUsername(username))
-                .state(stateFactory.generate())
-                .date(now)
-                .isDelegated(false)
-                .updated(Sets.intersection(ImmutableSet.copyOf(expunged.getMessageIds()), accessibleMessageIds))
-                .destroyed(Sets.difference(ImmutableSet.copyOf(expunged.getMessageIds()), accessibleMessageIds))
-                .build();
+        private Mono<EmailChange> fromExpunged(Expunged expunged, ZonedDateTime now, Username username) {
+            return Mono.from(messageIdManager.accessibleMessagesReactive(expunged.getMessageIds(),
+                sessionProvider.createSystemSession(username)))
+                .map(accessibleMessageIds -> EmailChange.builder()
+                    .accountId(AccountId.fromUsername(username))
+                    .state(stateFactory.generate())
+                    .date(now)
+                    .isDelegated(false)
+                    .updated(Sets.intersection(ImmutableSet.copyOf(expunged.getMessageIds()), accessibleMessageIds))
+                    .destroyed(Sets.difference(ImmutableSet.copyOf(expunged.getMessageIds()), accessibleMessageIds))
+                    .build());
         }
     }
 
