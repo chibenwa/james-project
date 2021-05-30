@@ -687,7 +687,7 @@ public class MailboxACL {
         return builder.build();
     }
     
-    private final Map<EntryKey, Rfc4314Rights> entries;
+    private final ImmutableMap<EntryKey, Rfc4314Rights> entries;
 
     /**
      * Creates a new instance of SimpleMailboxACL containing no entries.
@@ -860,6 +860,9 @@ public class MailboxACL {
      * one of those.
      */
     public MailboxACL union(MailboxACL other) throws UnsupportedRightException {
+        if (entries.isEmpty()) {
+            return other;
+        }
         return new MailboxACL(
             Stream.concat(
                     this.entries.entrySet().stream(),
