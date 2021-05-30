@@ -23,7 +23,6 @@ import java.time.ZonedDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 import java.util.stream.Stream;
 
 import javax.inject.Inject;
@@ -35,10 +34,8 @@ import org.apache.james.mailbox.SessionProvider;
 import org.apache.james.mailbox.events.MailboxEvents.Added;
 import org.apache.james.mailbox.events.MailboxEvents.Expunged;
 import org.apache.james.mailbox.events.MailboxEvents.FlagsUpdated;
-import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.model.MessageId;
 
-import com.github.fge.lambdas.Throwing;
 import com.github.steveash.guavate.Guavate;
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Preconditions;
