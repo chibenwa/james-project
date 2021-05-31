@@ -55,7 +55,6 @@ import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.util.MDCBuilder;
 import org.apache.james.util.streams.Limit;
 
-import com.github.fge.lambdas.Throwing;
 import com.github.steveash.guavate.Guavate;
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
@@ -221,7 +220,7 @@ public class GetMessageListMethod implements Method {
             .subscribeOn(Schedulers.parallel());
 
         return searchQuery
-            .flatMapMany(Throwing.function(query -> mailboxManager.search(query, mailboxSession, limit)))
+            .flatMapMany(query -> mailboxManager.search(query, mailboxSession, limit))
             .skip(position)
             .reduce(GetMessageListResponse.builder(), GetMessageListResponse.Builder::messageId)
             .map(GetMessageListResponse.Builder::build);

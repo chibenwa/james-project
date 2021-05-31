@@ -41,7 +41,6 @@ import org.apache.mailet.base.RFC2822Headers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.github.fge.lambdas.Throwing;
 import com.github.steveash.guavate.Guavate;
 import com.google.common.collect.Iterables;
 
@@ -69,23 +68,23 @@ public class ReferenceUpdater {
         return updateReferences(headersAsMap, session);
     }
 
-    public Mono<Void> updateReferences(Map<String, String> headers, MailboxSession session) throws MailboxException {
+    public Mono<Void> updateReferences(Map<String, String> headers, MailboxSession session) {
         Optional<String> inReplyToId = Optional.ofNullable(headers.get(RFC2822Headers.IN_REPLY_TO));
         Optional<String> forwardedId = Optional.ofNullable(headers.get(X_FORWARDED_ID_HEADER));
 
-        return inReplyToId.map(Throwing.function((String id) -> updateAnswered(id, session)).sneakyThrow()).orElse(Mono.empty())
-            .then(forwardedId.map((Throwing.function((String id) -> updateForwarded(id, session)).sneakyThrow())).orElse(Mono.empty()));
+        return inReplyToId.map(id -> updateAnswered(id, session)).orElse(Mono.empty())
+            .then(forwardedId.map(id -> updateForwarded(id, session)).orElse(Mono.empty()));
     }
 
-    private Mono<Void> updateAnswered(String messageId, MailboxSession session) throws MailboxException {
+    private Mono<Void> updateAnswered(String messageId, MailboxSession session) {
         return updateFlag(messageId, session, new Flags(Flags.Flag.ANSWERED));
     }
 
-    private Mono<Void> updateForwarded(String messageId, MailboxSession session) throws MailboxException {
+    private Mono<Void> updateForwarded(String messageId, MailboxSession session) {
         return updateFlag(messageId, session, FORWARDED_FLAG);
     }
 
-    private Mono<Void> updateFlag(String messageId, MailboxSession session, Flags flag) throws MailboxException {
+    private Mono<Void> updateFlag(String messageId, MailboxSession session, Flags flag) {
         int limit = 2;
         MultimailboxesSearchQuery searchByRFC822MessageId = MultimailboxesSearchQuery
             .from(SearchQuery.of(SearchQuery.mimeMessageID(messageId)))

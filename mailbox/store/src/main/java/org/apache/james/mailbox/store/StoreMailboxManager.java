@@ -774,14 +774,14 @@ public class StoreMailboxManager implements MailboxManager {
     }
 
     @Override
-    public Flux<MessageId> search(MultimailboxesSearchQuery expression, MailboxSession session, long limit) throws MailboxException {
+    public Flux<MessageId> search(MultimailboxesSearchQuery expression, MailboxSession session, long limit) {
         return getInMailboxIds(expression, session)
             .filter(id -> !expression.getNotInMailboxes().contains(id))
             .collect(Guavate.toImmutableSet())
             .flatMapMany(Throwing.function(ids -> index.search(session, ids, expression.getSearchQuery(), limit)));
     }
 
-    private Flux<MailboxId> getInMailboxIds(MultimailboxesSearchQuery expression, MailboxSession session) throws MailboxException {
+    private Flux<MailboxId> getInMailboxIds(MultimailboxesSearchQuery expression, MailboxSession session) {
         if (expression.getInMailboxes().isEmpty()) {
             return accessibleMailboxIds(expression.getNamespace(), Right.Read, session);
         } else {
@@ -791,7 +791,7 @@ public class StoreMailboxManager implements MailboxManager {
         }
     }
 
-    private Flux<Mailbox> filterReadable(ImmutableSet<MailboxId> inMailboxes, MailboxSession session) throws MailboxException {
+    private Flux<Mailbox> filterReadable(ImmutableSet<MailboxId> inMailboxes, MailboxSession session) {
         MailboxMapper mailboxMapper = mailboxSessionMapperFactory.getMailboxMapper(session);
         return Flux.fromIterable(inMailboxes)
             .concatMap(mailboxMapper::findMailboxById)
