@@ -26,7 +26,6 @@ import org.apache.james.backends.cassandra.CassandraClusterExtension;
 import org.apache.james.backends.cassandra.components.CassandraModule;
 import org.apache.james.backends.cassandra.init.configuration.CassandraConfiguration;
 import org.apache.james.backends.cassandra.init.configuration.CassandraConsistenciesConfiguration;
-import org.apache.james.backends.cassandra.utils.CassandraUtils;
 import org.apache.james.backends.cassandra.versions.CassandraSchemaVersionDAO;
 import org.apache.james.backends.cassandra.versions.CassandraSchemaVersionManager;
 import org.apache.james.backends.cassandra.versions.CassandraSchemaVersionModule;
@@ -85,18 +84,15 @@ class MailboxPathV2MigrationTest {
         daoV1 = new CassandraMailboxPathDAOImpl(
             cassandra.getConf(),
             cassandra.getTypesProvider(),
-            CassandraUtils.WITH_DEFAULT_CONFIGURATION,
             cassandraCluster.getCassandraConsistenciesConfiguration());
         daoV2 = new CassandraMailboxPathV2DAO(
             cassandra.getConf(),
-            CassandraUtils.WITH_DEFAULT_CONFIGURATION,
             cassandraCluster.getCassandraConsistenciesConfiguration());
         daoV3 = new CassandraMailboxPathV3DAO(
             cassandra.getConf(),
-            CassandraUtils.WITH_DEFAULT_CONFIGURATION,
             cassandraCluster.getCassandraConsistenciesConfiguration());
 
-        CassandraUserMailboxRightsDAO userMailboxRightsDAO = new CassandraUserMailboxRightsDAO(cassandra.getConf(), CassandraUtils.WITH_DEFAULT_CONFIGURATION);
+        CassandraUserMailboxRightsDAO userMailboxRightsDAO = new CassandraUserMailboxRightsDAO(cassandra.getConf());
         mailboxDAO = new CassandraMailboxDAO(
             cassandra.getConf(),
             cassandra.getTypesProvider(),
@@ -110,7 +106,7 @@ class MailboxPathV2MigrationTest {
             .forModules(ACLModule.ACL_UPDATE)
             .withoutNestedType();
         CassandraEventStore eventStore = new CassandraEventStore(new EventStoreDao(cassandra.getConf(), jsonEventSerializer, CassandraConsistenciesConfiguration.DEFAULT));
-        CassandraUserMailboxRightsDAO usersRightDAO = new CassandraUserMailboxRightsDAO(cassandra.getConf(), CassandraUtils.WITH_DEFAULT_CONFIGURATION);
+        CassandraUserMailboxRightsDAO usersRightDAO = new CassandraUserMailboxRightsDAO(cassandra.getConf());
         mailboxMapper = new CassandraMailboxMapper(
             mailboxDAO,
             daoV1,

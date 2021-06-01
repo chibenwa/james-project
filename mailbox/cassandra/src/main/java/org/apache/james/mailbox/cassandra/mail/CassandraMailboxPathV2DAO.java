@@ -35,7 +35,6 @@ import javax.inject.Inject;
 
 import org.apache.james.backends.cassandra.init.configuration.CassandraConsistenciesConfiguration;
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor;
-import org.apache.james.backends.cassandra.utils.CassandraUtils;
 import org.apache.james.core.Username;
 import org.apache.james.mailbox.cassandra.GhostMailbox;
 import org.apache.james.mailbox.cassandra.ids.CassandraId;
@@ -54,7 +53,6 @@ import reactor.core.publisher.Mono;
 
 public class CassandraMailboxPathV2DAO {
     private final CassandraAsyncExecutor cassandraAsyncExecutor;
-    private final CassandraUtils cassandraUtils;
     private final PreparedStatement delete;
     private final PreparedStatement insert;
     private final PreparedStatement select;
@@ -63,11 +61,10 @@ public class CassandraMailboxPathV2DAO {
     private final ConsistencyLevel consistencyLevel;
 
     @Inject
-    public CassandraMailboxPathV2DAO(Session session, CassandraUtils cassandraUtils,
+    public CassandraMailboxPathV2DAO(Session session,
                                      CassandraConsistenciesConfiguration consistenciesConfiguration) {
         this.cassandraAsyncExecutor = new CassandraAsyncExecutor(session);
         this.consistencyLevel = consistenciesConfiguration.getLightweightTransaction();
-        this.cassandraUtils = cassandraUtils;
         this.insert = prepareInsert(session);
         this.delete = prepareDelete(session);
         this.select = prepareSelect(session);
@@ -126,20 +123,18 @@ public class CassandraMailboxPathV2DAO {
     }
 
     public Flux<CassandraIdAndPath> listUserMailboxes(String namespace, Username user) {
-        return cassandraAsyncExecutor.execute(
+        return cassandraAsyncExecutor.executeRows(
             selectUser.bind()
                 .setString(NAMESPACE, namespace)
                 .setString(USER, sanitizeUser(user))
                 .setConsistencyLevel(consistencyLevel))
-            .flatMapMany(cassandraUtils::convertToFlux)
             .map(this::fromRowToCassandraIdAndPath)
             .map(FunctionalUtils.toFunction(this::logReadSuccess));
     }
 
     public Flux<CassandraIdAndPath> listAll() {
-        return cassandraAsyncExecutor.execute(
+        return cassandraAsyncExecutor.executeRows(
             selectAll.bind())
-            .flatMapMany(cassandraUtils::convertToFlux)
             .map(this::fromRowToCassandraIdAndPath)
             .map(FunctionalUtils.toFunction(this::logReadSuccess));
     }

@@ -36,7 +36,6 @@ import javax.inject.Inject;
 import org.apache.james.backends.cassandra.init.CassandraTypesProvider;
 import org.apache.james.backends.cassandra.init.configuration.CassandraConsistenciesConfiguration;
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor;
-import org.apache.james.backends.cassandra.utils.CassandraUtils;
 import org.apache.james.core.Username;
 import org.apache.james.mailbox.cassandra.GhostMailbox;
 import org.apache.james.mailbox.cassandra.ids.CassandraId;
@@ -62,7 +61,6 @@ public class CassandraMailboxPathDAOImpl {
 
     private final CassandraAsyncExecutor cassandraAsyncExecutor;
     private final MailboxBaseTupleUtil mailboxBaseTupleUtil;
-    private final CassandraUtils cassandraUtils;
     private final PreparedStatement delete;
     private final PreparedStatement insert;
     private final PreparedStatement select;
@@ -73,11 +71,9 @@ public class CassandraMailboxPathDAOImpl {
 
     @Inject
     public CassandraMailboxPathDAOImpl(Session session, CassandraTypesProvider typesProvider,
-                                       CassandraUtils cassandraUtils,
                                        CassandraConsistenciesConfiguration consistenciesConfiguration) {
         this.cassandraAsyncExecutor = new CassandraAsyncExecutor(session);
         this.mailboxBaseTupleUtil = new MailboxBaseTupleUtil(typesProvider);
-        this.cassandraUtils = cassandraUtils;
         this.consistencyLevel = consistenciesConfiguration.getRegular();
         this.insert = prepareInsert(session);
         this.delete = prepareDelete(session);
@@ -85,12 +81,6 @@ public class CassandraMailboxPathDAOImpl {
         this.selectAllForUser = prepareSelectAllForUser(session);
         this.selectAll = prepareSelectAll(session);
         this.countAll = prepareCountAll(session);
-    }
-
-    @VisibleForTesting
-    public CassandraMailboxPathDAOImpl(Session session, CassandraTypesProvider typesProvider,
-                                       CassandraConsistenciesConfiguration consistenciesConfiguration) {
-        this(session, typesProvider, CassandraUtils.WITH_DEFAULT_CONFIGURATION, consistenciesConfiguration);
     }
 
     private PreparedStatement prepareDelete(Session session) {
@@ -142,10 +132,9 @@ public class CassandraMailboxPathDAOImpl {
     }
 
     public Flux<CassandraIdAndPath> listUserMailboxes(String namespace, Username user) {
-        return cassandraAsyncExecutor.execute(
+        return cassandraAsyncExecutor.executeRows(
             selectAllForUser.bind()
                 .setUDTValue(NAMESPACE_AND_USER, mailboxBaseTupleUtil.createMailboxBaseUDT(namespace, user)))
-            .flatMapMany(cassandraUtils::convertToFlux)
             .map(this::fromRowToCassandraIdAndPath)
             .map(FunctionalUtils.toFunction(this::logReadSuccess));
     }

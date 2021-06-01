@@ -19,8 +19,14 @@
 
 package org.apache.james.mailbox.cassandra.mail;
 
-import com.github.fge.lambdas.Throwing;
-import com.github.fge.lambdas.runnable.ThrowingRunnable;
+import static org.apache.james.backends.cassandra.Scenario.Builder.fail;
+import static org.apache.james.mailbox.model.MailboxAssertingTool.softly;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.util.List;
+import java.util.stream.IntStream;
+
 import org.apache.commons.lang3.StringUtils;
 import org.apache.james.backends.cassandra.CassandraCluster;
 import org.apache.james.backends.cassandra.CassandraClusterExtension;
@@ -28,7 +34,6 @@ import org.apache.james.backends.cassandra.Scenario;
 import org.apache.james.backends.cassandra.components.CassandraModule;
 import org.apache.james.backends.cassandra.init.configuration.CassandraConfiguration;
 import org.apache.james.backends.cassandra.init.configuration.CassandraConsistenciesConfiguration;
-import org.apache.james.backends.cassandra.utils.CassandraUtils;
 import org.apache.james.backends.cassandra.versions.CassandraSchemaVersionDAO;
 import org.apache.james.backends.cassandra.versions.CassandraSchemaVersionManager;
 import org.apache.james.backends.cassandra.versions.CassandraSchemaVersionModule;
@@ -60,15 +65,11 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+
+import com.github.fge.lambdas.Throwing;
+import com.github.fge.lambdas.runnable.ThrowingRunnable;
+
 import reactor.core.publisher.Mono;
-
-import java.util.List;
-import java.util.stream.IntStream;
-
-import static org.apache.james.backends.cassandra.Scenario.Builder.fail;
-import static org.apache.james.mailbox.model.MailboxAssertingTool.softly;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class CassandraMailboxMapperTest {
     private static final UidValidity UID_VALIDITY = UidValidity.of(52);
@@ -105,8 +106,8 @@ class CassandraMailboxMapperTest {
         CassandraCluster cassandra = cassandraCluster.getCassandraCluster();
         mailboxDAO = new CassandraMailboxDAO(cassandra.getConf(), cassandra.getTypesProvider(), cassandraCluster.getCassandraConsistenciesConfiguration());
         mailboxPathDAO = new CassandraMailboxPathDAOImpl(cassandra.getConf(), cassandra.getTypesProvider(), cassandraCluster.getCassandraConsistenciesConfiguration());
-        mailboxPathV2DAO = new CassandraMailboxPathV2DAO(cassandra.getConf(), CassandraUtils.WITH_DEFAULT_CONFIGURATION, cassandraCluster.getCassandraConsistenciesConfiguration());
-        mailboxPathV3DAO = new CassandraMailboxPathV3DAO(cassandra.getConf(), CassandraUtils.WITH_DEFAULT_CONFIGURATION, cassandraCluster.getCassandraConsistenciesConfiguration());
+        mailboxPathV2DAO = new CassandraMailboxPathV2DAO(cassandra.getConf(), cassandraCluster.getCassandraConsistenciesConfiguration());
+        mailboxPathV3DAO = new CassandraMailboxPathV3DAO(cassandra.getConf(), cassandraCluster.getCassandraConsistenciesConfiguration());
 
         versionDAO = new CassandraSchemaVersionDAO(cassandra.getConf());
         versionDAO.truncateVersion()
@@ -124,7 +125,7 @@ class CassandraMailboxMapperTest {
         JsonEventSerializer jsonEventSerializer = JsonEventSerializer
                 .forModules(ACLModule.ACL_UPDATE)
                 .withoutNestedType();
-        CassandraUserMailboxRightsDAO usersRightDAO = new CassandraUserMailboxRightsDAO(cassandra.getConf(), CassandraUtils.WITH_DEFAULT_CONFIGURATION);
+        CassandraUserMailboxRightsDAO usersRightDAO = new CassandraUserMailboxRightsDAO(cassandra.getConf());
         CassandraEventStore eventStore = new CassandraEventStore(new EventStoreDao(cassandra.getConf(), jsonEventSerializer, CassandraConsistenciesConfiguration.DEFAULT));
         CassandraACLMapper aclMapper = new CassandraACLMapper(
                 new CassandraACLMapper.StoreV1(usersRightDAO, aclDAOV1),

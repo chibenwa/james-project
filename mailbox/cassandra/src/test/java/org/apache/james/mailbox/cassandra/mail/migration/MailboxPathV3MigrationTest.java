@@ -22,7 +22,6 @@ package org.apache.james.mailbox.cassandra.mail.migration;
 import org.apache.james.backends.cassandra.CassandraCluster;
 import org.apache.james.backends.cassandra.CassandraClusterExtension;
 import org.apache.james.backends.cassandra.components.CassandraModule;
-import org.apache.james.backends.cassandra.utils.CassandraUtils;
 import org.apache.james.backends.cassandra.versions.CassandraSchemaVersionModule;
 import org.apache.james.core.Username;
 import org.apache.james.mailbox.cassandra.ids.CassandraId;
@@ -66,15 +65,12 @@ class MailboxPathV3MigrationTest {
         daoV1 = new CassandraMailboxPathDAOImpl(
             cassandra.getConf(),
             cassandra.getTypesProvider(),
-            CassandraUtils.WITH_DEFAULT_CONFIGURATION,
             cassandraCluster.getCassandraConsistenciesConfiguration());
         daoV2 = new CassandraMailboxPathV2DAO(
             cassandra.getConf(),
-            CassandraUtils.WITH_DEFAULT_CONFIGURATION,
             cassandraCluster.getCassandraConsistenciesConfiguration());
         daoV3 = new CassandraMailboxPathV3DAO(
             cassandra.getConf(),
-            CassandraUtils.WITH_DEFAULT_CONFIGURATION,
             cassandraCluster.getCassandraConsistenciesConfiguration());
 
         mailboxDAO = new CassandraMailboxDAO(
