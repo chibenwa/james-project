@@ -38,7 +38,6 @@ import org.apache.james.mailbox.model.Mailbox;
 import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.model.MessageAttachmentMetadata;
 import org.apache.james.mailbox.model.MessageId;
-import org.apache.james.mailbox.model.ThreadId;
 import org.apache.james.mailbox.store.mail.model.MailboxMessage;
 import org.apache.james.mailbox.store.mail.model.impl.Properties;
 import org.apache.james.mailbox.store.mail.model.impl.PropertyBuilder;
@@ -249,11 +248,6 @@ public class CassandraMessageMetadata {
         @Override
         public InputStream getFullContent() throws IOException {
             return delegate.getFullContent();
-        }
-
-        @Override
-        public ThreadId getThreadId() {
-            return delegate.getThreadId();
         }
 
         @Override
