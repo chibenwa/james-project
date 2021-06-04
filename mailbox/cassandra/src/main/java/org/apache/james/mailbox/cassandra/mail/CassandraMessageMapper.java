@@ -22,6 +22,7 @@ package org.apache.james.mailbox.cassandra.mail;
 import static org.apache.james.backends.cassandra.init.configuration.CassandraConsistenciesConfiguration.ConsistencyChoice;
 import static org.apache.james.backends.cassandra.init.configuration.CassandraConsistenciesConfiguration.ConsistencyChoice.STRONG;
 import static org.apache.james.backends.cassandra.init.configuration.CassandraConsistenciesConfiguration.ConsistencyChoice.WEAK;
+import static org.apache.james.blob.api.BlobStore.StoragePolicy.SIZE_BASED;
 import static org.apache.james.util.ReactorUtils.DEFAULT_CONCURRENCY;
 
 import java.security.SecureRandom;
@@ -264,13 +265,13 @@ public class CassandraMessageMapper implements MessageMapper {
             return Mono.just(metadata.asMailboxMessage(EMPTY_BYTE_ARRAY));
         }
         if (fetchType == FetchType.Headers && metadata.isComplete()) {
-            return Mono.from(blobStore.readBytes(blobStore.getDefaultBucketName(), metadata.getHeaderContent().get()))
+            return Mono.from(blobStore.readBytes(blobStore.getDefaultBucketName(), metadata.getHeaderContent().get(), SIZE_BASED))
                 .map(metadata::asMailboxMessage);
         }
         return messageDAOV3.retrieveMessage(metadata.getComposedMessageId(), fetchType)
             .switchIfEmpty(messageDAO.retrieveMessage(metadata.getComposedMessageId(), fetchType))
             .map(messageRepresentation -> Pair.of(metadata.getComposedMessageId(), messageRepresentation))
-            .flatMap(messageRepresentation -> attachmentLoader.addAttachmentToMessage(messageRepresentation, metadata, fetchType));
+            .flatMap(messageRepresentation -> attachmentLoader.addAttachmentToMessage(messageRepresentation, fetchType));
     }
 
     @Override

@@ -44,11 +44,10 @@ public class AttachmentLoader {
     }
 
     public Mono<CassandraMailboxMessage> addAttachmentToMessage(Pair<ComposedMessageIdWithMetaData, MessageRepresentation> messageRepresentation,
-                                                                CassandraMessageMetadata metadata,
                                                                 MessageMapper.FetchType fetchType) {
         return loadAttachments(messageRepresentation.getRight().getAttachments().stream(), fetchType)
             .map(attachments -> messageRepresentation.getRight().toMailboxMessage(messageRepresentation.getLeft(), attachments))
-            .map(message -> new CassandraMailboxMessage(message, metadata.getHeaderContent().get()));
+            .map(message -> new CassandraMailboxMessage(message, messageRepresentation.getRight().getHeaderId()));
     }
 
     private Mono<List<MessageAttachmentMetadata>> loadAttachments(Stream<MessageAttachmentRepresentation> messageAttachmentRepresentations, MessageMapper.FetchType fetchType) {
