@@ -80,7 +80,6 @@ import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.ConsistencyLevel;
 import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.PreparedStatement;
-import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.TypeCodec;
@@ -296,26 +295,20 @@ public class CassandraMessageDAOV3 {
                 .flatMap(resultSet -> message(resultSet, cassandraMessageId, fetchType));
     }
 
-    private Mono<ResultSet> retrieveRow(CassandraMessageId messageId) {
-        return cassandraAsyncExecutor.execute(select
+    private Mono<Row> retrieveRow(CassandraMessageId messageId) {
+        return cassandraAsyncExecutor.executeSingleRow(select
             .bind()
             .setUUID(MESSAGE_ID, messageId.get())
             .setConsistencyLevel(consistencyLevel));
     }
 
-    private Mono<MessageRepresentation>
-    message(ResultSet rows, CassandraMessageId cassandraMessageId, FetchType fetchType) {
-        if (rows.isExhausted()) {
-            return Mono.empty();
-        }
-
-        Row row = rows.one();
+    private Mono<MessageRepresentation> message(Row row, CassandraMessageId cassandraMessageId, FetchType fetchType) {
         BlobId headerId = retrieveBlobId(HEADER_CONTENT, row);
         BlobId bodyId = retrieveBlobId(BODY_CONTENT, row);
         int bodyStartOctet = row.getInt(BODY_START_OCTET);
 
-        return buildContentRetriever(fetchType, headerId, bodyId, bodyStartOctet).map(content ->
-            new MessageRepresentation(
+        return buildContentRetriever(fetchType, headerId, bodyId, bodyStartOctet)
+            .map(content -> new MessageRepresentation(
                 cassandraMessageId,
                 row.getTimestamp(INTERNAL_DATE),
                 row.getLong(FULL_CONTENT_OCTETS),
