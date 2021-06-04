@@ -277,8 +277,8 @@ public class CachedBlobStore implements BlobStore {
     private Mono<Void> putInCacheIfNeeded(BucketName bucketName, ReadAheadInputStream readAhead, BlobId blobId) {
         return readAhead.firstBytes
             .filter(bytes -> isAbleToCache(readAhead, bucketName))
-            .map(bytes -> Mono.from(cache.cache(blobId, bytes))
-                .doOnNext(any -> metricRetrieveMissCount.increment()))
+            .map(bytes -> Mono.fromRunnable(metricRetrieveMissCount::increment)
+                .then(Mono.from(cache.cache(blobId, bytes))))
             .orElse(Mono.empty());
     }
 
