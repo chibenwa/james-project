@@ -19,6 +19,7 @@
 
 package org.apache.james.mailbox.store;
 
+import java.io.BufferedInputStream;
 import java.io.InputStream;
 import java.util.Date;
 import java.util.List;
@@ -112,8 +113,9 @@ public interface MessageStorer {
                     return ImmutableList.<ParsedAttachment>of();
                 }
             }).orElseGet(() -> {
-                try (InputStream inputStream = contentIn.getInputStream()) {
-                    return messageParser.retrieveAttachments(inputStream);
+                try (InputStream inputStream = contentIn.getInputStream();
+                        BufferedInputStream bufferedInputStream = new BufferedInputStream(inputStream)) {
+                    return messageParser.retrieveAttachments(bufferedInputStream);
                 } catch (Exception e) {
                     LOGGER.warn("Error while parsing mail's attachments: {}", e.getMessage(), e);
                     return ImmutableList.of();
