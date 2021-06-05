@@ -20,6 +20,8 @@
 package org.apache.james.imap.processor;
 
 import java.io.Closeable;
+import java.util.Objects;
+import java.util.Optional;
 
 import org.apache.james.events.EventBus;
 import org.apache.james.imap.api.message.IdRange;
@@ -44,7 +46,7 @@ public class SelectProcessor extends AbstractSelectionProcessor<SelectRequest> {
             .addToContext(MDCBuilder.ACTION, "SELECT")
             .addToContext("mailbox", message.getMailboxName())
             .addToContext("condstore", Boolean.toString(message.getCondstore()))
-            .addToContext("knownModseq", Long.toString(message.getKnownModSeq()))
+            .addToContextIfPresent("knownModseq", Optional.ofNullable(message.getKnownModSeq()).map(Objects::toString))
             .addToContext("knownUids", UidRange.toString(message.getKnownUidSet()))
             .addToContext("knownIdRange", IdRange.toString(message.getKnownSequenceSet()))
             .addToContext("lastKnownUidValidity", message.getLastKnownUidValidity().toString())
