@@ -134,7 +134,6 @@ public class LdapRepositoryConfiguration {
                 userBase.get(),
                 userIdAttribute.get(),
                 userObjectClass.get(),
-                NO_CONNECTION_POOL,
                 NO_CONNECTION_TIMEOUT,
                 NO_READ_TIME_OUT,
                 maxRetries.get(),
@@ -160,7 +159,6 @@ public class LdapRepositoryConfiguration {
         String userIdAttribute = configuration.getString("[@userIdAttribute]");
         String userObjectClass = configuration.getString("[@userObjectClass]");
         // Default is to use connection pooling
-        boolean useConnectionPool = configuration.getBoolean("[@useConnectionPool]", NO_CONNECTION_POOL);
         int connectionTimeout = configuration.getInt("[@connectionTimeout]", NO_CONNECTION_TIMEOUT);
         int readTimeout = configuration.getInt("[@readTimeout]", NO_READ_TIME_OUT);
         // Default maximum retries is 1, which allows an alternate connection to
@@ -193,7 +191,6 @@ public class LdapRepositoryConfiguration {
             userBase,
             userIdAttribute,
             userObjectClass,
-            useConnectionPool,
             connectionTimeout,
             readTimeout,
             maxRetries,
@@ -251,9 +248,6 @@ public class LdapRepositoryConfiguration {
      */
     private final String userObjectClass;
 
-    // Use a connection pool. Default is true.
-    private final boolean useConnectionPool;
-
     // The connection timeout in milliseconds.
     // A value of less than or equal to zero means to use the network protocol's
     // (i.e., TCP's) timeout value.
@@ -290,7 +284,7 @@ public class LdapRepositoryConfiguration {
     private final Optional<Username> administratorId;
 
     private LdapRepositoryConfiguration(String ldapHost, String principal, String credentials, String userBase, String userIdAttribute,
-                                       String userObjectClass, boolean useConnectionPool, int connectionTimeout, int readTimeout,
+                                       String userObjectClass, int connectionTimeout, int readTimeout,
                                        int maxRetries, boolean supportsVirtualHosting, long retryStartInterval, long retryMaxInterval,
                                        int scale, ReadOnlyLDAPGroupRestriction restriction, String filter,
                                        Optional<String> administratorId) throws ConfigurationException {
@@ -300,7 +294,6 @@ public class LdapRepositoryConfiguration {
         this.userBase = userBase;
         this.userIdAttribute = userIdAttribute;
         this.userObjectClass = userObjectClass;
-        this.useConnectionPool = useConnectionPool;
         this.connectionTimeout = connectionTimeout;
         this.readTimeout = readTimeout;
         this.maxRetries = maxRetries;
@@ -351,9 +344,6 @@ public class LdapRepositoryConfiguration {
         return userObjectClass;
     }
 
-    public boolean useConnectionPool() {
-        return useConnectionPool;
-    }
 
     public int getConnectionTimeout() {
         return connectionTimeout;
@@ -400,8 +390,7 @@ public class LdapRepositoryConfiguration {
         if (o instanceof LdapRepositoryConfiguration) {
             LdapRepositoryConfiguration that = (LdapRepositoryConfiguration) o;
 
-            return Objects.equals(this.useConnectionPool, that.useConnectionPool)
-                && Objects.equals(this.connectionTimeout, that.connectionTimeout)
+            return Objects.equals(this.connectionTimeout, that.connectionTimeout)
                 && Objects.equals(this.readTimeout, that.readTimeout)
                 && Objects.equals(this.maxRetries, that.maxRetries)
                 && Objects.equals(this.supportsVirtualHosting, that.supportsVirtualHosting)
@@ -423,7 +412,7 @@ public class LdapRepositoryConfiguration {
 
     @Override
     public final int hashCode() {
-        return Objects.hash(ldapHost, principal, credentials, userBase, userIdAttribute, userObjectClass, useConnectionPool,
+        return Objects.hash(ldapHost, principal, credentials, userBase, userIdAttribute, userObjectClass,
             connectionTimeout, readTimeout, maxRetries, supportsVirtualHosting, retryStartInterval, retryMaxInterval, scale,
             restriction, filter, administratorId);
     }
