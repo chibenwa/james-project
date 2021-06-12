@@ -889,7 +889,7 @@ trait MailboxChangesMethodContract {
             .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
             .setBody(request)
             .build, new ResponseSpecBuilder().build)
-          .post
+          .post.prettyPeek()
           .`then`
             .statusCode(SC_OK)
             .contentType(JSON)
