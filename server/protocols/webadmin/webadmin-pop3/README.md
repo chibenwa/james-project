@@ -5,7 +5,7 @@ We introduced an additional webadmin endpoint allowing fixing possible inconsist
 In order to run this task:
 
 ```bash
-curl -XPOST 'http://ip:port/mailboxes?action=fixPop3Inconsistencies'
+curl -XPOST 'http://ip:port/mailboxes?task=fixPop3Inconsistencies'
 ```
 
 Will schedule a task for deleting stale and inserting missing POP3 meta data entries.
