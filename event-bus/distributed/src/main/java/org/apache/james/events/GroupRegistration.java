@@ -21,7 +21,6 @@ package org.apache.james.events;
 
 import static org.apache.james.backends.rabbitmq.Constants.AUTO_DELETE;
 import static org.apache.james.backends.rabbitmq.Constants.DURABLE;
-import static org.apache.james.backends.rabbitmq.Constants.EMPTY_ROUTING_KEY;
 import static org.apache.james.backends.rabbitmq.Constants.EXCLUSIVE;
 import static org.apache.james.backends.rabbitmq.Constants.REQUEUE;
 import static org.apache.james.backends.rabbitmq.Constants.deadLetterQueue;
@@ -43,7 +42,6 @@ import reactor.core.Disposable;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import reactor.rabbitmq.AcknowledgableDelivery;
-import reactor.rabbitmq.BindingSpecification;
 import reactor.rabbitmq.ConsumeOptions;
 import reactor.rabbitmq.QueueSpecification;
 import reactor.rabbitmq.Receiver;
@@ -121,11 +119,7 @@ class GroupRegistration implements Registration {
                 .durable(DURABLE)
                 .exclusive(!EXCLUSIVE)
                 .autoDelete(!AUTO_DELETE)
-                .arguments(deadLetterQueue(namingStrategy.deadLetterExchange())),
-            BindingSpecification.binding()
-                .exchange(namingStrategy.exchange())
-                .queue(queueName.asString())
-                .routingKey(EMPTY_ROUTING_KEY));
+                .arguments(deadLetterQueue(namingStrategy.deadLetterExchange())));
     }
 
     private Disposable consumeWorkQueue() {
@@ -143,13 +137,17 @@ class GroupRegistration implements Registration {
 
         return deserializeEvent(eventAsBytes)
             .flatMap(event -> delayGenerator.delayIfHaveTo(currentRetryCount)
-                .flatMap(any -> runListener(event))
-                .onErrorResume(throwable -> retryHandler.handleRetry(event, currentRetryCount, throwable))
+                .flatMap(any -> runListenerReliably(currentRetryCount, event))
                 .then(Mono.<Void>fromRunnable(acknowledgableDelivery::ack).subscribeOn(Schedulers.elastic())))
             .onErrorResume(e -> {
                 LOGGER.error("Unable to process delivery for group {}", group, e);
                 return Mono.fromRunnable(() -> acknowledgableDelivery.nack(!REQUEUE));
             });
+    }
+
+    public Mono<Void> runListenerReliably(int currentRetryCount, Event event) {
+        return runListener(event)
+            .onErrorResume(throwable -> retryHandler.handleRetry(event, currentRetryCount, throwable));
     }
 
     private Mono<Event> deserializeEvent(byte[] eventAsBytes) {
