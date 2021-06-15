@@ -150,7 +150,7 @@ class EnqueuedMailsDaoTest {
     }
 
     @Test
-    void selectShouldNotRemoveDeletedSlice() throws Exception {
+    void selectShouldNotReturnEmailsInDeletedSlice() throws Exception {
         testee.insert(EnqueuedItemWithSlicingContext.builder()
                 .enqueuedItem(EnqueuedItem.builder()
                     .enqueueId(ENQUEUE_ID)

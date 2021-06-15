@@ -105,7 +105,7 @@ public class CassandraMailQueueMailDelete {
                     .collect(Guavate.toImmutableList()))
             .concatMap(slice -> deleteEmailsFromBrowseProjection(mailQueueName, slice))
             .concatMap(slice -> enqueuedMailsDAO.deleteBucket(mailQueueName, Slice.of(slice.getTimeRangeStart()), slice.getBucketId()))
-            .then();
+            .then(contentStartDAO.updateContentStart(mailQueueName, newBrowseStartInstant));
     }
 
     private Mono<SlicingContext> deleteEmailsFromBrowseProjection(MailQueueName mailQueueName, SlicingContext slicingContext) {
