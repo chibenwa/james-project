@@ -131,6 +131,14 @@ public class CassandraMailQueueBrowser {
             .flatMapSequential(slice -> browseSlice(queueName, slice));
     }
 
+    Flux<EnqueuedItemWithSlicingContext> browseReferences(MailQueueName queueName, Instant start, Instant end) {
+        return allSlicesStartingAt(start)
+            .doOnNext(n -> System.out.println("     --- " + n + " slice looked up"))
+            .filter(slice -> slice.getStartSliceInstant().isBefore(end))
+            .doOnNext(n -> System.out.println("     --- " + n + " slice selected"))
+            .flatMapSequential(slice -> browseSlice(queueName, slice));
+    }
+
     private Mono<Pair<EnqueuedItem, Mail>> toMailFuture(EnqueuedItemWithSlicingContext enqueuedItemWithSlicingContext) {
         EnqueuedItem enqueuedItem = enqueuedItemWithSlicingContext.getEnqueuedItem();
         return mimeMessageStore.read(enqueuedItem.getPartsId())

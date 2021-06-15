@@ -119,5 +119,10 @@ public class BucketedSlices {
         public final int hashCode() {
             return Objects.hash(startSliceInstant);
         }
+
+        @Override
+        public String toString() {
+            return "" + startSliceInstant;
+        }
     }
 }
