@@ -25,6 +25,7 @@ import static com.datastax.driver.core.querybuilder.QueryBuilder.insertInto;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.select;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.truncate;
 import static org.apache.james.jmap.cassandra.projections.table.CassandraMessageFastViewProjectionTable.HAS_ATTACHMENT;
+import static org.apache.james.jmap.cassandra.projections.table.CassandraMessageFastViewProjectionTable.HAS_ATTACHMENT_LOWERCASE;
 import static org.apache.james.jmap.cassandra.projections.table.CassandraMessageFastViewProjectionTable.MESSAGE_ID;
 import static org.apache.james.jmap.cassandra.projections.table.CassandraMessageFastViewProjectionTable.PREVIEW;
 import static org.apache.james.jmap.cassandra.projections.table.CassandraMessageFastViewProjectionTable.TABLE_NAME;
@@ -136,7 +137,7 @@ public class CassandraMessageFastViewProjection implements MessageFastViewProjec
     private MessageFastViewPrecomputedProperties fromRow(Row row) {
         return MessageFastViewPrecomputedProperties.builder()
             .preview(Preview.from(row.getString(PREVIEW)))
-            .hasAttachment(row.getBool(HAS_ATTACHMENT))
+            .hasAttachment(row.getBool(HAS_ATTACHMENT_LOWERCASE))
             .build();
     }
 }

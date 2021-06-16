@@ -74,6 +74,10 @@
             <artifactId>feign-slf4j</artifactId>
         </dependency>
         <dependency>
+            <groupId>io.projectreactor.addons</groupId>
+            <artifactId>reactor-pool</artifactId>
+        </dependency>
+        <dependency>
             <groupId>io.projectreactor.rabbitmq</groupId>
             <artifactId>reactor-rabbitmq</artifactId>
         </dependency>
