@@ -30,11 +30,17 @@ import static com.datastax.driver.core.querybuilder.QueryBuilder.update;
 import static org.apache.james.mailbox.cassandra.table.CassandraMessageIdTable.TABLE_NAME;
 import static org.apache.james.mailbox.cassandra.table.CassandraMessageIds.IMAP_UID;
 import static org.apache.james.mailbox.cassandra.table.CassandraMessageIds.MAILBOX_ID;
+import static org.apache.james.mailbox.cassandra.table.CassandraMessageIds.MAILBOX_ID_LOWERCASE;
 import static org.apache.james.mailbox.cassandra.table.CassandraMessageIds.MESSAGE_ID;
+import static org.apache.james.mailbox.cassandra.table.CassandraMessageIds.MESSAGE_ID_LOWERCASE;
 import static org.apache.james.mailbox.cassandra.table.CassandraMessageV3Table.BODY_START_OCTET;
+import static org.apache.james.mailbox.cassandra.table.CassandraMessageV3Table.BODY_START_OCTET_LOWERCASE;
 import static org.apache.james.mailbox.cassandra.table.CassandraMessageV3Table.FULL_CONTENT_OCTETS;
+import static org.apache.james.mailbox.cassandra.table.CassandraMessageV3Table.FULL_CONTENT_OCTETS_LOWERCASE;
 import static org.apache.james.mailbox.cassandra.table.CassandraMessageV3Table.HEADER_CONTENT;
+import static org.apache.james.mailbox.cassandra.table.CassandraMessageV3Table.HEADER_CONTENT_LOWERCASE;
 import static org.apache.james.mailbox.cassandra.table.CassandraMessageV3Table.INTERNAL_DATE;
+import static org.apache.james.mailbox.cassandra.table.CassandraMessageV3Table.INTERNAL_DATE_LOWERCASE;
 import static org.apache.james.mailbox.cassandra.table.Flag.ANSWERED;
 import static org.apache.james.mailbox.cassandra.table.Flag.DELETED;
 import static org.apache.james.mailbox.cassandra.table.Flag.DRAFT;
@@ -44,6 +50,7 @@ import static org.apache.james.mailbox.cassandra.table.Flag.SEEN;
 import static org.apache.james.mailbox.cassandra.table.Flag.USER;
 import static org.apache.james.mailbox.cassandra.table.Flag.USER_FLAGS;
 import static org.apache.james.mailbox.cassandra.table.MessageIdToImapUid.MOD_SEQ;
+import static org.apache.james.mailbox.cassandra.table.MessageIdToImapUid.MOD_SEQ_LOWERCASE;
 import static org.apache.james.util.ReactorUtils.publishIfPresent;
 
 import java.time.Duration;
@@ -360,16 +367,16 @@ public class CassandraMessageIdDAO {
         return Optional.of(CassandraMessageMetadata.builder()
             .ids(ComposedMessageIdWithMetaData.builder()
                 .composedMessageId(new ComposedMessageId(
-                    CassandraId.of(row.getUUID(MAILBOX_ID)),
-                    CassandraMessageId.Factory.of(row.getUUID(MESSAGE_ID)),
+                    CassandraId.of(row.getUUID(MAILBOX_ID_LOWERCASE)),
+                    CassandraMessageId.Factory.of(row.getUUID(MESSAGE_ID_LOWERCASE)),
                     MessageUid.of(row.getLong(IMAP_UID))))
                 .flags(FlagsExtractor.getFlags(row))
-                .modSeq(ModSeq.of(row.getLong(MOD_SEQ)))
+                .modSeq(ModSeq.of(row.getLong(MOD_SEQ_LOWERCASE)))
                 .build())
-            .bodyStartOctet(row.getInt(BODY_START_OCTET))
-            .internalDate(row.getTimestamp(INTERNAL_DATE))
-            .size(row.getLong(FULL_CONTENT_OCTETS))
-            .headerContent(Optional.ofNullable(row.getString(HEADER_CONTENT))
+            .bodyStartOctet(row.getInt(BODY_START_OCTET_LOWERCASE))
+            .internalDate(row.getTimestamp(INTERNAL_DATE_LOWERCASE))
+            .size(row.getLong(FULL_CONTENT_OCTETS_LOWERCASE))
+            .headerContent(Optional.ofNullable(row.getString(HEADER_CONTENT_LOWERCASE))
                 .map(blobIdFactory::from))
             .build());
     }
