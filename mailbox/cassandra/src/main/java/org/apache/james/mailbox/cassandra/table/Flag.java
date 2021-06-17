@@ -43,7 +43,7 @@ public interface Flag {
         RECENT.toLowerCase(Locale.US),
         SEEN.toLowerCase(Locale.US),
         FLAGGED.toLowerCase(Locale.US),
-        USER .toLowerCase(Locale.US)
+        USER.toLowerCase(Locale.US)
     };
 
     ImmutableMap<String, Flags.Flag> JAVAX_MAIL_FLAG = ImmutableMap.<String, Flags.Flag>builder()
