@@ -42,6 +42,7 @@ import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.model.MessageMetaData;
 import org.apache.james.mailbox.model.MessageResult;
 import org.apache.james.mime4j.dom.Message;
+import org.apache.james.mime4j.message.DefaultMessageBuilder;
 import org.apache.james.mime4j.stream.MimeConfig;
 import org.reactivestreams.Publisher;
 
@@ -128,10 +129,8 @@ public class PopulateEmailQueryViewListener implements ReactiveGroupEventListene
     }
 
     private Message parseMessage(MessageResult messageResult) throws IOException, MailboxException {
-        return Message.Builder
-            .of()
-            .use(MimeConfig.PERMISSIVE)
-            .parse(messageResult.getFullContent().getInputStream())
-            .build();
+        DefaultMessageBuilder defaultMessageBuilder = new DefaultMessageBuilder();
+        defaultMessageBuilder.setMimeEntityConfig(MimeConfig.PERMISSIVE);
+        return defaultMessageBuilder.parseMessage(messageResult.getFullContent().getInputStream());
     }
 }
