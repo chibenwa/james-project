@@ -21,7 +21,6 @@ package org.apache.james.mailbox.elasticsearch.v7.json;
 
 import java.time.ZonedDateTime;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -104,7 +103,7 @@ public class HeaderCollection {
 
         public Builder add(Field field) {
             Preconditions.checkNotNull(field);
-            String headerName = field.getName().toLowerCase(Locale.US);
+            String headerName = field.getNameLowerCase();
             String rawHeaderValue = field.getBody();
             String sanitizedValue = MimeUtil.unscrambleHeaderValue(rawHeaderValue);
 
