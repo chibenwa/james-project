@@ -111,6 +111,7 @@ class WebSocketRoutes @Inject() (@Named(InjectionKeys.RFC_8621) val authenticato
       })
       .flatMap(message => handleClientMessages(context)(message))
       .doOnTerminate(context.clean)
+      .doOnCancel(context.clean)
 
     out.sendByteArray(
       SFlux.merge(Seq(responseFlux, sink.asFlux()))
