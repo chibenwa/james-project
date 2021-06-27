@@ -111,24 +111,25 @@ class MailboxGetMethod @Inject() (serializer: MailboxSerializer,
   private def getMailboxes(capabilities: Set[CapabilityIdentifier],
                            mailboxGetRequest: MailboxGetRequest,
                            mailboxSession: MailboxSession): SFlux[MailboxGetResults] =
-    mailboxGetRequest.ids match {
-      case None => provisioner.createMailboxesIfNeeded(mailboxSession)
-        .thenMany(getAllMailboxes(capabilities, mailboxSession))
-        .map(MailboxGetResults.found)
-      case Some(Ids.EMPTY) => SFlux.empty
-      case Some(ids) =>
-        SMono.zip(array => (array(0).asInstanceOf[QuotaLoaderWithPreloadedDefault],
-          array(1).asInstanceOf[Subscriptions]),
-          quotaFactory.loadFor(mailboxSession),
-          retrieveSubscriptions(mailboxSession))
-          .flatMapMany {
-            case (quotaLoader, subscriptions) => SFlux.fromIterable(ids.value)
-              .flatMap(id => Try(mailboxIdFactory.fromString(id.id))
-                .fold(e => SMono.just(MailboxGetResults.notFound(id)),
-                  mailboxId => getMailboxResultById(capabilities, mailboxId, subscriptions, quotaLoader, mailboxSession)),
-                maxConcurrency = 5)
-          }
-    }
+    provisioner.createMailboxesIfNeeded(mailboxSession)
+      .thenMany(
+        mailboxGetRequest.ids match {
+          case None => getAllMailboxes(capabilities, mailboxSession)
+            .map(MailboxGetResults.found)
+          case Some(Ids.EMPTY) => SFlux.empty
+          case Some(ids) =>
+            SMono.zip(array => (array(0).asInstanceOf[QuotaLoaderWithPreloadedDefault],
+              array(1).asInstanceOf[Subscriptions]),
+              quotaFactory.loadFor(mailboxSession),
+              retrieveSubscriptions(mailboxSession))
+              .flatMapMany {
+                case (quotaLoader, subscriptions) => SFlux.fromIterable(ids.value)
+                  .flatMap(id => Try(mailboxIdFactory.fromString(id.id))
+                    .fold(e => SMono.just(MailboxGetResults.notFound(id)),
+                      mailboxId => getMailboxResultById(capabilities, mailboxId, subscriptions, quotaLoader, mailboxSession)),
+                    maxConcurrency = 5)
+              }
+        })
 
   private def retrieveSubscriptions(mailboxSession: MailboxSession): SMono[Subscriptions] =
     SFlux(subscriptionManager.subscriptionsReactive(mailboxSession))
