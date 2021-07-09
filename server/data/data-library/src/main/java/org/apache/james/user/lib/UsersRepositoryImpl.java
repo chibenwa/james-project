@@ -60,7 +60,9 @@ public class UsersRepositoryImpl<T extends UsersDAO> implements UsersRepository,
 
     @Override
     public void configure(HierarchicalConfiguration<ImmutableNode> configuration) throws ConfigurationException {
-        virtualHosting = configuration.getBoolean("enableVirtualHosting", usersDAO.getDefaultVirtualHostingValue());
+        virtualHosting = configuration.getBoolean("enableVirtualHosting",
+            configuration.getBoolean("supportsVirtualHosting",
+                usersDAO.getDefaultVirtualHostingValue()));
         administratorId = Optional.ofNullable(configuration.getString("administratorId"))
             .map(Username::of);
     }
