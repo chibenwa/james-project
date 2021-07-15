@@ -42,9 +42,7 @@ public class SMTPMDCContextFactory implements ProtocolMDCContextFactory {
     }
 
     public static MDCBuilder forSession(SMTPSession smtpSession) {
-        return MDCBuilder.create()
-            .addToContext(ProtocolMDCContextFactory.forSession(smtpSession))
-            .addToContext(forSMTPSession(smtpSession));
+        return forSMTPSession(smtpSession);
     }
 
     private MDCBuilder from(Object o) {
