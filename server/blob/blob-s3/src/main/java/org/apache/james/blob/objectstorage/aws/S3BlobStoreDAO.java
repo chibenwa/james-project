@@ -329,6 +329,7 @@ public class S3BlobStoreDAO implements BlobStoreDAO, Startable, Closeable {
             .takeUntil(list -> !list.isTruncated())
             .flatMapIterable(ListObjectsResponse::contents)
             .map(S3Object::key)
-            .map(blobIdFactory::from);
+            .map(blobIdFactory::from)
+            .onErrorResume(NoSuchBucketException.class, e -> Flux.empty());
     }
 }

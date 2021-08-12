@@ -20,7 +20,7 @@ package org.apache.james.blob.objectstorage.aws;
 
 import org.apache.james.blob.api.BlobStoreDAO;
 import org.apache.james.blob.api.BlobStoreDAOContract;
-import org.apache.james.blob.api.HashBlobId;
+import org.apache.james.blob.api.TestBlobId;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -43,7 +43,7 @@ public class S3BlobStoreDAOTest implements BlobStoreDAOContract {
             .region(dockerAwsS3.dockerAwsS3().region())
             .build();
 
-        testee = new S3BlobStoreDAO(s3Configuration, new HashBlobId.Factory());
+        testee = new S3BlobStoreDAO(s3Configuration, new TestBlobId.Factory());
     }
 
     @AfterEach

@@ -96,7 +96,8 @@ public class CassandraBucketDAO {
     private PreparedStatement prepareListBucketContent(Session session) {
         return session.prepare(select()
             .from(BlobTables.BucketBlobTable.TABLE_NAME)
-            .where(eq(BUCKET, bindMarker(BUCKET))));
+            .where(eq(BUCKET, bindMarker(BUCKET)))
+            .allowFiltering());
     }
 
     private PreparedStatement prepareSelect(Session session) {
