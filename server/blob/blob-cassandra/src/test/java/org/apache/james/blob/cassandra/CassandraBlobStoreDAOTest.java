@@ -44,7 +44,7 @@ public class CassandraBlobStoreDAOTest implements BlobStoreDAOContract {
     void setUp(CassandraCluster cassandra) {
         HashBlobId.Factory blobIdFactory = new HashBlobId.Factory();
         CassandraBucketDAO bucketDAO = new CassandraBucketDAO(blobIdFactory, cassandra.getConf());
-        defaultBucketDAO = new CassandraDefaultBucketDAO(cassandra.getConf());
+        defaultBucketDAO = new CassandraDefaultBucketDAO(cassandra.getConf(), blobIdFactory);
         testee = new CassandraBlobStoreDAO(
             defaultBucketDAO,
             bucketDAO,

@@ -47,7 +47,7 @@ class CassandraDefaultBucketDAOTest {
 
     @BeforeEach
     void setUp(CassandraCluster cassandra) {
-        testee = new CassandraDefaultBucketDAO(cassandraCluster.getCassandraCluster().getConf());
+        testee = new CassandraDefaultBucketDAO(cassandraCluster.getCassandraCluster().getConf(), blobIdFactory);
     }
 
     @Test
