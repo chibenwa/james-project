@@ -21,6 +21,9 @@ package org.apache.james.blob.api;
 
 import org.reactivestreams.Publisher;
 
+// TODO Write ...
+//    - Tests for attachment and email blob references
+//    - references for mailQueue + mail repository
 @FunctionalInterface
 public interface BlobReferenceSource {
     Publisher<BlobId> listReferencedBlobs();

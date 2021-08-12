@@ -24,6 +24,12 @@ public class BloomFilterGCAlgorithm {
         this.bucketName = bucketName;
     }
 
+    // TODO Context
+    //   - How many blob reference do we have?
+    //   - How many blobs do we have?
+    //   - How many orphan blobs did we encounter?
+    //   - How many errors did we encounter?
+    // TODO Return a Task.Result
     public Mono<Void> gc(int expectedBlobCount, double associatedProbability) {
         // Avoids two subsequent run to have the same false positives.
         String salt = UUID.randomUUID().toString();
