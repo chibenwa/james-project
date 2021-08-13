@@ -1,6 +1,8 @@
 package org.apache.james.server.blob.deduplication;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
+import java.time.Instant;
 import java.util.UUID;
 
 import org.apache.james.blob.api.BlobReferenceSource;
@@ -16,12 +18,16 @@ import reactor.core.publisher.Mono;
 public class BloomFilterGCAlgorithm {
     private final BlobReferenceSource referenceSource;
     private final BlobStore blobStore;
+    private final Clock clock;
     private final BucketName bucketName;
+    private final int currentGenerationFamily;
 
-    public BloomFilterGCAlgorithm(BlobReferenceSource referenceSource, BlobStore blobStore, BucketName bucketName) {
+    public BloomFilterGCAlgorithm(BlobReferenceSource referenceSource, BlobStore blobStore, Clock clock, BucketName bucketName, int currentGenerationFamily) {
         this.referenceSource = referenceSource;
         this.blobStore = blobStore;
+        this.clock = clock;
         this.bucketName = bucketName;
+        this.currentGenerationFamily = currentGenerationFamily;
     }
 
     // TODO Context
@@ -33,9 +39,12 @@ public class BloomFilterGCAlgorithm {
     public Mono<Void> gc(int expectedBlobCount, double associatedProbability) {
         // Avoids two subsequent run to have the same false positives.
         String salt = UUID.randomUUID().toString();
+        Instant now = clock.instant();
 
         return populatedBloomFilter(salt, expectedBlobCount, associatedProbability)
             .flatMap(bloomFilter -> Flux.from(blobStore.listBlobs(bucketName))
+                .map(GenerationAwareBlobId.class::cast)
+                .filter(blobId -> !blobId.inActiveGeneration(currentGenerationFamily, now))
                 .filter(blobId -> !bloomFilter.mightContain(salt + blobId.asString()))
                 .flatMap(orphanBlobId -> blobStore.delete(bucketName, orphanBlobId))
                 .then());
