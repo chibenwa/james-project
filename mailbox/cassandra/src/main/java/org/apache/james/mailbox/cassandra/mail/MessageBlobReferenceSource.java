@@ -23,6 +23,8 @@ import org.apache.james.blob.api.BlobId;
 import org.apache.james.blob.api.BlobReferenceSource;
 import org.reactivestreams.Publisher;
 
+import reactor.core.publisher.Flux;
+
 public class MessageBlobReferenceSource implements BlobReferenceSource {
     private final CassandraMessageDAOV3 daov3;
 
@@ -31,7 +33,7 @@ public class MessageBlobReferenceSource implements BlobReferenceSource {
     }
 
     @Override
-    public Publisher<BlobId> listReferencedBlobs() {
+    public Flux<BlobId> listReferencedBlobs() {
         return daov3.listBlobs();
     }
 }
