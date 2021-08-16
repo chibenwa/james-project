@@ -7,6 +7,7 @@ import java.util.UUID;
 
 import org.apache.james.blob.api.BlobReferenceSource;
 import org.apache.james.blob.api.BlobStore;
+import org.apache.james.blob.api.BlobStoreDAO;
 import org.apache.james.blob.api.BucketName;
 
 import com.google.common.hash.BloomFilter;
@@ -18,13 +19,15 @@ import reactor.core.publisher.Mono;
 public class BloomFilterGCAlgorithm {
     private final BlobReferenceSource referenceSource;
     private final BlobStore blobStore;
+    private final BlobStoreDAO blobStoreDAO;
     private final Clock clock;
     private final BucketName bucketName;
     private final int currentGenerationFamily;
 
-    public BloomFilterGCAlgorithm(BlobReferenceSource referenceSource, BlobStore blobStore, Clock clock, BucketName bucketName, int currentGenerationFamily) {
+    public BloomFilterGCAlgorithm(BlobReferenceSource referenceSource, BlobStore blobStore, BlobStoreDAO blobStoreDAO, Clock clock, BucketName bucketName, int currentGenerationFamily) {
         this.referenceSource = referenceSource;
         this.blobStore = blobStore;
+        this.blobStoreDAO = blobStoreDAO;
         this.clock = clock;
         this.bucketName = bucketName;
         this.currentGenerationFamily = currentGenerationFamily;
@@ -46,7 +49,7 @@ public class BloomFilterGCAlgorithm {
                 .map(GenerationAwareBlobId.class::cast)
                 .filter(blobId -> !blobId.inActiveGeneration(currentGenerationFamily, now))
                 .filter(blobId -> !bloomFilter.mightContain(salt + blobId.asString()))
-                .flatMap(orphanBlobId -> blobStore.delete(bucketName, orphanBlobId))
+                .flatMap(orphanBlobId -> blobStoreDAO.delete(bucketName, orphanBlobId))
                 .then());
     }
 
