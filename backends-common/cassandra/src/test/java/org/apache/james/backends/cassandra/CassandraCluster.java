@@ -25,12 +25,11 @@ import org.apache.james.backends.cassandra.init.CassandraTableManager;
 import org.apache.james.backends.cassandra.init.CassandraTypesProvider;
 import org.apache.james.backends.cassandra.init.ClusterFactory;
 import org.apache.james.backends.cassandra.init.SessionWithInitializedTablesFactory;
-import org.apache.james.backends.cassandra.init.configuration.CassandraConsistenciesConfiguration;
 import org.apache.james.backends.cassandra.init.configuration.ClusterConfiguration;
 import org.apache.james.backends.cassandra.init.configuration.KeyspaceConfiguration;
 import org.apache.james.util.Host;
 
-import com.datastax.driver.core.Cluster;
+import com.datastax.oss.driver.api.core.CqlSession;
 
 public final class CassandraCluster implements AutoCloseable {
     private static final String KEYSPACE = "testing";
@@ -51,8 +50,8 @@ public final class CassandraCluster implements AutoCloseable {
     private static Optional<Exception> startStackTrace = Optional.empty();
 
     private final CassandraModule module;
-    private final Cluster nonPrivilegedCluster;
-    private final TestingSession nonPrivilegedSession;
+    private final CqlSession nonPrivilegedCluster;
+    private final CqlSession nonPrivilegedSession;
     private final CassandraTypesProvider typesProvider;
     private final ClusterConfiguration clusterConfiguration;
 
@@ -60,13 +59,12 @@ public final class CassandraCluster implements AutoCloseable {
         this.module = module;
 
         this.clusterConfiguration = DockerCassandra.configurationBuilder(host).build();
-        this.nonPrivilegedCluster = ClusterFactory.create(clusterConfiguration, CassandraConsistenciesConfiguration.DEFAULT);
         KeyspaceConfiguration keyspaceConfiguration = KeyspaceConfiguration.builder()
             .keyspace(KEYSPACE)
             .replicationFactor(1)
             .disableDurableWrites();
-        this.nonPrivilegedSession = new TestingSession(new SessionWithInitializedTablesFactory(keyspaceConfiguration,
-            nonPrivilegedCluster, module).get());
+        this.nonPrivilegedCluster = ClusterFactory.create(clusterConfiguration, keyspaceConfiguration);
+        this.nonPrivilegedSession = new SessionWithInitializedTablesFactory(nonPrivilegedCluster, module).get();
         this.typesProvider = new CassandraTypesProvider(module, nonPrivilegedSession);
     }
 
@@ -74,7 +72,7 @@ public final class CassandraCluster implements AutoCloseable {
         return clusterConfiguration;
     }
 
-    public TestingSession getConf() {
+    public CqlSession getConf() {
         return nonPrivilegedSession;
     }
 
@@ -84,7 +82,7 @@ public final class CassandraCluster implements AutoCloseable {
 
     @Override
     public void close() {
-        nonPrivilegedSession.resetInstrumentation();
+       // nonPrivilegedSession.resetInstrumentation();
         if (!nonPrivilegedCluster.isClosed()) {
             clearTables();
             closeCluster();
@@ -92,7 +90,7 @@ public final class CassandraCluster implements AutoCloseable {
     }
 
     void closeCluster() {
-        nonPrivilegedCluster.closeAsync().force();
+      //  nonPrivilegedCluster.closeAsync().force();
         startStackTrace = Optional.empty();
     }
 

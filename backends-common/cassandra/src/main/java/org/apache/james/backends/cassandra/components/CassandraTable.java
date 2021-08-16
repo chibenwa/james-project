@@ -21,9 +21,9 @@ package org.apache.james.backends.cassandra.components;
 
 import java.util.Objects;
 
-import com.datastax.driver.core.KeyspaceMetadata;
-import com.datastax.driver.core.Session;
-import com.datastax.driver.core.Statement;
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.metadata.schema.KeyspaceMetadata;
+import com.datastax.oss.driver.api.querybuilder.schema.CreateTableWithOptions;
 import com.google.common.base.MoreObjects;
 
 public class CassandraTable {
@@ -41,10 +41,10 @@ public class CassandraTable {
         }
     }
 
-    private final Statement createStatement;
+    private final CreateTableWithOptions createStatement;
     private final String name;
 
-    public CassandraTable(String name, Statement createStatement) {
+    public CassandraTable(String name, CreateTableWithOptions createStatement) {
         this.createStatement = createStatement;
         this.name = name;
     }
@@ -53,12 +53,13 @@ public class CassandraTable {
         return name;
     }
 
-    public InitializationStatus initialize(KeyspaceMetadata keyspaceMetadata, Session session) {
-        if (keyspaceMetadata.getTable(name) != null) {
+    public InitializationStatus initialize(KeyspaceMetadata keyspaceMetadata, CqlSession session) {
+        if (keyspaceMetadata.getTable(name).isPresent()) {
             return InitializationStatus.ALREADY_DONE;
         }
 
-        session.execute(createStatement);
+        session.execute(createStatement.build());
+
         return InitializationStatus.FULL;
     }
 

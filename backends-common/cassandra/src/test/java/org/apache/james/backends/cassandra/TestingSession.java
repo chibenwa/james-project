@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations      *
  * under the License.                                           *
  ****************************************************************/
-
+/*
 package org.apache.james.backends.cassandra;
 
 import java.util.Map;
@@ -208,4 +208,4 @@ public class TestingSession implements Session {
     public State getState() {
         return delegate.getState();
     }
-}
+}*/

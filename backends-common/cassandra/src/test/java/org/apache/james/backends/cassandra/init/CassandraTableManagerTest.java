@@ -32,9 +32,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import com.datastax.driver.core.DataType;
-import com.datastax.driver.core.querybuilder.QueryBuilder;
-import com.datastax.driver.core.schemabuilder.SchemaBuilder;
+import com.datastax.oss.driver.api.core.type.DataTypes;
+import com.datastax.oss.driver.api.querybuilder.QueryBuilder;
+import com.datastax.oss.driver.api.querybuilder.SchemaBuilder;
 
 class CassandraTableManagerTest {
     private static final String TABLE_NAME = "tablename";
@@ -44,8 +44,8 @@ class CassandraTableManagerTest {
             CassandraModule.table(TABLE_NAME)
                 .comment("Testing table")
                 .statement(statement -> statement
-                        .addPartitionKey("id", DataType.timeuuid())
-                        .addClusteringColumn("clustering", DataType.bigint()))
+                    .withPartitionKey("id", DataTypes.TIMEUUID)
+                    .withClusteringColumn("clustering", DataTypes.BIGINT))
                 .build());
 
     @RegisterExtension
@@ -65,8 +65,8 @@ class CassandraTableManagerTest {
 
     @Test
     void initializeTableShouldCreateAllTheTables() {
-        cassandra.getConf().execute(SchemaBuilder.dropTable(TABLE_NAME));
-        cassandra.getConf().execute(SchemaBuilder.dropTable(CassandraSchemaVersionTable.TABLE_NAME));
+        cassandra.getConf().execute(SchemaBuilder.dropTable(TABLE_NAME).build());
+        cassandra.getConf().execute(SchemaBuilder.dropTable(CassandraSchemaVersionTable.TABLE_NAME).build());
 
         assertThat(new CassandraTableManager(MODULE, cassandra.getConf()).initializeTables())
                 .isEqualByComparingTo(CassandraTable.InitializationStatus.FULL);
@@ -76,7 +76,7 @@ class CassandraTableManagerTest {
 
     @Test
     void initializeTableShouldCreateAllTheMissingTable() {
-        cassandra.getConf().execute(SchemaBuilder.dropTable(TABLE_NAME));
+        cassandra.getConf().execute(SchemaBuilder.dropTable(TABLE_NAME).build());
 
         assertThat(new CassandraTableManager(MODULE, cassandra.getConf()).initializeTables())
                 .isEqualByComparingTo(CassandraTable.InitializationStatus.PARTIAL);
@@ -98,7 +98,7 @@ class CassandraTableManagerTest {
     }
 
     private void ensureTableExistence(String tableName) {
-        assertThatCode(() -> cassandra.getConf().execute(QueryBuilder.select().from(tableName).limit(1)))
+        assertThatCode(() -> cassandra.getConf().execute(QueryBuilder.selectFrom(tableName).all().limit(1).build()))
             .doesNotThrowAnyException();
     }
 }

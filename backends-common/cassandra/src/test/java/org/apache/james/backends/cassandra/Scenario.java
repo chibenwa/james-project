@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations      *
  * under the License.                                           *
  ****************************************************************/
-
+/*
 package org.apache.james.backends.cassandra;
 
 import java.util.concurrent.CountDownLatch;
@@ -229,10 +229,10 @@ public class Scenario {
             this.behavior = behavior;
             this.validity = validity;
         }
-
+*/
         /**
          * Returns the behaviour of this hook if it should be applied
-         */
+         *//*
         Stream<Behavior> asBehavior(Statement statement) {
             if (statementPredicate.test(statement)) {
                 if (validity.isApplicable()) {
@@ -262,3 +262,4 @@ public class Scenario {
             .orElse(Behavior.EXECUTE_NORMALLY);
     }
 }
+*/

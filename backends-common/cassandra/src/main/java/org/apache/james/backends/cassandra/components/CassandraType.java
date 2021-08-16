@@ -21,9 +21,10 @@ package org.apache.james.backends.cassandra.components;
 
 import java.util.Objects;
 
-import com.datastax.driver.core.KeyspaceMetadata;
-import com.datastax.driver.core.Session;
-import com.datastax.driver.core.schemabuilder.CreateType;
+import com.datastax.oss.driver.api.core.CqlIdentifier;
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.metadata.schema.KeyspaceMetadata;
+import com.datastax.oss.driver.api.querybuilder.schema.CreateType;
 import com.google.common.base.MoreObjects;
 
 public class CassandraType {
@@ -53,12 +54,12 @@ public class CassandraType {
         return name;
     }
 
-    public InitializationStatus initialize(KeyspaceMetadata keyspaceMetadata, Session session) {
-        if (keyspaceMetadata.getUserType(name) != null) {
+    public InitializationStatus initialize(KeyspaceMetadata keyspaceMetadata, CqlSession session) {
+        if (keyspaceMetadata.getUserDefinedTypes().get(CqlIdentifier.fromInternal(name)) != null) {
             return InitializationStatus.ALREADY_DONE;
         }
 
-        session.execute(createStatement);
+        session.execute(createStatement.build());
         return InitializationStatus.FULL;
     }
 

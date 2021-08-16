@@ -19,6 +19,7 @@
 
 package org.apache.james.backends.cassandra.init;
 
+import java.util.Map;
 import java.util.Optional;
 
 import javax.inject.Inject;
@@ -26,28 +27,29 @@ import javax.inject.Inject;
 import org.apache.james.backends.cassandra.components.CassandraModule;
 import org.apache.james.backends.cassandra.components.CassandraType;
 
-import com.datastax.driver.core.KeyspaceMetadata;
-import com.datastax.driver.core.Session;
-import com.datastax.driver.core.UserType;
+import com.datastax.oss.driver.api.core.CqlIdentifier;
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.metadata.schema.KeyspaceMetadata;
+import com.datastax.oss.driver.api.core.type.UserDefinedType;
 import com.google.common.collect.ImmutableMap;
 
 public class CassandraTypesProvider {
-    private final ImmutableMap<String, UserType> userTypes;
+    private final ImmutableMap<String, UserDefinedType> userTypes;
 
     @Inject
-    public CassandraTypesProvider(CassandraModule module, Session session) {
-        KeyspaceMetadata keyspaceMetadata = session.getCluster()
-            .getMetadata()
-            .getKeyspace(session.getLoggedKeyspace());
+    public CassandraTypesProvider(CassandraModule module, CqlSession session) {
+        KeyspaceMetadata keyspaceMetadata = session.getMetadata().getKeyspaces().get(session.getKeyspace().get());
+        Map<CqlIdentifier, UserDefinedType> userDefinedTypes = keyspaceMetadata.getUserDefinedTypes();
+        System.out.println(userDefinedTypes);
 
         userTypes = module.moduleTypes()
             .stream()
             .collect(ImmutableMap.toImmutableMap(
                     CassandraType::getName,
-                    type -> keyspaceMetadata.getUserType(type.getName())));
+                    type -> userDefinedTypes.get(CqlIdentifier.fromInternal(type.getName()))));
     }
 
-    public UserType getDefinedUserType(String typeName) {
+    public UserDefinedType getDefinedUserType(String typeName) {
         return Optional.ofNullable(userTypes.get(typeName))
             .orElseThrow(() -> new RuntimeException("Cassandra UDT " + typeName + " can not be retrieved"));
     }

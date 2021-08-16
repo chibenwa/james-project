@@ -18,7 +18,7 @@
  ****************************************************************/
 
 package org.apache.james.backends.cassandra;
-
+/*
 
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -70,3 +70,4 @@ public class StatementRecorder {
         return selector.select(ImmutableList.copyOf(statements));
     }
 }
+*/
