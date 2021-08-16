@@ -28,11 +28,6 @@ import java.util.Optional;
 import org.apache.commons.configuration2.Configuration;
 import org.apache.james.util.Host;
 
-import com.datastax.driver.core.HostDistance;
-import com.datastax.driver.core.PoolingOptions;
-import com.datastax.driver.core.policies.DCAwareRoundRobinPolicy;
-import com.datastax.driver.core.policies.LoadBalancingPolicy;
-import com.datastax.driver.core.policies.TokenAwarePolicy;
 import com.google.common.collect.ImmutableList;
 
 public class ClusterConfiguration {
@@ -42,28 +37,16 @@ public class ClusterConfiguration {
         private boolean createKeyspace;
         private Optional<Integer> minDelay;
         private Optional<Integer> maxRetry;
-        private Optional<QueryLoggerConfiguration> queryLoggerConfiguration;
-        private Optional<PoolingOptions> poolingOptions;
-        private Optional<Integer> readTimeoutMillis;
-        private Optional<Integer> connectTimeoutMillis;
-        private Optional<Boolean> useSsl;
         private Optional<String> username;
         private Optional<String> password;
-        private Optional<String> localDc;
 
         public Builder() {
             hosts = ImmutableList.builder();
             createKeyspace = false;
             minDelay = Optional.empty();
             maxRetry = Optional.empty();
-            queryLoggerConfiguration = Optional.empty();
-            poolingOptions = Optional.empty();
-            readTimeoutMillis = Optional.empty();
-            connectTimeoutMillis = Optional.empty();
             username = Optional.empty();
             password = Optional.empty();
-            useSsl = Optional.empty();
-            localDc = Optional.empty();
         }
 
         public Builder host(Host host) {
@@ -104,33 +87,6 @@ public class ClusterConfiguration {
             return maxRetry(Optional.of(maxRetry));
         }
 
-        public Builder queryLoggerConfiguration(QueryLoggerConfiguration queryLoggerConfiguration) {
-            this.queryLoggerConfiguration = Optional.of(queryLoggerConfiguration);
-            return this;
-        }
-
-        public Builder poolingOptions(Optional<PoolingOptions> poolingOptions) {
-            this.poolingOptions = poolingOptions;
-            return this;
-        }
-
-        public Builder poolingOptions(PoolingOptions poolingOptions) {
-            return poolingOptions(Optional.of(poolingOptions));
-        }
-
-        public Builder readTimeoutMillis(Optional<Integer> readTimeoutMillis) {
-            this.readTimeoutMillis = readTimeoutMillis;
-            return this;
-        }
-
-        public Builder readTimeoutMillis(int readTimeoutMillis) {
-            return readTimeoutMillis(Optional.of(readTimeoutMillis));
-        }
-
-        public Builder connectTimeoutMillis(Optional<Integer> connectTimeoutMillis) {
-            this.connectTimeoutMillis = connectTimeoutMillis;
-            return this;
-        }
 
         public Builder username(Optional<String> username) {
             this.username = username;
@@ -150,27 +106,7 @@ public class ClusterConfiguration {
             return password(Optional.of(password));
         }
 
-        public Builder useSsl(Optional<Boolean> useSsl) {
-            this.useSsl = useSsl;
-            return this;
-        }
 
-        public Builder useSsl(boolean useSsl) {
-            return useSsl(Optional.of(useSsl));
-        }
-
-        public Builder useSsl() {
-            return useSsl(true);
-        }
-
-        public Builder connectTimeoutMillis(int connectTimeoutMillis) {
-            return connectTimeoutMillis(Optional.of(connectTimeoutMillis));
-        }
-
-        public Builder localDc(Optional<String> localDc) {
-            this.localDc = localDc;
-            return this;
-        }
 
         public ClusterConfiguration build() {
             return new ClusterConfiguration(
@@ -178,14 +114,8 @@ public class ClusterConfiguration {
                 createKeyspace,
                 minDelay.orElse(DEFAULT_CONNECTION_MIN_DELAY),
                 maxRetry.orElse(DEFAULT_CONNECTION_MAX_RETRIES),
-                queryLoggerConfiguration,
-                poolingOptions,
-                readTimeoutMillis.orElse(DEFAULT_READ_TIMEOUT_MILLIS),
-                connectTimeoutMillis.orElse(DEFAULT_CONNECT_TIMEOUT_MILLIS),
-                useSsl.orElse(false),
                 username,
-                password,
-                localDc);
+                password);
         }
     }
 
@@ -219,14 +149,8 @@ public class ClusterConfiguration {
             .hosts(listCassandraServers(configuration))
             .minDelay(Optional.ofNullable(configuration.getInteger(CONNECTION_RETRY_MIN_DELAY, null)))
             .maxRetry(Optional.ofNullable(configuration.getInteger(CONNECTION_MAX_RETRY, null)))
-            .queryLoggerConfiguration(QueryLoggerConfiguration.from(configuration))
-            .poolingOptions(readPoolingOptions(configuration))
-            .readTimeoutMillis(Optional.ofNullable(configuration.getInteger(READ_TIMEOUT_MILLIS, null)))
-            .connectTimeoutMillis(Optional.ofNullable(configuration.getInteger(CONNECT_TIMEOUT_MILLIS, null)))
-            .useSsl(Optional.ofNullable(configuration.getBoolean(CASSANDRA_SSL, null)))
             .username(Optional.ofNullable(configuration.getString(CASSANDRA_USER, null)))
-            .password(Optional.ofNullable(configuration.getString(CASSANDRA_PASSWORD, null)))
-            .localDc(Optional.ofNullable(configuration.getString(CASSANDRA_LOCAL_DC, null)));
+            .password(Optional.ofNullable(configuration.getString(CASSANDRA_PASSWORD, null)));
         if (createKeySpace) {
             builder = builder.createKeyspace();
         }
@@ -241,66 +165,22 @@ public class ClusterConfiguration {
             .collect(ImmutableList.toImmutableList());
     }
 
-    private static Optional<PoolingOptions> readPoolingOptions(Configuration configuration) {
-        Optional<Integer> maxConnections = Optional.ofNullable(configuration.getInteger("cassandra.pooling.local.max.connections", null));
-        Optional<Integer> maxRequests = Optional.ofNullable(configuration.getInteger("cassandra.pooling.local.max.requests", null));
-        Optional<Integer> poolingTimeout = Optional.ofNullable(configuration.getInteger("cassandra.pooling.timeout", null));
-        Optional<Integer> heartbeatTimeout = Optional.ofNullable(configuration.getInteger("cassandra.pooling.heartbeat.timeout", null));
-        Optional<Integer> maxQueueSize = Optional.ofNullable(configuration.getInteger("cassandra.pooling.max.queue.size", null));
-
-        if (!maxConnections.isPresent()
-            && !maxRequests.isPresent()
-            && !poolingTimeout.isPresent()
-            && !heartbeatTimeout.isPresent()
-            && !maxQueueSize.isPresent()) {
-            return Optional.empty();
-        }
-        PoolingOptions result = new PoolingOptions();
-
-        maxConnections.ifPresent(value -> {
-            result.setMaxConnectionsPerHost(HostDistance.LOCAL, value);
-            result.setMaxConnectionsPerHost(HostDistance.REMOTE, value);
-        });
-        maxRequests.ifPresent(value -> {
-            result.setMaxRequestsPerConnection(HostDistance.LOCAL, value);
-            result.setMaxRequestsPerConnection(HostDistance.REMOTE, value);
-        });
-        poolingTimeout.ifPresent(result::setPoolTimeoutMillis);
-        heartbeatTimeout.ifPresent(result::setHeartbeatIntervalSeconds);
-        maxQueueSize.ifPresent(result::setMaxQueueSize);
-
-        return Optional.of(result);
-    }
 
     private final List<Host> hosts;
     private final boolean createKeyspace;
     private final int minDelay;
     private final int maxRetry;
-    private final Optional<QueryLoggerConfiguration> queryLoggerConfiguration;
-    private final Optional<PoolingOptions> poolingOptions;
-    private final int readTimeoutMillis;
-    private final int connectTimeoutMillis;
-    private final boolean useSsl;
     private final Optional<String> username;
     private final Optional<String> password;
-    private final Optional<String> localDc;
 
-    public ClusterConfiguration(List<Host> hosts, boolean createKeyspace, int minDelay, int maxRetry,
-                                Optional<QueryLoggerConfiguration> queryLoggerConfiguration, Optional<PoolingOptions> poolingOptions,
-                                int readTimeoutMillis, int connectTimeoutMillis, boolean useSsl, Optional<String> username,
-                                Optional<String> password, Optional<String> localDc) {
+    public ClusterConfiguration(List<Host> hosts, boolean createKeyspace, int minDelay, int maxRetry,Optional<String> username,
+                                Optional<String> password) {
         this.hosts = hosts;
         this.createKeyspace = createKeyspace;
         this.minDelay = minDelay;
         this.maxRetry = maxRetry;
-        this.queryLoggerConfiguration = queryLoggerConfiguration;
-        this.poolingOptions = poolingOptions;
-        this.readTimeoutMillis = readTimeoutMillis;
-        this.connectTimeoutMillis = connectTimeoutMillis;
-        this.useSsl = useSsl;
         this.username = username;
         this.password = password;
-        this.localDc = localDc;
     }
 
     public List<Host> getHosts() {
@@ -319,42 +199,12 @@ public class ClusterConfiguration {
         return maxRetry;
     }
 
-    public Optional<QueryLoggerConfiguration> getQueryLoggerConfiguration() {
-        return queryLoggerConfiguration;
-    }
-
-    public Optional<PoolingOptions> getPoolingOptions() {
-        return poolingOptions;
-    }
-
-    public int getReadTimeoutMillis() {
-        return readTimeoutMillis;
-    }
-
-    public int getConnectTimeoutMillis() {
-        return connectTimeoutMillis;
-    }
-
-    public boolean useSsl() {
-        return useSsl;
-    }
-
     public Optional<String> getUsername() {
         return username;
     }
 
     public Optional<String> getPassword() {
         return password;
-    }
-
-    public Optional<LoadBalancingPolicy> getLoadBalancingPolicy() {
-        return localDc.map(value -> new TokenAwarePolicy(DCAwareRoundRobinPolicy.builder()
-            .withLocalDc(value)
-            .build()));
-    }
-
-    Optional<String> getLocalDc() {
-        return localDc;
     }
 
     @Override
@@ -366,21 +216,14 @@ public class ClusterConfiguration {
                 && Objects.equals(this.maxRetry, that.maxRetry)
                 && Objects.equals(this.hosts, that.hosts)
                 && Objects.equals(this.createKeyspace, that.createKeyspace)
-                && Objects.equals(this.queryLoggerConfiguration, that.queryLoggerConfiguration)
-                && Objects.equals(this.poolingOptions, that.poolingOptions)
-                && Objects.equals(this.readTimeoutMillis, that.readTimeoutMillis)
-                && Objects.equals(this.connectTimeoutMillis, that.connectTimeoutMillis)
-                && Objects.equals(this.useSsl, that.useSsl)
                 && Objects.equals(this.username, that.username)
-                && Objects.equals(this.password, that.password)
-                && Objects.equals(this.localDc, that.localDc);
+                && Objects.equals(this.password, that.password);
         }
         return false;
     }
 
     @Override
     public final int hashCode() {
-        return Objects.hash(hosts, createKeyspace, minDelay, maxRetry, queryLoggerConfiguration, poolingOptions,
-            readTimeoutMillis, connectTimeoutMillis, username, useSsl, password, localDc);
+        return Objects.hash(hosts, createKeyspace, minDelay, maxRetry, username, password);
     }
 }

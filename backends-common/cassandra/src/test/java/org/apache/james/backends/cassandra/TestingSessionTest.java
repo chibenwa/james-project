@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations      *
  * under the License.                                           *
  ****************************************************************/
-
+/*
 package org.apache.james.backends.cassandra;
 
 import static com.datastax.driver.core.querybuilder.QueryBuilder.select;
@@ -348,3 +348,4 @@ class TestingSessionTest {
             .hasCauseInstanceOf(InjectedFailureException.class);
     }
 }
+*/
