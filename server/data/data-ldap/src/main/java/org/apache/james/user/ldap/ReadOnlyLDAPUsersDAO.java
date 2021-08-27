@@ -46,6 +46,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.github.fge.lambdas.Throwing;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.unboundid.ldap.sdk.Attribute;
 import com.unboundid.ldap.sdk.DN;
@@ -245,34 +246,37 @@ public class ReadOnlyLDAPUsersDAO implements UsersDAO, Configurable {
         }
 
         if (!ldapConfiguration.getRestriction().isActivated()
-            || userInGroupsMembershipList(result.getParsedDN(), ldapConfiguration.getRestriction().getGroupMembershipLists(ldapConnectionPool))) {
+            || applyGroupMembership(result)) {
 
-            return new ReadOnlyLDAPUser(name, result.getParsedDN(), ldapConnectionPool);
+            return asUser(name, result);
         }
         return null;
     }
 
-    private ReadOnlyLDAPUser searchByLocalPart(LocalPart localPart) throws LDAPException {
+    private ReadOnlyLDAPUser asUser(Username name, SearchResultEntry result) throws LDAPException {
+        return new ReadOnlyLDAPUser(name, result.getParsedDN(), ldapConnectionPool);
+    }
+
+    private List<ReadOnlyLDAPUser> searchByLocalPart(LocalPart localPart) throws LDAPException {
         SearchResult searchResult = ldapConnectionPool.search(ldapConfiguration.getUserBase(),
             SearchScope.SUB,
             createFilter(localPart.asString()),
             ldapConfiguration.getLocalPartAttribute(), ldapConfiguration.getUserIdAttribute());
 
-        SearchResultEntry result = searchResult.getSearchEntries()
-            .stream()
-            .findFirst()
-            .orElse(null);
-        if (result == null) {
-            return null;
-        }
+        List<SearchResultEntry> results = searchResult.getSearchEntries();
 
-        if (!ldapConfiguration.getRestriction().isActivated()
-            || userInGroupsMembershipList(result.getParsedDN(), ldapConfiguration.getRestriction().getGroupMembershipLists(ldapConnectionPool))) {
+        return results.stream()
+            .filter(Throwing.<SearchResultEntry>predicate(result -> !ldapConfiguration.getRestriction().isActivated()
+                || applyGroupMembership(result))
+                .sneakyThrow())
+            .map(Throwing.<SearchResultEntry, ReadOnlyLDAPUser>function(
+                result -> asUser(Username.of(result.getAttribute(ldapConfiguration.getUserIdAttribute()).getValue()), result))
+                .sneakyThrow())
+            .collect(ImmutableList.toImmutableList());
+    }
 
-            return new ReadOnlyLDAPUser(Username.of(result.getAttribute(ldapConfiguration.getUserIdAttribute()).getValue()),
-                result.getParsedDN(), ldapConnectionPool);
-        }
-        return null;
+    private boolean applyGroupMembership(SearchResultEntry result) throws LDAPException {
+        return userInGroupsMembershipList(result.getParsedDN(), ldapConfiguration.getRestriction().getGroupMembershipLists(ldapConnectionPool));
     }
 
     private Optional<ReadOnlyLDAPUser> buildUser(DN userDN) throws LDAPException {
@@ -318,12 +322,14 @@ public class ReadOnlyLDAPUsersDAO implements UsersDAO, Configurable {
     }
 
     @Override
-    public Optional<Username> retrieveUserFromLocalPart(LocalPart localPart) {
+    public List<Username> retrieveUserFromLocalPart(LocalPart localPart) {
         try {
-            return Optional.ofNullable(searchByLocalPart(localPart))
-                .map(ReadOnlyLDAPUser::getUserName);
+            return searchByLocalPart(localPart)
+                .stream()
+                .map(ReadOnlyLDAPUser::getUserName)
+                .collect(ImmutableList.toImmutableList());
         } catch (Exception e) {
-            return Optional.empty();
+            return ImmutableList.of();
         }
     }
 

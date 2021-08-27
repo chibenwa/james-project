@@ -135,14 +135,15 @@ public class DigestUtil {
      * @throws NoSuchAlgorithmException
      *             if the algorithm passed in cannot be found
      */
-    public static String digestString(String pass, Algorithm algorithm) throws NoSuchAlgorithmException {
-
+    public static String digestString(CharSequence pass, Algorithm algorithm) throws NoSuchAlgorithmException {
         MessageDigest md;
         ByteArrayOutputStream bos;
 
         try {
             md = MessageDigest.getInstance(algorithm.asString());
-            byte[] digest = md.digest(pass.getBytes(ISO_8859_1));
+            StringBuilder passAsString = new StringBuilder(pass.length());
+            passAsString.append(pass);
+            byte[] digest = md.digest(passAsString.toString().getBytes(ISO_8859_1));
             bos = new ByteArrayOutputStream();
             OutputStream encodedStream = MimeUtility.encode(bos, "base64");
             encodedStream.write(digest);

@@ -58,16 +58,12 @@ public class MemoryUsersDAO implements UsersDAO, Configurable {
     }
 
     @Override
-    public Optional<Username> retrieveUserFromLocalPart(LocalPart localPart) {
-        final ImmutableList<User> matchingUsers = userByName.values()
+    public ImmutableList<Username> retrieveUserFromLocalPart(LocalPart localPart) {
+        return userByName.values()
             .stream()
             .filter(user -> user.getUserName().getLocalPart().equals(localPart.asString()))
+            .map(User::getUserName)
             .collect(ImmutableList.toImmutableList());
-
-        if (matchingUsers.size() == 1) {
-            return Optional.of(matchingUsers.get(0).getUserName());
-        }
-        return Optional.empty();
     }
 
     public void clear() {

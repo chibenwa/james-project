@@ -105,20 +105,22 @@ public class JPAUsersDAO implements UsersDAO, Configurable {
     }
 
     @Override
-    public Optional<Username> retrieveUserFromLocalPart(LocalPart localPart) {
+    public List<Username> retrieveUserFromLocalPart(LocalPart localPart) {
         EntityManager entityManager = entityManagerFactory.createEntityManager();
 
         try {
-            JPAUser singleResult = (JPAUser) entityManager
-                .createNamedQuery("findUserByName")
+            List<JPAUser> results = entityManager
+                .createNamedQuery("findUserByName", JPAUser.class)
                 .setParameter("name", localPart.asString() + "@%")
-                .getSingleResult();
-            return Optional.of(singleResult.getUserName());
+                .getResultList();
+            return results.stream()
+                .map(JPAUser::getUserName)
+                .collect(ImmutableList.toImmutableList());
         } catch (NoResultException e) {
-            return Optional.empty();
+            return ImmutableList.of();
         } catch (PersistenceException e) {
             LOGGER.debug("Failed to find user", e);
-            return Optional.empty();
+            return ImmutableList.of();
         } finally {
             EntityManagerUtils.safelyClose(entityManager);
         }
