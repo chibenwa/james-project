@@ -40,6 +40,7 @@ import org.apache.james.core.Username;
 import org.apache.james.lifecycle.api.Configurable;
 import org.apache.james.user.api.UsersRepositoryException;
 import org.apache.james.user.api.model.User;
+import org.apache.james.user.lib.LocalPart;
 import org.apache.james.user.lib.UsersDAO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -131,6 +132,13 @@ public class ReadOnlyLDAPUsersDAO implements UsersDAO, Configurable {
 
     private Filter createFilter(String username) {
         Filter specificUserFilter = Filter.createEqualityFilter(ldapConfiguration.getUserIdAttribute(), username);
+        return userExtraFilter
+            .map(extraFilter -> Filter.createANDFilter(objectClassFilter, specificUserFilter, extraFilter))
+            .orElseGet(() -> Filter.createANDFilter(objectClassFilter, specificUserFilter));
+    }
+
+    private Filter createLocalPartFilter(String localPart) {
+        Filter specificUserFilter = Filter.createEqualityFilter(ldapConfiguration.getLocalPartAttribute(), localPart);
         return userExtraFilter
             .map(extraFilter -> Filter.createANDFilter(objectClassFilter, specificUserFilter, extraFilter))
             .orElseGet(() -> Filter.createANDFilter(objectClassFilter, specificUserFilter));
@@ -244,6 +252,29 @@ public class ReadOnlyLDAPUsersDAO implements UsersDAO, Configurable {
         return null;
     }
 
+    private ReadOnlyLDAPUser searchByLocalPart(LocalPart localPart) throws LDAPException {
+        SearchResult searchResult = ldapConnectionPool.search(ldapConfiguration.getUserBase(),
+            SearchScope.SUB,
+            createFilter(localPart.asString()),
+            ldapConfiguration.getLocalPartAttribute(), ldapConfiguration.getUserIdAttribute());
+
+        SearchResultEntry result = searchResult.getSearchEntries()
+            .stream()
+            .findFirst()
+            .orElse(null);
+        if (result == null) {
+            return null;
+        }
+
+        if (!ldapConfiguration.getRestriction().isActivated()
+            || userInGroupsMembershipList(result.getParsedDN(), ldapConfiguration.getRestriction().getGroupMembershipLists(ldapConnectionPool))) {
+
+            return new ReadOnlyLDAPUser(Username.of(result.getAttribute(ldapConfiguration.getUserIdAttribute()).getValue()),
+                result.getParsedDN(), ldapConnectionPool);
+        }
+        return null;
+    }
+
     private Optional<ReadOnlyLDAPUser> buildUser(DN userDN) throws LDAPException {
         SearchResultEntry userAttributes = ldapConnectionPool.getEntry(userDN.toString());
         Optional<String> userName = Optional.ofNullable(userAttributes.getAttributeValue(ldapConfiguration.getUserIdAttribute()));
@@ -283,6 +314,16 @@ public class ReadOnlyLDAPUsersDAO implements UsersDAO, Configurable {
             return Optional.ofNullable(searchAndBuildUser(name));
         } catch (Exception e) {
             throw new UsersRepositoryException("Unable check user existence from ldap", e);
+        }
+    }
+
+    @Override
+    public Optional<Username> retrieveUserFromLocalPart(LocalPart localPart) {
+        try {
+            return Optional.ofNullable(searchByLocalPart(localPart))
+                .map(ReadOnlyLDAPUser::getUserName);
+        } catch (Exception e) {
+            return Optional.empty();
         }
     }
 

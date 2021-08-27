@@ -33,6 +33,10 @@ public interface UsersDAO {
 
     Optional<? extends User> getUserByName(Username name) throws UsersRepositoryException;
 
+    default Optional<Username> retrieveUserFromLocalPart(LocalPart localPart) {
+        return Optional.empty();
+    }
+
     void updateUser(User user) throws UsersRepositoryException;
 
     void removeUser(Username name) throws UsersRepositoryException;

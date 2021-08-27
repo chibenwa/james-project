@@ -38,6 +38,7 @@ import org.apache.james.lifecycle.api.Configurable;
 import org.apache.james.user.api.UsersRepositoryException;
 import org.apache.james.user.api.model.User;
 import org.apache.james.user.jpa.model.JPAUser;
+import org.apache.james.user.lib.LocalPart;
 import org.apache.james.user.lib.UsersDAO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -98,6 +99,26 @@ public class JPAUsersDAO implements UsersDAO, Configurable {
         } catch (PersistenceException e) {
             LOGGER.debug("Failed to find user", e);
             throw new UsersRepositoryException("Unable to search user", e);
+        } finally {
+            EntityManagerUtils.safelyClose(entityManager);
+        }
+    }
+
+    @Override
+    public Optional<Username> retrieveUserFromLocalPart(LocalPart localPart) {
+        EntityManager entityManager = entityManagerFactory.createEntityManager();
+
+        try {
+            JPAUser singleResult = (JPAUser) entityManager
+                .createNamedQuery("findUserByName")
+                .setParameter("name", localPart.asString() + "@%")
+                .getSingleResult();
+            return Optional.of(singleResult.getUserName());
+        } catch (NoResultException e) {
+            return Optional.empty();
+        } catch (PersistenceException e) {
+            LOGGER.debug("Failed to find user", e);
+            return Optional.empty();
         } finally {
             EntityManagerUtils.safelyClose(entityManager);
         }

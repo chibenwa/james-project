@@ -30,9 +30,12 @@ import org.apache.james.core.Username;
 import org.apache.james.lifecycle.api.Configurable;
 import org.apache.james.user.api.UsersRepositoryException;
 import org.apache.james.user.api.model.User;
+import org.apache.james.user.lib.LocalPart;
 import org.apache.james.user.lib.UsersDAO;
 import org.apache.james.user.lib.model.Algorithm;
 import org.apache.james.user.lib.model.DefaultUser;
+
+import com.google.common.collect.ImmutableList;
 
 public class MemoryUsersDAO implements UsersDAO, Configurable {
     private final Map<String, User> userByName;
@@ -52,6 +55,19 @@ public class MemoryUsersDAO implements UsersDAO, Configurable {
             .orElse(Algorithm.HashingMode.DEFAULT)
             .getFactory();
         algo = hashFactory.of(config.getString("algorithm", "SHA-512"));
+    }
+
+    @Override
+    public Optional<Username> retrieveUserFromLocalPart(LocalPart localPart) {
+        final ImmutableList<User> matchingUsers = userByName.values()
+            .stream()
+            .filter(user -> user.getUserName().getLocalPart().equals(localPart.asString()))
+            .collect(ImmutableList.toImmutableList());
+
+        if (matchingUsers.size() == 1) {
+            return Optional.of(matchingUsers.get(0).getUserName());
+        }
+        return Optional.empty();
     }
 
     public void clear() {

@@ -40,6 +40,7 @@ import org.apache.james.user.api.UsersRepositoryException;
 import org.apache.james.user.api.model.User;
 import org.slf4j.LoggerFactory;
 
+import com.github.fge.lambdas.Throwing;
 import com.google.common.base.CharMatcher;
 
 public class UsersRepositoryImpl<T extends UsersDAO> implements UsersRepository, Configurable {
@@ -118,6 +119,13 @@ public class UsersRepositoryImpl<T extends UsersDAO> implements UsersRepository,
 
     @Override
     public User getUserByName(Username name) throws UsersRepositoryException {
+        if (supportVirtualHosting() && !name.hasDomainPart()) {
+            return usersDAO.retrieveUserFromLocalPart(LocalPart.of(name.getLocalPart()))
+                .flatMap(Throwing.<Username, Optional<? extends User>>function(
+                    nameWithDomain -> usersDAO.getUserByName(name))
+                    .sneakyThrow())
+                .orElse(null);
+        }
         return usersDAO.getUserByName(name).orElse(null);
     }
 
