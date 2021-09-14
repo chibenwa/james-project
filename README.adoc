@@ -39,8 +39,9 @@ Read more on https://james.apache.org/[our website].
  * link:#articles-for-james-community[Articles for James community]
 
 == How to contribute?
-<details>
-   <summary>Read more...</summary>
+
+[%collapsible]
+====
 James is a project that lives from the contributions of its community! Anyone can contribute!
 
 Read https://james.apache.org/index.html#third[how to contribute].
@@ -56,11 +57,12 @@ https://issues.apache.org/jira/issues/?jql=project%20%3D%20JAMES%20AND%20resolut
 https://issues.apache.org/jira/issues/?jql=project%20%3D%20JAMES%20AND%20resolution%20%3D%20Unresolved%20AND%20labels%20%3D%20feature%20ORDER%20BY%20priority%20DESC%2C%20updated%20DESC[~feature] labels on JIRA.
 
 There is many other ways one can help us: packaging, communication, etc ...
-</details>
+====
 
 == How to try James
-<details>
-   <summary>Read more...</summary>
+
+[%collapsible]
+====
 
 Requirements: `docker` installed.
 
@@ -80,11 +82,12 @@ link:https://james.apache.org/howTo/imap-server.html[This tutorial] covers more 
 Instructions that do not imply `docker` are also available link:https://james.apache.org/server/install.html[here].
 
 Instructions for the distributed server can be found link:docs/modules/servers/pages/distributed/run-docker.adoc[here].
-</details>
+====
 
 == How to check the compilation
-<details>
-   <summary>Read more...</summary>
+
+[%collapsible]
+====
 
 We require link:https://maven.apache.org[maven] version 3.6.0 minimum to build the project.
 
@@ -94,7 +97,7 @@ Useful options includes:
 
  - `-DskipTests` to skip the long to execute resource consuming test suite that requires a docker daemon.
  - `-T 4` to parallelize the build on several CPUs.
-</details>
+====
 
 == How to run James in Docker
 
