@@ -40,6 +40,7 @@ Read more on https://james.apache.org/[our website].
 
 == How to contribute?
 
+.Read more...
 [%collapsible]
 ====
 James is a project that lives from the contributions of its community! Anyone can contribute!
@@ -61,6 +62,7 @@ There is many other ways one can help us: packaging, communication, etc ...
 
 == How to try James
 
+.Read more...
 [%collapsible]
 ====
 
@@ -86,6 +88,7 @@ Instructions for the distributed server can be found link:docs/modules/servers/p
 
 == How to check the compilation
 
+.Read more...
 [%collapsible]
 ====
 
