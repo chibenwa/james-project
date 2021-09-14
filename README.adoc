@@ -27,17 +27,6 @@ The link:https://james.staged.apache.org/james-project/3.7.0/servers/distributed
 
 Read more on https://james.apache.org/[our website].
 
-== How to...
-
- * link:#how-to-contribute[How to  contribute?]
- * link:#how-to-try-james[How to try James]
- * link:#how-to-check-the-compilation[How to check the compilation]
- * link:#how-to-run-james-in-docker[How to run James in Docker]
- * link:#using_the_cli[Using the CLI]
- * link:#develop-on-james[Develop on James]
- * link:#know-more-about-james-design[Know more about James design]
- * link:#articles-for-james-community[Articles for James community]
-
 == How to contribute?
 
 .Read more...
@@ -104,12 +93,18 @@ Useful options includes:
 
 == How to run James in Docker
 
+.Read more...
+[%collapsible]
+====
+
 We maintain docker distribution for our Guice based applications :
 
  * link:https://github.com/apache/james-project/blob/master/server/apps/distributed-app/README.adoc[Guice + Cassandra + RabbitMQ + S3 + ElasticSearch (distributed)]
  * link:https://github.com/apache/james-project/blob/master/server/apps/cassandra-app/README.adoc[Guice + Cassandra + ElasticSearch]
  * link:https://github.com/apache/james-project/blob/master/server/apps/jpa-app/README.adoc[Guice + JPA + Lucene]
  * link:https://github.com/apache/james-project/blob/master/server/apps/memory-app/README.md[Guice + Memory (testing)]
+
+====
 
 == Using the CLI
 
