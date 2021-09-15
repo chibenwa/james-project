@@ -27,9 +27,7 @@ The link:https://james.staged.apache.org/james-project/3.7.0/servers/distributed
 
 Read more on https://james.apache.org/[our website].
 
-== How to contribute?
-
-.Read more...
+.How to contribute?
 [%collapsible]
 ====
 James is a project that lives from the contributions of its community! Anyone can contribute!
@@ -49,9 +47,7 @@ https://issues.apache.org/jira/issues/?jql=project%20%3D%20JAMES%20AND%20resolut
 There is many other ways one can help us: packaging, communication, etc ...
 ====
 
-== How to try James
-
-.Read more...
+.How to try James?
 [%collapsible]
 ====
 
@@ -75,9 +71,7 @@ Instructions that do not imply `docker` are also available link:https://james.ap
 Instructions for the distributed server can be found link:docs/modules/servers/pages/distributed/run-docker.adoc[here].
 ====
 
-== How to check the compilation
-
-.Read more...
+.How to check the compilation?
 [%collapsible]
 ====
 
@@ -91,9 +85,7 @@ Useful options includes:
  - `-T 4` to parallelize the build on several CPUs.
 ====
 
-== How to run James in Docker
-
-.Read more...
+.How to run James in Docker?
 [%collapsible]
 ====
 
