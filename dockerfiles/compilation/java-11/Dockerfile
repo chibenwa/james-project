@@ -2,7 +2,7 @@
 #
 # VERSION	1.0
 
-FROM adoptopenjdk:11-jdk-hotspot
+FROM eclipse-temurin:11-jdk-focal
 
 ENV GIT_VERSION 1:2.11.0-3
 

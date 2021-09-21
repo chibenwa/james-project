@@ -2,7 +2,7 @@
 #
 # VERSION	1.0
 
-FROM adoptopenjdk:11-jre-hotspot
+FROM eclipse-temurin:11-jre-focal
 
 # Install unzip
 RUN apt-get update
