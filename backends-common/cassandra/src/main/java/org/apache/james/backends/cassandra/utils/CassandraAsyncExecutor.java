@@ -26,9 +26,11 @@ import java.util.function.Function;
 
 import javax.inject.Inject;
 
+import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
+import com.datastax.driver.core.SimpleStatement;
 import com.datastax.driver.core.Statement;
 
 import net.javacrumbs.futureconverter.java8guava.FutureConverter;
@@ -37,6 +39,11 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 public class CassandraAsyncExecutor {
+    public static class CassandraExecutionException extends Exception {
+        public CassandraExecutionException(String message, Throwable cause) {
+            super(message, cause);
+        }
+    }
 
     private final Session session;
 
@@ -47,8 +54,21 @@ public class CassandraAsyncExecutor {
 
     public Mono<ResultSet> execute(Statement statement) {
         return Mono.fromFuture(() -> FutureConverter
-                .toCompletableFuture(session.executeAsync(statement)))
-                .publishOn(Schedulers.elastic());
+            .toCompletableFuture(session.executeAsync(statement)))
+            .onErrorMap(e -> new CassandraExecutionException(String.format("Error executing %s", asString(statement)), e))
+            .publishOn(Schedulers.elastic());
+    }
+
+    private String asString(Statement statement) {
+        if (statement instanceof BoundStatement) {
+            BoundStatement boundStatement = (BoundStatement) statement;
+            return boundStatement.preparedStatement().getQueryString();
+        } else if (statement instanceof SimpleStatement) {
+            SimpleStatement simpleStatement = (SimpleStatement) statement;
+            return simpleStatement.getQueryString();
+        } else {
+            return statement.toString();
+        }
     }
 
     public Mono<Boolean> executeReturnApplied(Statement statement) {
