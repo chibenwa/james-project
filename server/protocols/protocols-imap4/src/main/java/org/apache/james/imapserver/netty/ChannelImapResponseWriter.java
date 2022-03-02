@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.channels.FileChannel;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.james.imap.encode.ImapResponseWriter;
 import org.apache.james.imap.message.Literal;
 
@@ -57,6 +58,7 @@ public class ChannelImapResponseWriter implements ImapResponseWriter {
     @Override
     public void write(byte[] buffer) throws IOException {
         if (channel.isActive()) {
+            System.out.print(IOUtils.toString(buffer));
             channel.writeAndFlush(Unpooled.wrappedBuffer(buffer));
         }
     }
@@ -77,6 +79,7 @@ public class ChannelImapResponseWriter implements ImapResponseWriter {
                     channel.writeAndFlush(new ChunkedNioFile(fc, 8192));
                 }
             } else {
+                System.out.print(IOUtils.toString(literal.getInputStream()));
                 channel.writeAndFlush(new ChunkedStream(literal.getInputStream()));
             }
         }

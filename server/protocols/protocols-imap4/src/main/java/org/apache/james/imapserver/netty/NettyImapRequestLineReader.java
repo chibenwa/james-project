@@ -68,6 +68,7 @@ public class NettyImapRequestLineReader extends AbstractNettyImapRequestLineRead
 
             if (buffer.isReadable()) {
                 next = buffer.readByte();
+                System.out.print((char) next);
                 read++;
             } else {
                 throw new NotEnoughDataException();
