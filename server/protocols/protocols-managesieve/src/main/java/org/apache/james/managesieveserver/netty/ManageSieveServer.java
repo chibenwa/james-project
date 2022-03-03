@@ -76,7 +76,7 @@ public class ManageSieveServer extends AbstractConfigurableAsyncServer implement
     protected ChannelInboundHandlerAdapter createCoreHandler() {
         return new ManageSieveChannelUpstreamHandler(manageSieveProcessor,
             getEncryption(),
-            LOGGER);
+            LOGGER, maxLineLength);
     }
 
     @Override
