@@ -53,6 +53,8 @@ import org.apache.james.mailbox.events.MailboxIdRegistrationKey;
 import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.util.MDCBuilder;
 import org.apache.james.util.concurrent.NamedThreadFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.ImmutableList;
 
@@ -60,6 +62,7 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 public class IdleProcessor extends AbstractMailboxProcessor<IdleRequest> implements CapabilityImplementingProcessor {
+    private static final Logger LOGGER = LoggerFactory.getLogger(IdleProcessor.class);
     private static final List<Capability> CAPS = ImmutableList.of(SUPPORTS_IDLE);
     public static final int DEFAULT_SCHEDULED_POOL_CORE_SIZE = 5;
     private static final String DONE = "DONE";
@@ -116,7 +119,12 @@ public class IdleProcessor extends AbstractMailboxProcessor<IdleRequest> impleme
             }
             session1.popLineHandler();
             if (!DONE.equals(line.toUpperCase(Locale.US))) {
-                StatusResponse response = getStatusResponseFactory().taggedBad(request.getTag(), request.getCommand(), HumanReadableText.INVALID_COMMAND);
+                String message = String.format("Continuation for IMAP IDLE was not understood. Expected 'DONE', got '%s'.", line);
+                StatusResponse response = getStatusResponseFactory()
+                    .taggedBad(request.getTag(), request.getCommand(),
+                        new HumanReadableText("org.apache.james.imap.INVALID_CONTINUATION",
+                            "failed. " + message));
+                LOGGER.warn(message);
                 responder.respond(response);
             } else {
                 okComplete(request, responder);

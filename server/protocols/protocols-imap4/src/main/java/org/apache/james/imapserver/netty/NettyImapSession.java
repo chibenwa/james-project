@@ -37,6 +37,8 @@ import org.apache.james.imap.message.response.ImmutableStatusResponse;
 import org.apache.james.protocols.api.Encryption;
 import org.apache.james.protocols.api.OidcSASLConfiguration;
 import org.apache.james.protocols.netty.LineHandlerAware;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
@@ -49,6 +51,7 @@ import io.netty.handler.ssl.SslHandler;
 
 public class NettyImapSession implements ImapSession, NettyConstants {
     private static final int BUFFER_SIZE = 2048;
+    private static final Logger LOGGER = LoggerFactory.getLogger(NettyImapSession.class);
 
     private ImapSessionState state = ImapSessionState.NON_AUTHENTICATED;
     private SelectedMailbox selectedMailbox;
@@ -100,6 +103,7 @@ public class NettyImapSession implements ImapSession, NettyConstants {
     public void logout() {
         closeMailbox();
         state = ImapSessionState.LOGOUT;
+        LOGGER.error("LOGOUT", new Exception());
     }
 
     @Override
@@ -109,6 +113,7 @@ public class NettyImapSession implements ImapSession, NettyConstants {
 
     @Override
     public void deselect() {
+        LOGGER.error("deselect");
         this.state = ImapSessionState.AUTHENTICATED;
         closeMailbox();
     }
@@ -116,6 +121,7 @@ public class NettyImapSession implements ImapSession, NettyConstants {
     @Override
     public void selected(SelectedMailbox mailbox) {
         this.state = ImapSessionState.SELECTED;
+        LOGGER.error("selected");
         closeMailbox();
         this.selectedMailbox = mailbox;
     }

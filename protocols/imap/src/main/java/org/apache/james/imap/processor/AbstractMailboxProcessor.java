@@ -100,6 +100,7 @@ public abstract class AbstractMailboxProcessor<R extends ImapRequest> extends Ab
             } else {
                 ImapResponseMessage response = factory.taggedNo(acceptableMessage.getTag(), acceptableMessage.getCommand(), HumanReadableText.INVALID_COMMAND);
                 responder.respond(response);
+                LOGGER.error("Invalid command {} in state {}", acceptableMessage.getCommand().getName(), session.getState());
             }
         } catch (DeniedAccessOnSharedMailboxException e) {
             no(acceptableMessage, responder, HumanReadableText.DENIED_SHARED_MAILBOX);

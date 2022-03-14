@@ -75,6 +75,8 @@ public abstract class AbstractImapCommandParser implements ImapCommandParser {
                 return statusResponseFactory.taggedBad(tag, command, e.getKey());
             }
         }
+
+        LOGGER.error("Invalid command {} in state {}", command.getName(), session.getState());
         return statusResponseFactory.taggedNo(tag, command, HumanReadableText.INVALID_COMMAND);
     }
 
