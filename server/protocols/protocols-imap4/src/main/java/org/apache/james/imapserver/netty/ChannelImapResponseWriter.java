@@ -24,8 +24,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.channels.FileChannel;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.james.imap.encode.ImapResponseWriter;
 import org.apache.james.imap.message.Literal;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
@@ -41,6 +44,7 @@ import io.netty.handler.stream.ChunkedStream;
  * {@link Channel}
  */
 public class ChannelImapResponseWriter implements ImapResponseWriter {
+    private static final Logger LOGGER = LoggerFactory.getLogger(ChannelImapResponseWriter.class);
 
     private final Channel channel;
     private final boolean zeroCopy;
@@ -58,6 +62,7 @@ public class ChannelImapResponseWriter implements ImapResponseWriter {
     public void write(byte[] buffer) throws IOException {
         if (channel.isActive()) {
             channel.writeAndFlush(Unpooled.wrappedBuffer(buffer));
+            LOGGER.warn(IOUtils.toString(buffer));
         }
     }
 

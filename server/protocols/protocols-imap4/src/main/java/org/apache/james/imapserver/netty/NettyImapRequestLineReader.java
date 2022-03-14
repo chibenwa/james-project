@@ -29,6 +29,8 @@ import org.apache.james.imap.decode.ImapRequestLineReader;
 import org.apache.james.imap.message.BytesBackedLiteral;
 import org.apache.james.imap.message.Literal;
 import org.apache.james.imap.utils.EolInputStream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
@@ -41,10 +43,12 @@ import io.netty.channel.Channel;
  * of this implementation
  */
 public class NettyImapRequestLineReader extends AbstractNettyImapRequestLineReader {
+    private static final Logger LOGGER = LoggerFactory.getLogger(NettyImapRequestLineReader.class);
 
     private final ByteBuf buffer;
     private int read = 0;
     private final int maxLiteralSize;
+    private StringBuilder stringBuilder = new StringBuilder();
 
     public NettyImapRequestLineReader(Channel channel, ByteBuf buffer, boolean retry, int maxLiteralSize) {
         super(channel, retry);
@@ -74,6 +78,11 @@ public class NettyImapRequestLineReader extends AbstractNettyImapRequestLineRead
             }
             nextSeen = true;
             nextChar = (char) next;
+            stringBuilder.append(nextChar);
+            if (nextChar == '\n') {
+                LOGGER.warn(stringBuilder.toString());
+                stringBuilder = new StringBuilder();
+            }
         }
         return nextChar;
     }
