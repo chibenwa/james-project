@@ -90,4 +90,9 @@ public class SwitchableLineBasedFrameDecoder extends AllButStartTlsLineBasedChan
         }
         return trimmedInput.substring(tagEnd + 1);
     }
+
+    @Override
+    protected boolean hasStartTLS(String trimedLowerCasedInput) {
+        return super.hasStartTLS(removeTag(trimedLowerCasedInput));
+    }
 }
