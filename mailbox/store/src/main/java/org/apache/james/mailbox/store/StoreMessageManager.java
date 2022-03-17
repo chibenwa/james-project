@@ -760,6 +760,7 @@ public class StoreMessageManager implements MessageManager {
                     .updatedFlags(updatedFlags)
                     .build(),
                 new MailboxIdRegistrationKey(mailbox.getMailboxId()))
+                .subscribeOn(Schedulers.elastic())
                 .block();
         }
 
