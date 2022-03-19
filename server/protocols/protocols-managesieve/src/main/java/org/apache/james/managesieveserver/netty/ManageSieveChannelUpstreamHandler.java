@@ -64,7 +64,7 @@ public class ManageSieveChannelUpstreamHandler extends FrameDecoder {
 
     @Override
     protected Object decode(ChannelHandlerContext ctx, Channel channel, ChannelBuffer buffer) throws Exception {
-        ChannelManageSieveResponseWriter attachment = (ChannelManageSieveResponseWriter) ctx.getAttachment();
+        buffer.markReaderIndex();
         try (Closeable closeable = ManageSieveMDCContext.from(ctx, attributes)) {
             String request = buffer.toString(StandardCharsets.UTF_8);
             if (request.isEmpty() || request.startsWith("\r\n")) {
@@ -80,6 +80,7 @@ public class ManageSieveChannelUpstreamHandler extends FrameDecoder {
                 turnSSLon(ctx.getChannel());
                 manageSieveSession.setSslEnabled(true);
                 manageSieveSession.setState(Session.State.UNAUTHENTICATED);
+                ChannelManageSieveResponseWriter attachment = (ChannelManageSieveResponseWriter) ctx.getAttachment();
                 attachment.stopDetectingCommandInjection();
             }
         } catch (NotEnoughDataException ex) {
