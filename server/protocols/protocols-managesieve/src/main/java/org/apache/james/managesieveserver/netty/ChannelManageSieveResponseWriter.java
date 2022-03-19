@@ -63,6 +63,11 @@ public class ChannelManageSieveResponseWriter implements CommandDetectionSession
         if (cumulation == null || cumulation.equals("\r\n")) {
             cumulation = s;
         } else {
+            System.out.println("<<< CUMULATING");
+            System.out.println(cumulation);
+            System.out.println("==== WITH");
+            System.out.println(s);
+            System.out.println(">>>>");
             cumulation += s;
         }
         return cumulation;

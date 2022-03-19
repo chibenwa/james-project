@@ -155,6 +155,7 @@ public class ArgumentParser {
                 content += "\r\n";
             }
             if (content.length() < size && validatePutSize) {
+                System.out.println("NotEnoughDataException");
                 throw new NotEnoughDataException();
             }
             if (Strings.isNullOrEmpty(content)) {

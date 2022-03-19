@@ -119,6 +119,9 @@ public class CoreProcessor implements CoreCommands {
 
     @Override
     public String checkScript(Session session, String content) {
+        System.out.println("==========");
+        System.out.println(content);
+        System.out.println("==========");
         return handleCommandExecution(() -> {
             authenticationCheck(session);
             return manageWarnings(parser.parse(content));
