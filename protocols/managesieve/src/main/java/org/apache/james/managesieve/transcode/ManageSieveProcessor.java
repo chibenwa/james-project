@@ -27,8 +27,11 @@ import org.apache.james.managesieve.api.ManageSieveException;
 import org.apache.james.managesieve.api.Session;
 import org.apache.james.managesieve.api.SessionTerminatedException;
 import org.apache.james.sieverepository.api.exception.SieveRepositoryException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ManageSieveProcessor {
+    private static final Logger LOGGER = LoggerFactory.getLogger(ManageSieveProcessor.class);
 
     public static final String AUTHENTICATE = "AUTHENTICATE";
     public static final String CAPABILITY = "CAPABILITY";
@@ -126,6 +129,7 @@ public class ManageSieveProcessor {
         } else if (command.equalsIgnoreCase(UNAUTHENTICATE)) {
             return argumentParser.unauthenticate(session, arguments);
         }
+        LOGGER.error("Unknown command {}", command);
         return "NO unknown " + command + " command";
     }
 

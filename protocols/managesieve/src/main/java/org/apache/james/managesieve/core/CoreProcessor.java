@@ -53,6 +53,8 @@ import org.apache.james.sieverepository.api.exception.ScriptNotFoundException;
 import org.apache.james.sieverepository.api.exception.SieveRepositoryException;
 import org.apache.james.sieverepository.api.exception.StorageException;
 import org.apache.james.user.api.UsersRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
@@ -61,6 +63,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
 public class CoreProcessor implements CoreCommands {
+    private static final Logger LOGGER = LoggerFactory.getLogger(CoreProcessor.class);
 
     interface CommandWrapper {
         String execute() throws ManageSieveException, SieveRepositoryException, IOException;
@@ -227,6 +230,7 @@ public class CoreProcessor implements CoreCommands {
             AuthenticationProcessor authenticationProcessor = authenticationProcessorMap.get(supportedMechanism);
             return authenticationProcessor.initialServerResponse(session);
         } catch (UnknownSaslMechanism unknownSaslMechanism) {
+            LOGGER.info("Unknown SASL mechanism {}", mechanism);
             return "NO " + unknownSaslMechanism.getMessage();
         }
     }
@@ -244,11 +248,14 @@ public class CoreProcessor implements CoreCommands {
             } else {
                 session.setState(Session.State.UNAUTHENTICATED);
                 session.setUser(null);
+                LOGGER.info("Authentication faield for {}", authenticatedUsername);
                 return "NO authentication failed";
             }
         } catch (AuthenticationException e) {
+            LOGGER.info("Authentication faield", e);
             return "NO Authentication failed with " + e.getCause().getClass() + " : " + e.getMessage();
         } catch (SyntaxException e) {
+            LOGGER.info("Incorrect syntax {}", e.getMessage());
             return "NO ManageSieve syntax is incorrect : " + e.getMessage();
         }
     }
@@ -260,6 +267,7 @@ public class CoreProcessor implements CoreCommands {
             session.setUser(null);
             return "OK";
         } else {
+            LOGGER.info("UNAUTHENTICATE command must be issued in authenticated state");
             return "NO UNAUTHENTICATE command must be issued in authenticated state";
         }
     }
@@ -278,6 +286,7 @@ public class CoreProcessor implements CoreCommands {
             session.setState(Session.State.SSL_NEGOCIATION);
             return "OK";
         } else {
+            LOGGER.info("command STARTTLS is issued in the wrong state. It must be issued as you are unauthenticated");
             return "NO command STARTTLS is issued in the wrong state. It must be issued as you are unauthenticated";
         }
     }
@@ -286,26 +295,37 @@ public class CoreProcessor implements CoreCommands {
         try {
             return commandWrapper.execute();
         } catch (AuthenticationException e) {
+            LOGGER.info("Authentication failed", e);
             return "NO Authentication failed with " + e.getCause().getClass() + " : " + e.getMessage();
         } catch (QuotaExceededException ex) {
+            LOGGER.info("Quote exceeded", ex);
             return "NO (QUOTA/MAXSIZE) \"Quota exceeded\"";
         } catch (AuthenticationRequiredException ex) {
+            LOGGER.info("Authentication required", ex);
             return "NO";
         } catch (DuplicateException ex) {
+            LOGGER.info("A script with that name already exists", ex);
             return "NO (ALREADYEXISTS) \"A script with that name already exists\"";
         } catch (ScriptNotFoundException ex) {
+            LOGGER.info("There is no script by that name", ex);
             return "NO (NONEXISTENT) \"There is no script by that name\"";
         } catch (IsActiveException ex) {
+            LOGGER.info("You may not delete an active script", ex);
             return "NO (ACTIVE) \"You may not delete an active script\"";
         } catch (StorageException e) {
+            LOGGER.error("Unexpected storage exception", e);
             return "NO : Storage Exception : " + e.getMessage();
         } catch (SyntaxException e) {
+            LOGGER.info("Syntax error", e);
             return sanitizeString("NO \"Syntax Error: " + e.getMessage() + "\"");
         } catch (ManageSieveException e) {
+            LOGGER.error("Unexpected exception", e);
             return sanitizeString("NO \"ManageSieveException: " + e.getMessage() + "\"");
         } catch (SieveRepositoryException e) {
+            LOGGER.error("Unexpected exception", e);
             return sanitizeString("NO \"SieveRepositoryException: " + e.getMessage() + "\"");
         }  catch (IOException e) {
+            LOGGER.error("Unexpected exception", e);
             return "NO \"" + e.getMessage() + "\"";
         }
     }

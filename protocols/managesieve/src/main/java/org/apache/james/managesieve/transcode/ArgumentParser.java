@@ -29,6 +29,8 @@ import org.apache.james.managesieve.api.Session;
 import org.apache.james.managesieve.api.SessionTerminatedException;
 import org.apache.james.managesieve.api.commands.CoreCommands;
 import org.apache.james.managesieve.util.ParserUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
@@ -38,6 +40,7 @@ import com.google.common.base.Strings;
  * Parses the user input and calls the underlying command processor
  */
 public class ArgumentParser {
+    private static final Logger LOGGER = LoggerFactory.getLogger(ArgumentParser.class);
     
     private final CoreCommands core;
     private final boolean validatePutSize;
@@ -58,75 +61,93 @@ public class ArgumentParser {
     }
 
     public String capability(Session session, String args) {
+        LOGGER.debug("ManageSieve request received: CAPABILTIY. Arguments: {}", args);
         if (!args.trim().isEmpty()) {
+            LOGGER.info("Invalid CAPABILITY command: too many arguments.");
             return "NO \"Too many arguments: " + args + "\"";
         }
         return core.capability(session);
     }
 
     public String noop(String args) {
+        LOGGER.debug("ManageSieve request received: NOOP");
         return core.noop(args);
     }
 
     public String unauthenticate(Session session, String args) {
+        LOGGER.debug("ManageSieve request received: UNAUTHENTICATE. Arguments: {}", args);
         if (Strings.isNullOrEmpty(args)) {
             return core.unauthenticate(session);
         } else {
+            LOGGER.info("Invalid UNAUTHENTICATE command: too many arguments.");
             return "NO UNAUTHENTICATE do not take arguments";
         }
     }
 
     public void logout() throws SessionTerminatedException {
+        LOGGER.debug("ManageSieve request received: LOGOUT.");
         core.logout();
     }
 
     public String chooseMechanism(Session session, String mechanism) {
+        LOGGER.debug("ManageSieve request received: AUTHENTICATE. Mechanism: {}", mechanism);
         return core.chooseMechanism(session, mechanism);
     }
 
     public String authenticate(Session session, String suppliedData) {
+        LOGGER.debug("ManageSieve request received: AUTHENTICATE.");
         return core.authenticate(session, suppliedData);
     }
     
     public String deleteScript(Session session, String args) {
+        LOGGER.debug("ManageSieve request received: DELETE SCRIPT. Arguments: {}", args);
         Iterator<String> argumentIterator = Splitter.on(' ').omitEmptyStrings().split(args).iterator();
         if (!argumentIterator.hasNext()) {
+            LOGGER.info("Invalid DELETE command: Missing argument: script name.");
             return "NO \"Missing argument: script name\"";
         }
         String scriptName = ParserUtils.unquote(argumentIterator.next());
         if (argumentIterator.hasNext()) {
+            LOGGER.info("Invalid DELETE command: too many arguments.");
             return "NO \"Too many arguments: " + argumentIterator.next() + "\"";
         }
         return core.deleteScript(session, scriptName);
     }    
     
     public String getScript(Session session, String args) {
+        LOGGER.debug("ManageSieve request received: GET SCRIPT. Arguments: {}", args);
         Iterator<String> argumentIterator = Splitter.on(' ').omitEmptyStrings().split(args).iterator();
         if (!argumentIterator.hasNext()) {
+            LOGGER.info("Invalid GET SCRIPT command: Missing argument: script name.");
             return "NO \"Missing argument: script name\"";
         }
         String scriptName = ParserUtils.unquote(argumentIterator.next());
         if (argumentIterator.hasNext()) {
+            LOGGER.info("Invalid GET SCRIPT command: too many arguments.");
             return "NO \"Too many arguments: " + argumentIterator.next() + "\"";
         }
         return core.getScript(session, scriptName);
     }     
     
     public String checkScript(Session session, String args) {
+        LOGGER.debug("ManageSieve request received: CHECK SCRIPT. Arguments: {}", args);
         Iterator<String> firstLine = Splitter.on("\r\n").split(args.trim()).iterator();
         Iterator<String> arguments = Splitter.on(' ').split(firstLine.next().trim()).iterator();
 
         long size;
         if (! arguments.hasNext()) {
+            LOGGER.info("Invalid CHECK SCRIPT command: Missing argument: script size.");
             return "NO : Missing argument: script size";
         } else {
             try {
                 size = ParserUtils.getSize(arguments.next());
             } catch (ArgumentException e) {
+                LOGGER.info("Invalid CHECK SCRIPT command: {}", e.getMessage());
                 return "NO \"" + e.getMessage() + "\"";
             }
         }
         if (arguments.hasNext()) {
+            LOGGER.info("Invalid CHECK SCRIPT command: Extra arguments not supported");
             return "NO \"Extra arguments not supported\"";
         } else {
             String content = Joiner.on("\r\n").join(firstLine);
@@ -137,6 +158,7 @@ public class ArgumentParser {
                 throw new NotEnoughDataException();
             }
             if (Strings.isNullOrEmpty(content)) {
+                LOGGER.info("Invalid CHECK SCRIPT command: Missing argument: script content.");
                 return "NO \"Missing argument: script content\"";
             }
             return core.checkScript(session, content);
@@ -144,57 +166,70 @@ public class ArgumentParser {
     }
 
     public String haveSpace(Session session, String args) {
+        LOGGER.debug("ManageSieve request received: HAVE SPACE. Arguments: {}", args);
         Iterator<String> argumentIterator = Splitter.on(' ').omitEmptyStrings().split(args.trim()).iterator();
         if (!argumentIterator.hasNext()) {
+            LOGGER.info("Invalid HAVE SPACE command: Missing argument: script name.");
             return "NO \"Missing argument: script name\"";
         }
         String scriptName = ParserUtils.unquote(argumentIterator.next());
         long size;
         if (!argumentIterator.hasNext()) {
+            LOGGER.info("Invalid HAVE SPACE command: Missing argument: script size.");
             return "NO \"Missing argument: script size\"";
         }
         try {
             size = Long.parseLong(argumentIterator.next());
         } catch (NumberFormatException e) {
+            LOGGER.info("Invalid HAVE SPACE command: Invalid argument: script size. {}", e.getMessage());
             return "NO \"Invalid argument: script size\"";
         }
         if (argumentIterator.hasNext()) {
+            LOGGER.info("Invalid HAVE SPACE command: Too many arguments.");
             return "NO \"Too many arguments: " + argumentIterator.next().trim() + "\"";
         }
         return core.haveSpace(session, scriptName, size);
     }
 
     public String listScripts(Session session, String args) {
+        LOGGER.debug("ManageSieve request received: LIST SCRIPTS. Arguments: {}", args);
         if (!args.trim().isEmpty()) {
+            LOGGER.info("Invalid LIST SCRIPTS command: Too many arguments.");
             return "NO \"Too many arguments: " + args + "\"";
         }
         return core.listScripts(session);
     }
 
     public String putScript(Session session, String args) {
+        LOGGER.debug("ManageSieve request received: PUT SCRIPT. Arguments: {}", args);
         Iterator<String> firstLine = Splitter.on("\r\n").split(args.trim()).iterator();
         Iterator<String> arguments = Splitter.on(' ').split(firstLine.next().trim()).iterator();
 
         String scriptName;
         long size;
         if (! arguments.hasNext()) {
+            LOGGER.info("Invalid PUT SCRIPT command: Missing argument: script name");
              return "NO \"Missing argument: script name\"";
         } else {
             scriptName = ParserUtils.unquote(arguments.next());
             if (Strings.isNullOrEmpty(scriptName)) {
-               return "NO \"Missing argument: script name\"";
+                LOGGER.info("Invalid PUT SCRIPT command: Missing argument: script name");
+                return "NO \"Missing argument: script name\"";
             }
         }
         if (! arguments.hasNext()) {
+            LOGGER.info("Invalid PUT SCRIPT command: Missing argument: script size");
             return "NO \"Missing argument: script size\"";
         } else {
             try {
                 size = ParserUtils.getSize(arguments.next());
             } catch (ArgumentException e) {
+                LOGGER.info("Invalid PUT SCRIPT command: Invalid argument: script size. {}", e.getMessage());
                 return "NO \"" + e.getMessage() + "\"";
             }
         }
         if (arguments.hasNext()) {
+            LOGGER.info("Invalid PUT SCRIPT command: Too many arguments.");
             return "NO \"Extra arguments not supported\"";
         } else {
             String content = Joiner.on("\r\n").join(firstLine);
@@ -209,34 +244,42 @@ public class ArgumentParser {
     }
 
     public String renameScript(Session session, String args) {
+        LOGGER.debug("ManageSieve request received: RENAME SCRIPT. Arguments: {}", args);
         Iterator<String> argumentIterator = Splitter.on(' ').omitEmptyStrings().split(args).iterator();
         if (!argumentIterator.hasNext()) {
+            LOGGER.info("Invalid RENAME command: Missing argument: old script name");
             return "NO \"Missing argument: old script name\"";
         }
         String oldName = ParserUtils.unquote(argumentIterator.next());
         if (!argumentIterator.hasNext()) {
+            LOGGER.info("Invalid RENAME command: Missing argument: new script name");
             return "NO \"Missing argument: new script name\"";
         }
         String newName = ParserUtils.unquote(argumentIterator.next());
         if (argumentIterator.hasNext()) {
+            LOGGER.info("Invalid RENAME command: Too many arguments.");
             return "NO \"Too many arguments: " + argumentIterator.next() + "\"";
         }
         return core.renameScript(session, oldName, newName);
     }
 
     public String setActive(Session session, String args) {
+        LOGGER.debug("ManageSieve request received: SET ACTIVE. Arguments: {}", args);
         Iterator<String> argumentIterator = Splitter.on(' ').omitEmptyStrings().split(args).iterator();
         if (!argumentIterator.hasNext()) {
+            LOGGER.info("Invalid SET ACTIVE command: Missing argument: script name");
             return "NO \"Missing argument: script name\"";
         }
         String scriptName = ParserUtils.unquote(argumentIterator.next());
         if (argumentIterator.hasNext()) {
+            LOGGER.info("Invalid SET ACTIVE command: Too many arguments.");
             return "NO \"Too many arguments: " + argumentIterator.next() + "\"";
         }
         return core.setActive(session, scriptName);
     }
 
     public String startTLS(Session session) {
+        LOGGER.debug("ManageSieve request received: STARTTLS");
         return core.startTLS(session);
     }
 
