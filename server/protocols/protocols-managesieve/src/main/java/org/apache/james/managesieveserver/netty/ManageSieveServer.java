@@ -36,12 +36,9 @@ import org.jboss.netty.channel.ChannelPipeline;
 import org.jboss.netty.channel.ChannelPipelineFactory;
 import org.jboss.netty.channel.ChannelUpstreamHandler;
 import org.jboss.netty.channel.group.ChannelGroup;
-import org.jboss.netty.handler.codec.string.StringDecoder;
-import org.jboss.netty.handler.codec.string.StringEncoder;
 import org.jboss.netty.handler.execution.ExecutionHandler;
 import org.jboss.netty.handler.ssl.SslHandler;
 import org.jboss.netty.handler.stream.ChunkedWriteHandler;
-import org.jboss.netty.util.CharsetUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -118,9 +115,7 @@ public class ManageSieveServer extends AbstractConfigurableAsyncServer implement
                     pipeline.addLast(EXECUTION_HANDLER, ehandler);
 
                 }
-                pipeline.addLast("stringDecoder", new StringDecoder(CharsetUtil.UTF_8));
                 pipeline.addLast(CORE_HANDLER, createCoreHandler());
-                pipeline.addLast("stringEncoder", new StringEncoder(CharsetUtil.UTF_8));
                 return pipeline;
             }
 
