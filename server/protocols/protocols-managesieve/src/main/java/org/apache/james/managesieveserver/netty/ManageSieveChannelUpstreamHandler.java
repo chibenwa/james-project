@@ -21,6 +21,7 @@ package org.apache.james.managesieveserver.netty;
 
 import java.io.Closeable;
 import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
 
 import org.apache.james.managesieve.api.Session;
 import org.apache.james.managesieve.api.SessionTerminatedException;
@@ -28,6 +29,7 @@ import org.apache.james.managesieve.transcode.ManageSieveProcessor;
 import org.apache.james.managesieve.transcode.NotEnoughDataException;
 import org.apache.james.managesieve.util.SettableSession;
 import org.apache.james.protocols.api.Encryption;
+import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBuffers;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelFutureListener;
@@ -35,13 +37,12 @@ import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.ChannelLocal;
 import org.jboss.netty.channel.ChannelStateEvent;
 import org.jboss.netty.channel.ExceptionEvent;
-import org.jboss.netty.channel.MessageEvent;
-import org.jboss.netty.channel.SimpleChannelUpstreamHandler;
+import org.jboss.netty.handler.codec.frame.FrameDecoder;
 import org.jboss.netty.handler.codec.frame.TooLongFrameException;
 import org.jboss.netty.handler.ssl.SslHandler;
 import org.slf4j.Logger;
 
-public class ManageSieveChannelUpstreamHandler extends SimpleChannelUpstreamHandler {
+public class ManageSieveChannelUpstreamHandler extends FrameDecoder {
 
     static final String SSL_HANDLER = "sslHandler";
 
@@ -62,18 +63,19 @@ public class ManageSieveChannelUpstreamHandler extends SimpleChannelUpstreamHand
     }
 
     @Override
-    public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
+    protected Object decode(ChannelHandlerContext ctx, Channel channel, ChannelBuffer buffer) throws Exception {
         ChannelManageSieveResponseWriter attachment = (ChannelManageSieveResponseWriter) ctx.getAttachment();
         try (Closeable closeable = ManageSieveMDCContext.from(ctx, attributes)) {
-            String request = attachment.cumulate((String) e.getMessage());
+            String request = buffer.toString(StandardCharsets.UTF_8);
             if (request.isEmpty() || request.startsWith("\r\n")) {
-                return;
+                return null;
             }
 
             Session manageSieveSession = attributes.get(ctx.getChannel());
             String responseString = manageSieveProcessor.handleRequest(manageSieveSession, request);
-            attachment.resetCumulation();
-            attachment.write(responseString);
+            if (ctx.getChannel().isConnected()) {
+                ctx.getChannel().write(ChannelBuffers.wrappedBuffer(responseString.getBytes(StandardCharsets.UTF_8)));
+            }
             if (manageSieveSession.getState() == Session.State.SSL_NEGOCIATION) {
                 turnSSLon(ctx.getChannel());
                 manageSieveSession.setSslEnabled(true);
@@ -82,7 +84,9 @@ public class ManageSieveChannelUpstreamHandler extends SimpleChannelUpstreamHand
             }
         } catch (NotEnoughDataException ex) {
             // Do nothing will keep the cumulation
+            buffer.resetReaderIndex();
         }
+        return null;
     }
 
     @Override
