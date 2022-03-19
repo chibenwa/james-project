@@ -179,6 +179,9 @@ public class CoreProcessor implements CoreCommands {
     public String putScript(Session session, String name, String content) {
         return handleCommandExecution(() -> {
             authenticationCheck(session);
+            System.out.println("==========");
+            System.out.println(content);
+            System.out.println("==========");
             sieveRepository.putScript(session.getUser(), new ScriptName(name), new ScriptContent(content));
             return manageWarnings(parser.parse(content));
         }, session);
