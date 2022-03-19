@@ -90,7 +90,7 @@ public class ArgumentParser {
     }
 
     public String chooseMechanism(Session session, String mechanism) {
-        LOGGER.debug("ManageSieve request received: AUTHENTICATE. Mechanism: {}", mechanism);
+        LOGGER.debug("ManageSieve request received: AUTHENTICATE.");
         return core.chooseMechanism(session, mechanism);
     }
 
