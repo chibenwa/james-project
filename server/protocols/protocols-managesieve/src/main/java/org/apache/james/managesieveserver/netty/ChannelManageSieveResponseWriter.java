@@ -19,10 +19,10 @@
 
 package org.apache.james.managesieveserver.netty;
 
-import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 
 import org.apache.james.protocols.api.CommandDetectionSession;
+import org.jboss.netty.buffer.ChannelBuffers;
 import org.jboss.netty.channel.Channel;
 
 public class ChannelManageSieveResponseWriter implements CommandDetectionSession {
@@ -36,7 +36,7 @@ public class ChannelManageSieveResponseWriter implements CommandDetectionSession
 
     public void write(String response) {
         if (channel.isConnected()) {
-            channel.write(ByteBuffer.wrap(response.getBytes(StandardCharsets.UTF_8)));
+            channel.write(ChannelBuffers.wrappedBuffer(response.getBytes(StandardCharsets.UTF_8)));
         }
     }
 
