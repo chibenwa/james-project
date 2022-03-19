@@ -50,11 +50,11 @@ public class AllButStartTlsLineBasedChannelHandler extends LineBasedFrameDecoder
     protected Object decode(ChannelHandlerContext ctx, Channel channel, ChannelBuffer buffer) throws Exception {
         CommandDetectionSession session = retrieveSession(ctx, channel);
 
+        String trimedLowerCasedInput = readAll(buffer).trim().toLowerCase(Locale.US);
+        System.out.println("----------");
+        System.out.println(trimedLowerCasedInput);
+        System.out.println("----------");
         if (session == null || session.needsCommandInjectionDetection()) {
-            String trimedLowerCasedInput = readAll(buffer).trim().toLowerCase(Locale.US);
-            System.out.println("----------");
-            System.out.println(trimedLowerCasedInput);
-            System.out.println("----------");
 
 
             Boolean startTlsInFlight = Optional.ofNullable(ctx.getAttachment())
