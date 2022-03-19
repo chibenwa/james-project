@@ -19,17 +19,16 @@
 
 package org.apache.james.managesieveserver.netty;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 
 import org.apache.james.protocols.api.CommandDetectionSession;
 import org.jboss.netty.channel.Channel;
-import org.jboss.netty.handler.stream.ChunkedStream;
 
 public class ChannelManageSieveResponseWriter implements CommandDetectionSession {
     private final Channel channel;
     private String cumulation = null;
+    private boolean needsCommandInjectionDetection = true;
 
     public ChannelManageSieveResponseWriter(Channel channel) {
         this.channel = channel;
@@ -37,24 +36,23 @@ public class ChannelManageSieveResponseWriter implements CommandDetectionSession
 
     public void write(String response) {
         if (channel.isConnected()) {
-            InputStream in = new ByteArrayInputStream(response.getBytes(StandardCharsets.UTF_8));
-            channel.write(new ChunkedStream(in));
+            channel.write(ByteBuffer.wrap(response.getBytes(StandardCharsets.UTF_8)));
         }
     }
 
     @Override
     public boolean needsCommandInjectionDetection() {
-        return false;
+        return needsCommandInjectionDetection;
     }
 
     @Override
     public void startDetectingCommandInjection() {
-
+        needsCommandInjectionDetection = true;
     }
 
     @Override
     public void stopDetectingCommandInjection() {
-
+        needsCommandInjectionDetection = false;
     }
 
     public void resetCumulation() {
