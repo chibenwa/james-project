@@ -73,6 +73,7 @@ public class ManageSieveChannelUpstreamHandler extends FrameDecoder {
 
             Session manageSieveSession = attributes.get(ctx.getChannel());
             String responseString = manageSieveProcessor.handleRequest(manageSieveSession, request);
+            buffer.setIndex(buffer.writerIndex(), buffer.writerIndex());
             if (ctx.getChannel().isConnected()) {
                 ctx.getChannel().write(ChannelBuffers.wrappedBuffer(responseString.getBytes(StandardCharsets.UTF_8)));
             }
