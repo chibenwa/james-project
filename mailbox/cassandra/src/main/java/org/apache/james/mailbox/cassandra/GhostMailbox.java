@@ -35,6 +35,14 @@ public class GhostMailbox {
     public static final String TYPE = "type";
     public static final String MAILBOX_ID = "mailboxId";
 
+    public static boolean isDebugEnabled() {
+        return LOGGER.isDebugEnabled();
+    }
+
+    public static boolean isInfoEnabled() {
+        return LOGGER.isDebugEnabled();
+    }
+
     public static MDCStructuredLogger logger() {
         return MDCStructuredLogger.forLogger(LOGGER);
     }
