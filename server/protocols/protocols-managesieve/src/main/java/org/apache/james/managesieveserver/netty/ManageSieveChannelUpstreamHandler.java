@@ -37,7 +37,6 @@ import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.codec.TooLongFrameException;
-import io.netty.handler.ssl.SslHandler;
 
 @ChannelHandler.Sharable
 public class ManageSieveChannelUpstreamHandler extends ChannelInboundHandlerAdapter {
@@ -143,9 +142,7 @@ public class ManageSieveChannelUpstreamHandler extends ChannelInboundHandlerAdap
     private void turnSSLon(Channel channel) {
         if (secure != null) {
             channel.config().setAutoRead(false);
-            SslHandler filter = new SslHandler(secure.createSSLEngine(), false);
-            filter.engine().setUseClientMode(false);
-            channel.pipeline().addFirst(SSL_HANDLER, filter);
+            channel.pipeline().addFirst(SSL_HANDLER, secure.sslHandler());
             channel.config().setAutoRead(true);
         }
     }
