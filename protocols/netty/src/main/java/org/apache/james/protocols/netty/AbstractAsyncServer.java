@@ -32,6 +32,8 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
+import io.netty.channel.epoll.EpollEventLoopGroup;
+import io.netty.channel.epoll.EpollServerSocketChannel;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -46,6 +48,7 @@ import io.netty.util.concurrent.ImmediateEventExecutor;
 public abstract class AbstractAsyncServer implements ProtocolServer {
 
     public static final int DEFAULT_IO_WORKER_COUNT = Runtime.getRuntime().availableProcessors() * 2;
+    public static final int DEFAULT_BOSS_WORKER_COUNT = 2;
     private volatile int backlog = 250;
     
     private volatile int timeout = 120;
@@ -57,9 +60,11 @@ public abstract class AbstractAsyncServer implements ProtocolServer {
     
     private final ChannelGroup channels = new DefaultChannelGroup(ImmediateEventExecutor.INSTANCE);
 
-    private volatile int ioWorker = DEFAULT_IO_WORKER_COUNT;
-    
+    private int ioWorker = DEFAULT_IO_WORKER_COUNT;
+    private int bossWorker = DEFAULT_BOSS_WORKER_COUNT;
+
     private List<InetSocketAddress> addresses = new ArrayList<>();
+    private boolean nativeEpoll = false;
     protected String jmxName;
     
     public synchronized void setListenAddresses(InetSocketAddress... addresses) {
@@ -67,6 +72,13 @@ public abstract class AbstractAsyncServer implements ProtocolServer {
             throw new IllegalStateException("Can only be set when the server is not running");
         }
         this.addresses = ImmutableList.copyOf(addresses);
+    }
+
+    public void setNativeEpoll(boolean nativeEpoll) {
+        if (started) {
+            throw new IllegalStateException("Can only be set when the server is not running");
+        }
+        this.nativeEpoll = nativeEpoll;
     }
     
     /**
@@ -77,6 +89,13 @@ public abstract class AbstractAsyncServer implements ProtocolServer {
             throw new IllegalStateException("Can only be set when the server is not running");
         }
         this.ioWorker = ioWorker;
+    }
+
+    public void setBossWorkerCount(int bossWorker) {
+        if (started) {
+            throw new IllegalStateException("Can only be set when the server is not running");
+        }
+        this.bossWorker = bossWorker;
     }
 
     @Override
@@ -90,10 +109,16 @@ public abstract class AbstractAsyncServer implements ProtocolServer {
         }
 
         ServerBootstrap bootstrap = new ServerBootstrap();
-        bootstrap.channel(NioServerSocketChannel.class);
 
-        bossGroup = new NioEventLoopGroup(2, NamedThreadFactory.withName(jmxName + "-boss"));
-        workerGroup = new NioEventLoopGroup(ioWorker, NamedThreadFactory.withName(jmxName + "-io"));
+        if (nativeEpoll) {
+            bootstrap.channel(EpollServerSocketChannel.class);
+            bossGroup = new EpollEventLoopGroup(bossWorker, NamedThreadFactory.withName(jmxName + "-boss"));
+            workerGroup = new EpollEventLoopGroup(ioWorker, NamedThreadFactory.withName(jmxName + "-io"));
+        } else {
+            bootstrap.channel(NioServerSocketChannel.class);
+            bossGroup = new NioEventLoopGroup(bossWorker, NamedThreadFactory.withName(jmxName + "-boss"));
+            workerGroup = new NioEventLoopGroup(ioWorker, NamedThreadFactory.withName(jmxName + "-io"));
+        }
 
         bootstrap.group(bossGroup, workerGroup);
 

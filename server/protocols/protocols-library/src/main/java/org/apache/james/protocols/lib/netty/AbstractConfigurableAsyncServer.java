@@ -185,8 +185,9 @@ public abstract class AbstractConfigurableAsyncServer extends AbstractAsyncServe
         setListenAddresses(bindAddresses.toArray(InetSocketAddress[]::new));
 
         jmxName = config.getString("jmxName", getDefaultJMXName());
-        int ioWorker = config.getInt("ioWorkerCount", DEFAULT_IO_WORKER_COUNT);
-        setIoWorkerCount(ioWorker);
+        setIoWorkerCount(config.getInt("ioWorkerCount", DEFAULT_IO_WORKER_COUNT));
+        setBossWorkerCount(config.getInt("bossWorkerCount", DEFAULT_BOSS_WORKER_COUNT));
+        setNativeEpoll(config.getBoolean("nativeEpoll", false));
 
         executorGroup = new DefaultEventExecutorGroup(config.getInt("maxExecutorCount", DEFAULT_MAX_EXECUTOR_COUNT),
             NamedThreadFactory.withName(jmxName));
