@@ -55,6 +55,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.io.ByteSource;
 import com.google.common.io.FileBackedOutputStream;
 
+import io.netty.handler.ssl.SslProvider;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -107,10 +108,7 @@ public class S3BlobStoreDAO implements BlobStoreDAO, Startable, Closeable {
         client = S3AsyncClient.builder()
             .credentialsProvider(StaticCredentialsProvider.create(
                 AwsBasicCredentials.create(authConfiguration.getAccessKeyId(), authConfiguration.getSecretKey())))
-            .httpClientBuilder(NettyNioAsyncHttpClient.builder()
-                .tlsTrustManagersProvider(getTrustManagerProvider(configuration.getSpecificAuthConfiguration()))
-                .maxConcurrency(configuration.getHttpConcurrency())
-                .maxPendingConnectionAcquires(10_000))
+            .httpClientBuilder(httpClient(configuration))
             .endpointOverride(authConfiguration.getEndpoint())
             .region(configuration.getRegion().asAws())
             .serviceConfiguration(pathStyleAccess)
@@ -120,6 +118,17 @@ public class S3BlobStoreDAO implements BlobStoreDAO, Startable, Closeable {
             .prefix(configuration.getBucketPrefix())
             .namespace(configuration.getNamespace())
             .build();
+    }
+
+    private NettyNioAsyncHttpClient.Builder httpClient(S3BlobStoreConfiguration configuration) {
+        NettyNioAsyncHttpClient.Builder builder = NettyNioAsyncHttpClient.builder();
+        if (configuration.useOpenSSL()) {
+            builder.sslProvider(SslProvider.OPENSSL);
+        }
+        return builder
+            .tlsTrustManagersProvider(getTrustManagerProvider(configuration.getSpecificAuthConfiguration()))
+            .maxConcurrency(configuration.getHttpConcurrency())
+            .maxPendingConnectionAcquires(10_000);
     }
 
     private TlsTrustManagersProvider getTrustManagerProvider(AwsS3AuthConfiguration configuration) {

@@ -35,7 +35,6 @@ public class S3BlobStoreConfiguration {
     }
 
     public interface Builder {
-
         @FunctionalInterface
         interface RequireAuthConfiguration {
             RequireRegion authConfiguration(AwsS3AuthConfiguration authConfiguration);
@@ -56,6 +55,7 @@ public class S3BlobStoreConfiguration {
             private Optional<Duration> readTimeout;
             private Optional<Duration> writeTimeout;
             private Optional<Duration> connectionTimeout;
+            private Optional<Boolean> useOpenSSL;
             private Region region;
 
             public ReadyToBuild(AwsS3AuthConfiguration specificAuthConfiguration, Region region) {
@@ -67,6 +67,7 @@ public class S3BlobStoreConfiguration {
                 this.readTimeout = Optional.empty();
                 this.writeTimeout = Optional.empty();
                 this.connectionTimeout = Optional.empty();
+                this.useOpenSSL = Optional.empty();
             }
 
             public ReadyToBuild defaultBucketName(Optional<BucketName> defaultBucketName) {
@@ -99,6 +100,11 @@ public class S3BlobStoreConfiguration {
                 return this;
             }
 
+            public ReadyToBuild useOpenSSL(Optional<Boolean> useOpenSSL) {
+                this.useOpenSSL = useOpenSSL;
+                return this;
+            }
+
             public ReadyToBuild bucketPrefix(String bucketPrefix) {
                 this.bucketPrefix = Optional.ofNullable(bucketPrefix);
                 return this;
@@ -110,7 +116,7 @@ public class S3BlobStoreConfiguration {
             }
 
             public S3BlobStoreConfiguration build() {
-                return new S3BlobStoreConfiguration(bucketPrefix, defaultBucketName, region, specificAuthConfiguration, httpConcurrency.orElse(DEFAULT_HTTP_CONCURRENCY), readTimeout, writeTimeout, connectionTimeout);
+                return new S3BlobStoreConfiguration(bucketPrefix, defaultBucketName, region, specificAuthConfiguration, httpConcurrency.orElse(DEFAULT_HTTP_CONCURRENCY), readTimeout, writeTimeout, connectionTimeout, useOpenSSL.orElse(false));
             }
         }
 
@@ -123,9 +129,10 @@ public class S3BlobStoreConfiguration {
     private final Optional<BucketName> namespace;
     private final Optional<String> bucketPrefix;
     private final int httpConcurrency;
-    private Optional<Duration> readTimeout;
-    private Optional<Duration> writeTimeout;
-    private Optional<Duration> connectionTimeout;
+    private final Optional<Duration> readTimeout;
+    private final Optional<Duration> writeTimeout;
+    private final Optional<Duration> connectionTimeout;
+    private final boolean useOpenSSL;
 
     @VisibleForTesting
     S3BlobStoreConfiguration(Optional<String> bucketPrefix,
@@ -135,7 +142,7 @@ public class S3BlobStoreConfiguration {
                              int httpConcurrency,
                              Optional<Duration> readTimeout,
                              Optional<Duration> writeTimeout,
-                             Optional<Duration> connectionTimeout) {
+                             Optional<Duration> connectionTimeout, boolean useOpenSSL) {
         this.bucketPrefix = bucketPrefix;
         this.namespace = namespace;
         this.region = region;
@@ -144,6 +151,11 @@ public class S3BlobStoreConfiguration {
         this.readTimeout = readTimeout;
         this.writeTimeout = writeTimeout;
         this.connectionTimeout = connectionTimeout;
+        this.useOpenSSL = useOpenSSL;
+    }
+
+    public boolean useOpenSSL() {
+        return useOpenSSL;
     }
 
     public Optional<BucketName> getNamespace() {

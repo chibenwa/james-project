@@ -40,6 +40,7 @@ public class S3BlobStoreConfigurationReader {
     private static final String OBJECTSTORAGE_S3_READ_TIMEOUT = "objectstorage.s3.read.timeout";
     private static final String OBJECTSTORAGE_S3_WRITE_TIMEOUT = "objectstorage.s3.write.timeout";
     private static final String OBJECTSTORAGE_S3_CONNECTION_TIMEOUT = "objectstorage.s3.connection.timeout";
+    private static final String OBJECTSTORAGE_S3_OPENSSL = "objectstorage.s3.openssl";
 
     public static S3BlobStoreConfiguration from(Configuration configuration) throws ConfigurationException {
         Optional<Integer> httpConcurrency = Optional.ofNullable(configuration.getInteger(OBJECTSTORAGE_S3_HTTP_CONCURRENCY, null));
@@ -54,6 +55,7 @@ public class S3BlobStoreConfigurationReader {
             .map(s -> DurationParser.parse(s, ChronoUnit.SECONDS));
         Optional<Duration> connectionTimeout = Optional.ofNullable(configuration.getString(OBJECTSTORAGE_S3_CONNECTION_TIMEOUT, null))
             .map(s -> DurationParser.parse(s, ChronoUnit.SECONDS));
+        Optional<Boolean> useOpenSSL = Optional.ofNullable(configuration.getBoolean(OBJECTSTORAGE_S3_OPENSSL, null));
 
         return S3BlobStoreConfiguration.builder()
             .authConfiguration(AwsS3ConfigurationReader.from(configuration))
@@ -64,6 +66,7 @@ public class S3BlobStoreConfigurationReader {
             .readTimeout(readTimeout)
             .writeTimeout(writeTimeout)
             .connectionTimeout(connectionTimeout)
+            .useOpenSSL(useOpenSSL)
             .build();
     }
 
