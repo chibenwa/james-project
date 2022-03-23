@@ -339,8 +339,4 @@ public class ImapResponseComposerImpl implements ImapConstants, ImapResponseComp
         return message(sb.toString());
     }
 
-    @Override
-    public void flush() {
-        writer.flush();
-    }
 }

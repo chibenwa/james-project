@@ -211,6 +211,4 @@ public interface ImapResponseComposer {
      */
     ImapResponseComposer openSquareBracket() throws IOException;
 
-    void flush();
-
 }

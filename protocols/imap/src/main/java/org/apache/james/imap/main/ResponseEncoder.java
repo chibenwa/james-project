@@ -55,8 +55,4 @@ public class ResponseEncoder implements Responder {
         return failure;
     }
 
-    @Override
-    public void flush() {
-        composer.flush();
-    }
 }

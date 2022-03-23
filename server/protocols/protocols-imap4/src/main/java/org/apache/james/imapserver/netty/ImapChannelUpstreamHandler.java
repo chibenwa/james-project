@@ -160,7 +160,6 @@ public class ImapChannelUpstreamHandler extends ChannelInboundHandlerAdapter imp
 
             // write hello to client
             response.untagged().message("OK").message(hello).end();
-            response.flush();
             super.channelActive(ctx);
         }
 
@@ -220,7 +219,6 @@ public class ImapChannelUpstreamHandler extends ChannelInboundHandlerAdapter imp
                 // See also JAMES-1190
                 ImapResponseComposer composer = (ImapResponseComposer) ctx.channel().attr(CONTEXT_ATTACHMENT_ATTRIBUTE_KEY).get();
                 composer.untaggedResponse(ImapConstants.BAD + " failed. Maximum command line length exceeded");
-                composer.flush();
 
             } else {
 
@@ -257,7 +255,6 @@ public class ImapChannelUpstreamHandler extends ChannelInboundHandlerAdapter imp
                 }
                 final ResponseEncoder responseEncoder = new ResponseEncoder(encoder, response);
                 processor.process(message, responseEncoder, session);
-                response.flush();
 
                 if (session.getState() == ImapSessionState.LOGOUT) {
                     // Make sure we close the channel after all the buffers were flushed out
