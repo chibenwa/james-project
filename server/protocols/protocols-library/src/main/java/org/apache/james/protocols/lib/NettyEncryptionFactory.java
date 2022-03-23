@@ -93,18 +93,23 @@ public class NettyEncryptionFactory implements Encryption.Factory {
        switch (sslConfig.getImplementation()) {
            case NETTY_NIO:
                contextBuilder.sslProvider(SslProvider.JDK);
+               break;
            case NETTY_NATIVE:
                contextBuilder.sslProvider(SslProvider.OPENSSL);
+               break;
        }
 
         if (sslConfig.getClientAuth() != null && sslConfig.getTruststore() != null) {
             switch (sslConfig.getClientAuth()) {
                 case NEED:
                     contextBuilder.clientAuth(ClientAuth.REQUIRE);
+                    break;
                 case NONE:
                     contextBuilder.clientAuth(ClientAuth.NONE);
+                    break;
                 case WANT:
                     contextBuilder.clientAuth(ClientAuth.OPTIONAL);
+                    break;
             }
             SSLFactory.Builder sslFactoryBuilder = SSLFactory.builder()
                 .withSslContextAlgorithm("TLS");
