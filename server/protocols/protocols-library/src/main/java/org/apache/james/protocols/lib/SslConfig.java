@@ -55,7 +55,7 @@ public class SslConfig {
             String truststoreType = config.getString("tls.clientAuth.truststoreType", "JKS");
             char[] truststoreSecret = config.getString("tls.clientAuth.truststoreSecret", "").toCharArray();
             LOGGER.info("TLS enabled with auth {} using truststore {}", clientAuth, truststore);
-            Implementation implementation = Optional.ofNullable(config.getString("implementation", null))
+            Implementation implementation = Optional.ofNullable(config.getString("tls.implementation", null))
                 .map(s -> Implementation.parse(s).orElseThrow(() -> new IllegalArgumentException("Invalid SSL implementation " + s)))
                 .orElse(Implementation.LEGACY_JAVA);
 
