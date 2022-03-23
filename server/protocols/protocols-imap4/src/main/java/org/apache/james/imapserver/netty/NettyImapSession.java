@@ -196,7 +196,7 @@ public class NettyImapSession implements ImapSession, NettyConstants {
 
     @Override
     public boolean supportStartTLS() {
-        return secure != null && secure.getContext() != null;
+        return secure != null && secure.supportsEncryption();
     }
 
     @Override
