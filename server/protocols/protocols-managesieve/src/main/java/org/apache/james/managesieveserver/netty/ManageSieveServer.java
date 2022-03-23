@@ -106,7 +106,7 @@ public class ManageSieveServer extends AbstractConfigurableAsyncServer implement
                 ChannelPipeline pipeline = channel.pipeline();
                 Encryption secure = getEncryption();
                 if (secure != null && !secure.isStartTLS()) {
-                    pipeline.addFirst(SSL_HANDLER, secure.sslHandler());
+                    pipeline.addFirst(SSL_HANDLER, secure.sslHandler(channel));
                 }
 
                 connectionLimitUpstreamHandler.ifPresent(handler -> pipeline.addLast(CONNECTION_LIMIT_HANDLER, handler));

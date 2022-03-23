@@ -39,6 +39,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.james.filesystem.api.FileSystem;
 import org.apache.james.lifecycle.api.Configurable;
 import org.apache.james.protocols.lib.LegacyJavaEncryptionFactory;
+import org.apache.james.protocols.lib.NettyEncryptionFactory;
 import org.apache.james.protocols.lib.SslConfig;
 import org.apache.james.protocols.lib.jmx.ServerMBean;
 import org.apache.james.protocols.netty.AbstractAsyncServer;
@@ -344,8 +345,11 @@ public abstract class AbstractConfigurableAsyncServer extends AbstractAsyncServe
      */
     protected void buildSSLContext() throws Exception {
         if (sslConfig.useSSL() || sslConfig.useStartTLS()) {
-            encryption = new LegacyJavaEncryptionFactory(fileSystem, sslConfig)
-                .create();
+            if (sslConfig.getImplementation() == SslConfig.Implementation.LEGACY_JAVA) {
+                encryption = new LegacyJavaEncryptionFactory(fileSystem, sslConfig).create();
+            } else {
+                encryption = new NettyEncryptionFactory(fileSystem, sslConfig).create();
+            }
         }
     }
 

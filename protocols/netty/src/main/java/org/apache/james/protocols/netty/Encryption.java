@@ -27,6 +27,7 @@ import org.apache.james.protocols.api.ClientAuth;
 
 import com.google.common.annotations.VisibleForTesting;
 
+import io.netty.channel.Channel;
 import io.netty.handler.ssl.SslHandler;
 
 /**
@@ -99,7 +100,7 @@ public interface Encryption {
      */
     ClientAuth getClientAuth();
 
-    SslHandler sslHandler();
+    SslHandler sslHandler(Channel channel);
 
     class LegacyJavaEncryption implements Encryption {
         private final SSLContext context;
@@ -180,12 +181,39 @@ public interface Encryption {
             return engine;
         }
 
-        public SslHandler sslHandler() {
+        public SslHandler sslHandler(Channel channel) {
             SSLEngine engine = createSSLEngine();
             // We need to set clientMode to false.
             // See https://issues.apache.org/jira/browse/JAMES-1025
             engine.setUseClientMode(false);
             return new SslHandler(engine);
+        }
+    }
+
+    class NoEncryption implements Encryption {
+        @Override
+        public boolean isStartTLS() {
+            return false;
+        }
+
+        @Override
+        public boolean supportsEncryption() {
+            return false;
+        }
+
+        @Override
+        public String[] getEnabledCipherSuites() {
+            return new String[0];
+        }
+
+        @Override
+        public ClientAuth getClientAuth() {
+            return ClientAuth.NONE;
+        }
+
+        @Override
+        public SslHandler sslHandler(Channel channel) {
+            throw new UnsupportedOperationException();
         }
     }
 }

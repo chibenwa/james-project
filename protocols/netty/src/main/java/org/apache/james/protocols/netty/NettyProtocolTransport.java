@@ -82,7 +82,7 @@ public class NettyProtocolTransport extends AbstractProtocolTransport {
      * Add the {@link SslHandler} to the pipeline and start encrypting after the next written message
      */
     private void prepareStartTLS() {
-        channel.pipeline().addFirst(HandlerConstants.SSL_HANDLER, encryption.sslHandler());
+        channel.pipeline().addFirst(HandlerConstants.SSL_HANDLER, encryption.sslHandler(channel));
     }
 
     @Override

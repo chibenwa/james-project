@@ -53,7 +53,7 @@ public abstract class AbstractSSLAwareChannelPipelineFactory<C extends SocketCha
 
         if (isSSLSocket()) {
             ChannelPipeline pipeline = channel.pipeline();
-            pipeline.addFirst(HandlerConstants.SSL_HANDLER, secure.sslHandler());
+            pipeline.addFirst(HandlerConstants.SSL_HANDLER, secure.sslHandler(channel));
         }
     }
 

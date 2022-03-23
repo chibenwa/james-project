@@ -158,7 +158,7 @@ public class NettyImapSession implements ImapSession, NettyConstants {
         channel.config().setAutoRead(false);
         write(statusResponse);
 
-        channel.pipeline().addFirst(SSL_HANDLER, secure.sslHandler());
+        channel.pipeline().addFirst(SSL_HANDLER, secure.sslHandler(channel));
 
         channel.config().setAutoRead(true);
         return true;

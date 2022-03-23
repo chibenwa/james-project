@@ -232,7 +232,7 @@ public class IMAPServer extends AbstractConfigurableAsyncServer implements ImapC
                
                 Encryption secure = getEncryption();
                 if (secure != null && !secure.isStartTLS()) {
-                    pipeline.addFirst(SSL_HANDLER, secure.sslHandler());
+                    pipeline.addFirst(SSL_HANDLER, secure.sslHandler(channel));
                 }
 
                 pipeline.addLast(CHUNK_WRITE_HANDLER, new ChunkedWriteHandler());

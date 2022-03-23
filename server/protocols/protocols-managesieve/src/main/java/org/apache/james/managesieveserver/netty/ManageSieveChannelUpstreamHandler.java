@@ -142,7 +142,7 @@ public class ManageSieveChannelUpstreamHandler extends ChannelInboundHandlerAdap
     private void turnSSLon(Channel channel) {
         if (secure != null) {
             channel.config().setAutoRead(false);
-            channel.pipeline().addFirst(SSL_HANDLER, secure.sslHandler());
+            channel.pipeline().addFirst(SSL_HANDLER, secure.sslHandler(channel));
             channel.config().setAutoRead(true);
         }
     }
