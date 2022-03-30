@@ -192,19 +192,15 @@ public abstract class AbstractMailboxProcessor<R extends ImapRequest> extends Ab
     }
     
     private Mono<Void> addFlagsResponses(ImapSession session, SelectedMailbox selected, ImapProcessor.Responder responder, boolean useUid) {
-        // To be lazily initialized only if needed, which is in minority of cases.
         MessageManager messageManager = selected.getMessageManager();
         MailboxSession mailboxSession = session.getMailboxSession();
 
         final Collection<MessageUid> flagUpdateUids = selected.flagUpdateUids();
         if (!flagUpdateUids.isEmpty()) {
-            Iterator<MessageRange> ranges = MessageRange.toRanges(flagUpdateUids).iterator();
-            boolean isModSeqPermanent = true;
-
             return addApplicableFlagResponse(session, selected, responder, useUid)
                 .then(Flux.fromIterable(MessageRange.toRanges(flagUpdateUids))
                     .concatMap(range ->
-                        addFlagsResponses(session, selected, responder, useUid, ranges.next(), messageManager, isModSeqPermanent, mailboxSession))
+                        addFlagsResponses(session, selected, responder, useUid, range, messageManager, mailboxSession))
                     .then())
                 .onErrorResume(MailboxException.class, e -> {
                     handleResponseException(responder, e, HumanReadableText.FAILURE_TO_LOAD_FLAGS, session);
@@ -250,7 +246,6 @@ public abstract class AbstractMailboxProcessor<R extends ImapRequest> extends Ab
                                    ImapProcessor.Responder responder,
                                    boolean useUid,
                                    MessageRange messageSet, MessageManager mailbox,
-                                   boolean isModSeqPermanent,
                                    MailboxSession mailboxSession) {
         final boolean qresyncEnabled = EnableProcessor.getEnabledCapabilities(session).contains(ImapConstants.SUPPORTS_QRESYNC);
         final boolean condstoreEnabled = EnableProcessor.getEnabledCapabilities(session).contains(ImapConstants.SUPPORTS_CONDSTORE);
@@ -282,7 +277,7 @@ public abstract class AbstractMailboxProcessor<R extends ImapRequest> extends Ab
 
                     // Check if we also need to return the MODSEQ in the response. This is true if CONDSTORE or
                     // if QRESYNC was enabled, and the mailbox supports the permant storage of mod-sequences
-                    if ((condstoreEnabled || qresyncEnabled) && isModSeqPermanent) {
+                    if (condstoreEnabled || qresyncEnabled) {
                         response = new FetchResponse(msn, flags, uidOut, mr.getModSeq(), null, null, null, null, null, null);
                     } else {
                         response = new FetchResponse(msn, flags, uidOut, null, null, null, null, null, null, null);
