@@ -194,7 +194,9 @@ public class ImapChannelUpstreamHandler extends ChannelInboundHandlerAdapter imp
                 .orElse(Mono.empty())
                 .doFinally(signal -> imapConnectionsMetric.decrement())
                 .doFinally(Throwing.consumer(signal -> super.channelInactive(ctx)))
-                .subscribe(any -> {}, ctx::fireExceptionCaught);
+                .subscribe(any -> {
+
+                }, ctx::fireExceptionCaught);
         }
     }
 
@@ -238,7 +240,9 @@ public class ImapChannelUpstreamHandler extends ChannelInboundHandlerAdapter imp
                         }
                     })
                     .doFinally(Throwing.consumer(signal -> super.channelInactive(ctx)))
-                    .subscribe(any -> {}, e -> {
+                    .subscribe(any -> {
+                        
+                    }, e -> {
                         LOGGER.error("Exception while handling errors for channel {}", ctx.channel(), e);
                         Channel channel = ctx.channel();
                         if (channel.isActive()) {
