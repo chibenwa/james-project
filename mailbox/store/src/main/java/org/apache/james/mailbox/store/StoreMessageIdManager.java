@@ -200,8 +200,7 @@ public class StoreMessageIdManager implements MessageIdManager {
 
     @Override
     public DeleteResult delete(MessageId messageId, List<MailboxId> mailboxIds, MailboxSession mailboxSession) throws MailboxException {
-        return  MailboxReactorUtils.block(deleteReactive(ImmutableList.of(messageId), mailboxIds, mailboxSession)
-            .subscribeOn(Schedulers.elastic()));
+        return MailboxReactorUtils.block(deleteReactive(ImmutableList.of(messageId), mailboxIds, mailboxSession));
     }
 
     @Override
@@ -335,8 +334,7 @@ public class StoreMessageIdManager implements MessageIdManager {
                     return applyMessageMoveNoMailboxChecks(mailboxSession, currentMailboxMessages, messageMove);
                 }
                 return Mono.empty();
-            })
-            .subscribeOn(Schedulers.elastic()));
+            }));
     }
 
     private Mono<List<MailboxMessage>> findRelatedMailboxMessages(MessageId messageId, MailboxSession mailboxSession) {
@@ -410,8 +408,7 @@ public class StoreMessageIdManager implements MessageIdManager {
                 .filter(knownMailbox -> knownMailbox.getMailboxId().equals(mailboxId))
                 .findFirst()
                 .orElseGet(Throwing.supplier(() -> MailboxReactorUtils.block(mailboxSessionMapperFactory.getMailboxMapper(mailboxSession)
-                        .findMailboxById(mailboxId)
-                        .subscribeOn(Schedulers.elastic())))
+                        .findMailboxById(mailboxId)))
                     .sneakyThrow());
             return eventBus.dispatch(EventFactory.flagsUpdated()
                         .randomEventId()

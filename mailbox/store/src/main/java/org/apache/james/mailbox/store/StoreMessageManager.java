@@ -700,7 +700,6 @@ public class StoreMessageManager implements MessageManager {
                 .updatedFlags(updatedFlags)
                 .build(),
                 new MailboxIdRegistrationKey(mailbox.getMailboxId()))
-            .subscribeOn(Schedulers.elastic())
             .block();
 
         return updatedFlags.stream().collect(ImmutableMap.toImmutableMap(
@@ -919,7 +918,6 @@ public class StoreMessageManager implements MessageManager {
                     .messageId(messageIds.build())
                     .build(),
                 messageMoves.impactedMailboxIds().map(MailboxIdRegistrationKey::new).collect(ImmutableSet.toImmutableSet())))
-            .subscribeOn(Schedulers.elastic())
             .blockLast();
 
         return copiedUids;
@@ -961,7 +959,6 @@ public class StoreMessageManager implements MessageManager {
                     .session(session)
                     .build(),
                 messageMoves.impactedMailboxIds().map(MailboxIdRegistrationKey::new).collect(ImmutableSet.toImmutableSet())))
-            .subscribeOn(Schedulers.elastic())
             .blockLast();
 
         return moveUids;
