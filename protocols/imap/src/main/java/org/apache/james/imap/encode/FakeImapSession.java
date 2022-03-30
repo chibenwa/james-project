@@ -68,7 +68,7 @@ public class FakeImapSession implements ImapSession {
     @Override
     public Mono<Void> logout() {
         return closeMailbox()
-            .then(Mono.fromRunnable(() ->state = ImapSessionState.LOGOUT));
+            .then(Mono.fromRunnable(() -> state = ImapSessionState.LOGOUT));
     }
 
     @Override
