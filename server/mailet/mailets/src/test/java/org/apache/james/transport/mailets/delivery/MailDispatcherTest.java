@@ -86,7 +86,7 @@ class MailDispatcherTest {
             .state("state")
             .mimeMessage(MimeMessageUtil.defaultMimeMessage())
             .build();
-        testee.dispatch(mail);
+        testee.dispatch(mail).block();
 
         verify(mailStore).storeMail(MailAddressFixture.ANY_AT_JAMES, mail);
         verify(mailStore).storeMail(MailAddressFixture.ANY_AT_JAMES2, mail);
@@ -107,7 +107,7 @@ class MailDispatcherTest {
             .state("state")
             .mimeMessage(MimeMessageUtil.defaultMimeMessage())
             .build();
-        testee.dispatch(mail);
+        testee.dispatch(mail).block();
 
         assertThat(mail.getState()).isEqualTo(Mail.GHOST);
     }
@@ -127,7 +127,7 @@ class MailDispatcherTest {
             .mimeMessage(MimeMessageUtil.defaultMimeMessage())
             .state(state)
             .build();
-        testee.dispatch(mail);
+        testee.dispatch(mail).block();
 
         assertThat(mail.getState()).isEqualTo(state);
     }
@@ -155,7 +155,7 @@ class MailDispatcherTest {
             .recipients(MailAddressFixture.ANY_AT_JAMES)
             .state("state")
             .build();
-        testee.dispatch(mail);
+        testee.dispatch(mail).block();
 
         List<FakeMailContext.SentMail> actual = fakeMailContext.getSentMails();
         FakeMailContext.SentMail expected = FakeMailContext.sentMailBuilder()
@@ -183,7 +183,7 @@ class MailDispatcherTest {
             .mimeMessage(MimeMessageUtil.defaultMimeMessage())
             .state("state")
             .build();
-        testee.dispatch(mail);
+        testee.dispatch(mail).block();
 
         ArgumentCaptor<Mail> mailCaptor = ArgumentCaptor.forClass(Mail.class);
         verify(mailStore).storeMail(any(MailAddress.class), mailCaptor.capture());
@@ -209,7 +209,7 @@ class MailDispatcherTest {
             .state("state")
             .build();
         mail.addSpecificHeaderForRecipient(TEST_HEADER_USER2, MailAddressFixture.ANY_AT_JAMES2);
-        testee.dispatch(mail);
+        testee.dispatch(mail).block();
 
         assertThat(accumulatorTestHeaderMailStore.getHeaderValues(MailAddressFixture.ANY_AT_JAMES))
             .isEmpty();
@@ -232,7 +232,7 @@ class MailDispatcherTest {
             .state("state")
             .build();
         mail.addSpecificHeaderForRecipient(TEST_HEADER_USER1, MailAddressFixture.ANY_AT_JAMES);
-        testee.dispatch(mail);
+        testee.dispatch(mail).block();
 
         assertThat(accumulatorTestHeaderMailStore.getHeaderValues(MailAddressFixture.ANY_AT_JAMES))
             .containsOnly(new String[]{VALUE_FOR_USER_1});
@@ -255,7 +255,7 @@ class MailDispatcherTest {
             .state("state")
             .build();
         mail.addSpecificHeaderForRecipient(TEST_HEADER_USER1, MailAddressFixture.ANY_AT_JAMES);
-        testee.dispatch(mail);
+        testee.dispatch(mail).block();
 
         assertThat(accumulatorTestHeaderMailStore.getHeaderValues(MailAddressFixture.ANY_AT_JAMES))
             .containsOnly(new String[]{VALUE_FOR_USER_1});
@@ -281,7 +281,7 @@ class MailDispatcherTest {
             .build();
         mail.addSpecificHeaderForRecipient(TEST_HEADER_USER1, MailAddressFixture.ANY_AT_JAMES);
         mail.addSpecificHeaderForRecipient(TEST_HEADER_USER2, MailAddressFixture.ANY_AT_JAMES2);
-        testee.dispatch(mail);
+        testee.dispatch(mail).block();
 
         assertThat(accumulatorTestHeaderMailStore.getHeaderValues(MailAddressFixture.ANY_AT_JAMES))
             .containsOnly(new String[]{VALUE_FOR_USER_1});
@@ -307,7 +307,7 @@ class MailDispatcherTest {
             .build();
         mail.addSpecificHeaderForRecipient(TEST_HEADER_USER1, MailAddressFixture.ANY_AT_JAMES);
         mail.addSpecificHeaderForRecipient(TEST_HEADER_USER2, MailAddressFixture.ANY_AT_JAMES2);
-        testee.dispatch(mail);
+        testee.dispatch(mail).block();
 
         assertThat(mail.getMessage().getHeader(TEST_HEADER_NAME)).isNull();
     }
@@ -332,7 +332,7 @@ class MailDispatcherTest {
             .build();
         mail.addSpecificHeaderForRecipient(TEST_HEADER_USER1, MailAddressFixture.ANY_AT_JAMES);
         mail.addSpecificHeaderForRecipient(TEST_HEADER_USER2, MailAddressFixture.ANY_AT_JAMES2);
-        testee.dispatch(mail);
+        testee.dispatch(mail).block();
 
         assertThat(mail.getMessage().getHeader(TEST_HEADER_NAME)).containsOnly(headerValue);
     }
@@ -360,7 +360,7 @@ class MailDispatcherTest {
             .state("state")
             .build();
 
-        testee.dispatch(mail);
+        testee.dispatch(mail).block();
 
         assertThat(fakeMailContext.getSentMails()).isEmpty();
     }
@@ -388,7 +388,7 @@ class MailDispatcherTest {
             .state("state")
             .build();
 
-        testee.dispatch(mail);
+        testee.dispatch(mail).block();
 
         assertThat(fakeMailContext.getSentMails()).hasSize(1)
             .allSatisfy(sentMail -> assertThat(sentMail.getState()).isEqualTo("errorProcessor1"));
@@ -417,7 +417,7 @@ class MailDispatcherTest {
             .state("state")
             .build();
 
-        assertThatThrownBy(()-> testee.dispatch(mail))
+        assertThatThrownBy(()-> testee.dispatch(mail).block())
             .isInstanceOf(Exception.class);
     }
 

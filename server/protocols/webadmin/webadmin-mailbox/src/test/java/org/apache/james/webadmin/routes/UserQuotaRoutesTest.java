@@ -496,12 +496,6 @@ class UserQuotaRoutesTest {
     }
 
     @Nested
-    @ExtendWith(ElasticSearchQuotaSearchExtension.class)
-    class ElasticSearchGetUsersQuotaRouteTest implements GetUsersQuotaRouteContract {
-
-    }
-
-    @Nested
     @ExtendWith(ScanningQuotaSearchExtension.class)
     class GetCount {
 

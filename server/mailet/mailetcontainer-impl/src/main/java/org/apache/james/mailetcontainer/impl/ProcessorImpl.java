@@ -19,6 +19,7 @@
 package org.apache.james.mailetcontainer.impl;
 
 import java.io.Closeable;
+import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
 
@@ -30,10 +31,14 @@ import org.apache.mailet.Mail;
 import org.apache.mailet.Mailet;
 import org.apache.mailet.MailetConfig;
 import org.apache.mailet.base.MailetPipelineLogging;
+import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.github.fge.lambdas.Throwing;
 import com.google.common.collect.ImmutableList;
+
+import reactor.core.publisher.Mono;
 
 /**
  * Mailet wrapper which execute a Mailet in a Processor
@@ -54,10 +59,9 @@ public class ProcessorImpl {
     /**
      * Call the wrapped mailet for the exchange
      */
-    public void process(Mail mail) throws Exception {
+    public Publisher<Void> process(Mail mail) {
         long start = System.currentTimeMillis();
         TimeMetric timeMetric = metricFactory.timer(mailet.getClass().getSimpleName());
-        Throwable ex = null;
         try (Closeable closeable =
                  MDCBuilder.create()
                      .addToContext(MDCBuilder.PROTOCOL, "MAILET")
@@ -70,43 +74,57 @@ public class ProcessorImpl {
                      .addToContext("sender", mail.getMaybeSender().asString())
                      .build()) {
             MailetPipelineLogging.logBeginOfMailetProcess(mailet, mail);
-            mailet.service(mail);
-        } catch (Exception | NoClassDefFoundError me) {
-            ex = me;
-            String onMailetException = null;
+            return Mono.from(mailet.serviceReactive(mail))
+                .onErrorResume(Throwing.function(ex -> {
+                    String onMailetException = null;
 
-            MailetConfig mailetConfig = mailet.getMailetConfig();
-            if (mailetConfig instanceof MailetConfigImpl) {
-                onMailetException = mailetConfig.getInitParameter("onMailetException");
-            }
-            if (onMailetException == null) {
-                onMailetException = Mail.ERROR;
-            } else {
-                onMailetException = onMailetException.trim().toLowerCase(Locale.US);
-            }
-            if (onMailetException.equalsIgnoreCase("ignore")) {
-                // ignore the exception and continue
-                // this option should not be used if the mail object can be
-                // changed by the mailet
-                LOGGER.warn("Encountered error while executing mailet {}. Ignoring it.", mailet, ex);
-                ProcessorUtil.verifyMailAddresses(mail.getRecipients());
-            } else if (onMailetException.equalsIgnoreCase("propagate")) {
-                throw me;
-            } else {
-                ProcessorUtil.handleException(me, mail, mailet.getMailetConfig().getMailetName(), onMailetException, LOGGER);
-            }
-
-        } finally {
-            timeMetric.stopAndPublish();
-            MailetPipelineLogging.logEndOfMailetProcess(mailet, mail);
-            List<MailetProcessorListener> listeners = processor.getListeners();
-            long complete = System.currentTimeMillis() - start;
-            if (mail.getRecipients().isEmpty()) {
-                mail.setState(Mail.GHOST);
-            }
-            for (MailetProcessorListener listener : listeners) {
-                listener.afterMailet(mailet, mail.getName(), mail.getState(), complete, ex);
-            }
+                    MailetConfig mailetConfig = mailet.getMailetConfig();
+                    if (mailetConfig instanceof MailetConfigImpl) {
+                        onMailetException = mailetConfig.getInitParameter("onMailetException");
+                    }
+                    if (onMailetException == null) {
+                        onMailetException = Mail.ERROR;
+                    } else {
+                        onMailetException = onMailetException.trim().toLowerCase(Locale.US);
+                    }
+                    if (onMailetException.equalsIgnoreCase("ignore")) {
+                        // ignore the exception and continue
+                        // this option should not be used if the mail object can be
+                        // changed by the mailet
+                        LOGGER.warn("Encountered error while executing mailet {}. Ignoring it.", mailet, ex);
+                        ProcessorUtil.verifyMailAddresses(mail.getRecipients());
+                    } else if (onMailetException.equalsIgnoreCase("propagate")) {
+                        return Mono.error(ex);
+                    } else {
+                        ProcessorUtil.handleException(ex, mail, mailet.getMailetConfig().getMailetName(), onMailetException, LOGGER);
+                    }
+                    return Mono.fromRunnable(() -> {
+                        timeMetric.stopAndPublish();
+                        MailetPipelineLogging.logEndOfMailetProcess(mailet, mail);
+                        List<MailetProcessorListener> listeners = processor.getListeners();
+                        long complete = System.currentTimeMillis() - start;
+                        if (mail.getRecipients().isEmpty()) {
+                            mail.setState(Mail.GHOST);
+                        }
+                        for (MailetProcessorListener listener : listeners) {
+                            listener.afterMailet(mailet, mail.getName(), mail.getState(), complete, ex);
+                        }
+                    });
+                }))
+                .doOnSuccess(aVoid -> {
+                    timeMetric.stopAndPublish();
+                    MailetPipelineLogging.logEndOfMailetProcess(mailet, mail);
+                    List<MailetProcessorListener> listeners = processor.getListeners();
+                    long complete = System.currentTimeMillis() - start;
+                    if (mail.getRecipients().isEmpty()) {
+                        mail.setState(Mail.GHOST);
+                    }
+                    for (MailetProcessorListener listener : listeners) {
+                        listener.afterMailet(mailet, mail.getName(), mail.getState(), complete, null);
+                    }
+                });
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 

@@ -39,8 +39,11 @@ import org.apache.james.mailetcontainer.impl.CompositeProcessorImpl;
 import org.apache.james.mailetcontainer.impl.ProcessorImpl;
 import org.apache.james.mailetcontainer.impl.jmx.JMXStateCompositeProcessorListener;
 import org.apache.mailet.Mail;
+import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import reactor.core.publisher.Mono;
 
 /**
  * Abstract base class for {@link CompositeProcessorImpl} which service the
@@ -73,6 +76,11 @@ public abstract class AbstractStateCompositeProcessor implements MailProcessor, 
         handleWithProcessor(mail, getProcessorOrFallBackToError(mail));
     }
 
+    @Override
+    public Publisher<Void> serviceReactive(Mail mail) {
+        return handleWithProcessorReactive(mail, getProcessorOrFallBackToError(mail));
+    }
+
     private MailProcessor getProcessorOrFallBackToError(Mail mail) {
         return Optional.ofNullable(getProcessor(mail.getState()))
             .orElseGet(() -> {
@@ -102,6 +110,28 @@ public abstract class AbstractStateCompositeProcessor implements MailProcessor, 
                 listener.afterProcessor(processor, mail.getName(), end, ex);
             }
         }
+    }
+
+    private Mono<Void> handleWithProcessorReactive(Mail mail, MailProcessor processor) {
+        MessagingException ex = null;
+        long start = System.currentTimeMillis();
+        LOGGER.debug("Call MailProcessor {}", mail.getState());
+        return Mono.from(processor.serviceReactive(mail))
+            .doOnSuccess(aVoid -> {
+                if (Mail.GHOST.equals(mail.getState())) {
+                    LifecycleUtil.dispose(mail);
+                }
+                long end = System.currentTimeMillis() - start;
+                for (CompositeProcessorListener listener : listeners) {
+                    listener.afterProcessor(processor, mail.getName(), end, null);
+                }
+            })
+            .doOnError(MessagingException.class, e -> {
+                long end = System.currentTimeMillis() - start;
+                for (CompositeProcessorListener listener : listeners) {
+                    listener.afterProcessor(processor, mail.getName(), end, ex);
+                }
+            });
     }
 
     /**

@@ -23,12 +23,12 @@ import static org.apache.james.mailetcontainer.impl.MatcherSplitter.MATCHER_MATC
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 import javax.annotation.PostConstruct;
 import javax.mail.MessagingException;
 
-import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.james.lifecycle.api.LifecycleUtil;
 import org.apache.james.mailetcontainer.lib.AbstractStateMailetProcessor;
@@ -36,6 +36,7 @@ import org.apache.james.metrics.api.MetricFactory;
 import org.apache.mailet.Mail;
 import org.apache.mailet.Mailet;
 import org.apache.mailet.Matcher;
+import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,6 +44,9 @@ import com.github.fge.lambdas.Throwing;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 /**
  * {@link org.apache.james.mailetcontainer.lib.AbstractStateMailetProcessor} implementation which use Camel DSL for
@@ -108,7 +112,7 @@ public class MailetProcessorImpl extends AbstractStateMailetProcessor {
         }
 
         public boolean test() {
-            return inFlightMails.size() > 0;
+            return !inFlightMails.isEmpty();
         }
     }
 
@@ -124,53 +128,80 @@ public class MailetProcessorImpl extends AbstractStateMailetProcessor {
 
     @Override
     public void service(Mail mail) {
-        ProcessingStep lastStep = pairsToBeProcessed.entrySet().stream()
-            .reduce(ProcessingStep.initial(mail), (processingStep, pair) -> {
-                if (processingStep.test()) {
-                    return executeProcessingStep(processingStep, pair);
+        Flux.fromIterable(pairsToBeProcessed.entrySet())
+            .reduce(Mono.just(ProcessingStep.initial(mail)),
+                (processingStepMono, pair) -> processingStepMono.flatMap(processingStep -> {
+                    if (processingStep.test()) {
+                        return executeProcessingStep(processingStep, pair).cache();
+                    }
+                    return Mono.just(processingStep);
+                }))
+            .flatMap(Function.identity())
+            .doOnNext(lastStep -> lastStep.ghostInFlight(nonGhostedTerminalMail -> {
+                if (!(Mail.ERROR.equals(mail.getState()))) {
+                    // Don't complain if we fall off the end of the error processor. That is currently the
+                    // normal situation for James, and the message will show up in the error store.
+                    LOGGER.warn("Message {} reached the end of this processor, and is automatically deleted. " +
+                        "This may indicate a configuration error.", mail.getName());
+                    // Set the mail to ghost state
+                    mail.setState(Mail.GHOST);
                 }
-                return processingStep;
-            }, (a, b) -> {
-                throw new NotImplementedException("Fold left implementation. Should never be called.");
-            });
-
-        lastStep.ghostInFlight(nonGhostedTerminalMail -> {
-            if (!(Mail.ERROR.equals(mail.getState()))) {
-                // Don't complain if we fall off the end of the error processor. That is currently the
-                // normal situation for James, and the message will show up in the error store.
-                LOGGER.warn("Message {} reached the end of this processor, and is automatically deleted. " +
-                    "This may indicate a configuration error.", mail.getName());
-                // Set the mail to ghost state
-                mail.setState(Mail.GHOST);
-            }
-        });
-        // The matcher splits creates intermediate emails, we need
-        // to be sure to release allocated resources
-        // Non ghosted emails emails are handled by other processors
-        lastStep.disposeGhostedEncounteredMails();
+                // The matcher splits creates intermediate emails, we need
+                // to be sure to release allocated resources
+                // Non ghosted emails emails are handled by other processors
+                lastStep.disposeGhostedEncounteredMails();
+            }))
+            .block();
     }
 
-    private ProcessingStep executeProcessingStep(ProcessingStep step, Map.Entry<MatcherSplitter, ProcessorImpl> pair) {
+    @Override
+    public Publisher<Void> serviceReactive(Mail mail) {
+        return Flux.fromIterable(pairsToBeProcessed.entrySet())
+            .reduce(Mono.just(ProcessingStep.initial(mail)),
+                (processingStepMono, pair) -> processingStepMono.flatMap(processingStep -> {
+                    if (processingStep.test()) {
+                        return executeProcessingStep(processingStep, pair).cache();
+                    }
+                    return Mono.just(processingStep);
+                }))
+            .flatMap(Function.identity())
+            .doOnNext(lastStep -> lastStep.ghostInFlight(nonGhostedTerminalMail -> {
+                if (!(Mail.ERROR.equals(mail.getState()))) {
+                    // Don't complain if we fall off the end of the error processor. That is currently the
+                    // normal situation for James, and the message will show up in the error store.
+                    LOGGER.warn("Message {} reached the end of this processor, and is automatically deleted. " +
+                        "This may indicate a configuration error.", mail.getName());
+                    // Set the mail to ghost state
+                    mail.setState(Mail.GHOST);
+                }
+                // The matcher splits creates intermediate emails, we need
+                // to be sure to release allocated resources
+                // Non ghosted emails emails are handled by other processors
+                lastStep.disposeGhostedEncounteredMails();
+            }))
+            .then();
+    }
+
+    private Mono<ProcessingStep> executeProcessingStep(ProcessingStep step, Map.Entry<MatcherSplitter, ProcessorImpl> pair) {
         MatcherSplitter matcherSplitter = pair.getKey();
         ProcessorImpl processor = pair.getValue();
         ImmutableList<Mail> afterMatching = step.getInFlightMails()
             .stream()
             .flatMap(Throwing.<Mail, Stream<Mail>>function(mail -> matcherSplitter.split(mail).stream()).sneakyThrow())
             .collect(ImmutableList.toImmutableList());
-        afterMatching
-            .stream().filter(mail -> mail.removeAttribute(MATCHER_MATCHED_ATTRIBUTE).isPresent())
-            .forEach(Throwing.consumer(processor::process).sneakyThrow());
 
-        afterMatching.stream()
-            .filter(mail -> !mail.getState().equals(getState()))
-            .filter(mail -> !mail.getState().equals(Mail.GHOST))
-            .forEach(Throwing.consumer(this::toProcessor).sneakyThrow());
-
-        return step.nextStepBuilder()
-            .inFlight(afterMatching.stream()
-                .filter(mail -> mail.getState().equals(getState()))
-                .collect(ImmutableList.toImmutableList()))
-            .encountered(afterMatching);
+        return Flux.fromIterable(afterMatching)
+            .filter(mail -> mail.removeAttribute(MATCHER_MATCHED_ATTRIBUTE).isPresent())
+            .concatMap(processor::process)
+            .doFinally(signal -> afterMatching.stream()
+                .filter(mail -> !mail.getState().equals(getState()))
+                .filter(mail -> !mail.getState().equals(Mail.GHOST))
+                .forEach(Throwing.consumer(this::toProcessor).sneakyThrow()))
+            .then(Mono.fromCallable(() -> step.nextStepBuilder()
+                .inFlight(afterMatching.stream()
+                    .filter(mail -> mail.getState().equals(getState()))
+                    .collect(ImmutableList.toImmutableList()))
+                .encountered(afterMatching)));
     }
 
     public List<MatcherMailetPair> getPairs() {

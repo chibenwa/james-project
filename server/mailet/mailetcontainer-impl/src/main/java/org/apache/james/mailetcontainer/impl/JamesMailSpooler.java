@@ -55,6 +55,7 @@ import org.apache.mailet.Mail;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.github.fge.lambdas.Throwing;
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
@@ -119,28 +120,23 @@ public class JamesMailSpooler implements Disposable, Configurable, MailSpoolerMB
             return Mono
                 .using(
                     queueItem::getMail,
-                    mail -> Mono.fromRunnable(() -> performProcessMail(queueItem, mail)),
+                    mail -> performProcessMail(queueItem, mail),
                     LifecycleUtil::dispose);
         }
 
-        private void performProcessMail(MailQueueItem queueItem, Mail mail) {
+        private Mono<Void> performProcessMail(MailQueueItem queueItem, Mail mail) {
             LOGGER.debug("==== Begin processing mail {} ====", mail.getName());
             ImmutableList<MailAddress> originalRecipients = ImmutableList.copyOf(mail.getRecipients());
-            try {
-                mailProcessor.service(mail);
 
-                if (Thread.currentThread().isInterrupted()) {
-                    throw new InterruptedException("Thread has been interrupted");
-                }
-                queueItem.done(true);
-            } catch (Exception e) {
-                handleError(queueItem, mail, originalRecipients, e);
-            } finally {
-                LOGGER.debug("==== End processing mail {} ====", mail.getName());
-            }
+            return Mono.from(mailProcessor.serviceReactive(mail))
+                .then(Mono.fromRunnable(Throwing.runnable(() -> queueItem.done(true))))
+                .onErrorResume(e -> Mono.fromRunnable(() -> handleError(queueItem, mail, originalRecipients, e))
+                    .subscribeOn(Schedulers.elastic()))
+                .doFinally(signal -> LOGGER.debug("==== End processing mail {} ====", mail.getName()))
+                .then();
         }
 
-        private void handleError(MailQueueItem queueItem, Mail mail, ImmutableList<MailAddress> originalRecipients, Exception processingException) {
+        private void handleError(MailQueueItem queueItem, Mail mail, ImmutableList<MailAddress> originalRecipients, Throwable processingException) {
             int failureCount = computeFailureCount(mail);
 
             // Restore original recipients
@@ -179,7 +175,7 @@ public class JamesMailSpooler implements Disposable, Configurable, MailSpoolerMB
             queueItem.done(true);
         }
 
-        private void nack(MailQueueItem queueItem, Exception processingException) {
+        private void nack(MailQueueItem queueItem, Throwable processingException) {
             try {
                 queueItem.done(false);
             } catch (MailQueue.MailQueueException ex) {

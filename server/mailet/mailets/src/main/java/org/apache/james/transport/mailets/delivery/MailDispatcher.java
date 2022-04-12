@@ -111,45 +111,57 @@ public class MailDispatcher {
         this.propagate = onMailetException.equalsIgnoreCase("propagate");
     }
 
-    public void dispatch(Mail mail) throws MessagingException {
-        List<MailAddress> errors = customizeHeadersAndDeliver(mail);
-        if (!errors.isEmpty() && !ignoreError) {
-            // If there were errors, we redirect the email to the ERROR
-            // processor.
-            // In order for this server to meet the requirements of the SMTP
-            // specification, mails on the ERROR processor must be returned to
-            // the sender. Note that this email doesn't include any details
-            // regarding the details of the failure(s).
-            // In the future we may wish to address this.
-            Mail newMail = MailImpl.builder()
-                .name("error-" + mail.getName())
-                .sender(mail.getMaybeSender())
-                .addRecipients(errors)
-                .mimeMessage(mail.getMessage())
-                .state(errorProcessor)
-                .build();
-            try {
-                mailetContext.sendMail(newMail);
-            } finally {
-                LifecycleUtil.dispose(newMail);
-            }
-        }
-        if (consume) {
-            // Consume this message
-            mail.setState(Mail.GHOST);
+    public Mono<Void> dispatch(Mail mail) {
+        return customizeHeadersAndDeliver(mail)
+            .flatMap(errors -> {
+                if (!errors.isEmpty() && !ignoreError) {
+                    return Mono.fromRunnable(Throwing.runnable(() -> {
+                        // If there were errors, we redirect the email to the ERROR
+                        // processor.
+                        // In order for this server to meet the requirements of the SMTP
+                        // specification, mails on the ERROR processor must be returned to
+                        // the sender. Note that this email doesn't include any details
+                        // regarding the details of the failure(s).
+                        // In the future we may wish to address this.
+                        Mail newMail = MailImpl.builder()
+                            .name("error-" + mail.getName())
+                            .sender(mail.getMaybeSender())
+                            .addRecipients(errors)
+                            .mimeMessage(mail.getMessage())
+                            .state(errorProcessor)
+                            .build();
+                        try {
+                            mailetContext.sendMail(newMail);
+                        } finally {
+                            LifecycleUtil.dispose(newMail);
+                        }
+                    })).subscribeOn(Schedulers.elastic());
+                }
+                return Mono.empty();
+            })
+            .doFinally(signal -> {
+                if (consume) {
+                    // Consume this message
+                    mail.setState(Mail.GHOST);
+                }
+            })
+            .then();
+    }
+
+    private Mono<List<MailAddress>> customizeHeadersAndDeliver(Mail mail) {
+        try {
+            MimeMessage message = mail.getMessage();
+            // Set Return-Path and remove all other Return-Path headers from the message
+            // This only works because there is a placeholder inserted by MimeMessageWrapper
+            message.setHeader(RFC2822Headers.RETURN_PATH, mail.getMaybeSender().asPrettyString());
+
+            return deliver(mail, message);
+        } catch (MessagingException e) {
+            return Mono.error(e);
         }
     }
 
-    private List<MailAddress> customizeHeadersAndDeliver(Mail mail) throws MessagingException {
-        MimeMessage message = mail.getMessage();
-        // Set Return-Path and remove all other Return-Path headers from the message
-        // This only works because there is a placeholder inserted by MimeMessageWrapper
-        message.setHeader(RFC2822Headers.RETURN_PATH, mail.getMaybeSender().asPrettyString());
-
-        return deliver(mail, message);
-    }
-
-    private List<MailAddress> deliver(Mail mail, MimeMessage message) {
+    private Mono<List<MailAddress>> deliver(Mail mail, MimeMessage message) {
         return Flux.fromIterable(mail.getRecipients())
             .concatMap(recipient ->
                 Mono.using(
@@ -167,8 +179,7 @@ public class MailDispatcher {
                         }
                         return Mono.just(recipient);
                     }))
-            .collectList()
-            .block();
+            .collectList();
     }
 
     private Mono<Void> storeMailWithRetry(Mail mail, MailAddress recipient) {

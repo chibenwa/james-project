@@ -22,6 +22,12 @@ package org.apache.mailet;
 
 import javax.mail.MessagingException;
 
+import org.reactivestreams.Publisher;
+
+import com.github.fge.lambdas.Throwing;
+
+import reactor.core.publisher.Mono;
+
 /**
  * A Mailet processes mail messages.
  * <p>
@@ -93,6 +99,10 @@ public interface Mailet {
      *         processing from completing successfully
      */
     void service(Mail mail) throws MessagingException;
+
+    default Publisher<Void> serviceReactive(Mail mail) {
+        return Mono.fromRunnable(Throwing.runnable(() -> service(mail)));
+    }
 
     /**
      * Destroys this Mailet.

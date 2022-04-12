@@ -32,6 +32,7 @@ import org.apache.james.transport.mailets.delivery.SimpleMailStore;
 import org.apache.james.user.api.UsersRepository;
 import org.apache.mailet.Mail;
 import org.apache.mailet.base.GenericMailet;
+import org.reactivestreams.Publisher;
 
 /**
  * Receives a Mail from the Queue and takes care of delivery of the
@@ -59,7 +60,12 @@ public class LocalDelivery extends GenericMailet {
 
     @Override
     public void service(Mail mail) throws MessagingException {
-        mailDispatcher.dispatch(mail);
+        mailDispatcher.dispatch(mail).block();
+    }
+
+    @Override
+    public Publisher<Void> serviceReactive(Mail mail) {
+        return mailDispatcher.dispatch(mail);
     }
 
     @Override

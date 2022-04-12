@@ -20,6 +20,11 @@
 package org.apache.james.mailetcontainer.api;
 
 import org.apache.mailet.Mail;
+import org.reactivestreams.Publisher;
+
+import com.github.fge.lambdas.Throwing;
+
+import reactor.core.publisher.Mono;
 
 /**
  * The <code>service</code> perform all needed work on the Mail object. Whatever
@@ -58,4 +63,7 @@ public interface MailProcessor {
      */
     void service(Mail mail) throws javax.mail.MessagingException;
 
+    default Publisher<Void> serviceReactive(Mail mail) {
+        return Mono.fromRunnable(Throwing.runnable(() -> service(mail)));
+    }
 }

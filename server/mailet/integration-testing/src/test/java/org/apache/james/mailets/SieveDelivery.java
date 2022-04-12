@@ -27,6 +27,8 @@ import static org.apache.james.mailets.configuration.Constants.RECIPIENT;
 import static org.apache.james.mailets.configuration.Constants.awaitAtMostOneMinute;
 
 import java.io.File;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
 
 import org.apache.james.mailbox.model.MailboxConstants;
 import org.apache.james.modules.MailboxProbeImpl;
@@ -42,6 +44,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
+
+import com.github.fge.lambdas.Throwing;
+import com.google.common.base.Stopwatch;
 
 class SieveDelivery {
     private static final String TARGETED_MAILBOX = "INBOX.any";
@@ -79,13 +84,19 @@ class SieveDelivery {
             "\n" +
             "fileinto \"" + TARGETED_MAILBOX + "\";");
 
-        messageSender.connect(LOCALHOST_IP, jamesServer.getProbe(SmtpGuiceProbe.class).getSmtpPort())
-            .authenticate(FROM, PASSWORD)
-            .sendMessage(FROM, RECIPIENT);
+        final Stopwatch started = Stopwatch.createStarted();
+        IntStream.range(0, 1000).forEach(Throwing.intConsumer(i -> {
+            System.out.println(i);
 
-        testIMAPClient.connect(LOCALHOST_IP, jamesServer.getProbe(ImapGuiceProbe.class).getImapPort())
-            .login(RECIPIENT, PASSWORD)
-            .select(TARGETED_MAILBOX)
-            .awaitMessage(awaitAtMostOneMinute);
+            messageSender.connect(LOCALHOST_IP, jamesServer.getProbe(SmtpGuiceProbe.class).getSmtpPort())
+                .authenticate(FROM, PASSWORD)
+                .sendMessage(FROM, RECIPIENT);
+
+            testIMAPClient.connect(LOCALHOST_IP, jamesServer.getProbe(ImapGuiceProbe.class).getImapPort())
+                .login(RECIPIENT, PASSWORD)
+                .select(TARGETED_MAILBOX)
+                .awaitMessage(awaitAtMostOneMinute);
+        }));
+        System.out.println(started.elapsed(TimeUnit.MILLISECONDS));
     }
 }
