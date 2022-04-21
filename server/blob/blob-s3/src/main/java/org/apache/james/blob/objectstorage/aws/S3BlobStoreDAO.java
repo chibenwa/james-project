@@ -55,6 +55,8 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.io.ByteSource;
 import com.google.common.io.FileBackedOutputStream;
 
+import io.netty.buffer.PooledByteBufAllocator;
+import io.netty.channel.ChannelOption;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -108,6 +110,7 @@ public class S3BlobStoreDAO implements BlobStoreDAO, Startable, Closeable {
             .credentialsProvider(StaticCredentialsProvider.create(
                 AwsBasicCredentials.create(authConfiguration.getAccessKeyId(), authConfiguration.getSecretKey())))
             .httpClientBuilder(NettyNioAsyncHttpClient.builder()
+                .putChannelOption(ChannelOption.ALLOCATOR, new PooledByteBufAllocator())
                 .tlsTrustManagersProvider(getTrustManagerProvider(configuration.getSpecificAuthConfiguration()))
                 .maxConcurrency(configuration.getHttpConcurrency())
                 .maxPendingConnectionAcquires(10_000))
