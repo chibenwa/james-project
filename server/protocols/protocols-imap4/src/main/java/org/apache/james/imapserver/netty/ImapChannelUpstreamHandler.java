@@ -23,7 +23,6 @@ import static org.apache.james.imapserver.netty.IMAPServer.AuthenticationConfigu
 import java.io.Closeable;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.util.NoSuchElementException;
 import java.util.Optional;
 
 import org.apache.james.imap.api.ImapConstants;
@@ -51,7 +50,6 @@ import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
-import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.TooLongFrameException;
 import reactor.core.publisher.Mono;
 
@@ -261,15 +259,7 @@ public class ImapChannelUpstreamHandler extends ChannelInboundHandlerAdapter imp
         ImapSession session = ctx.channel().attr(IMAP_SESSION_ATTRIBUTE_KEY).get();
         ImapResponseComposer response = new ImapResponseComposerImpl(new ChannelImapResponseWriter(ctx.channel()));
         ImapMessage message = (ImapMessage) msg;
-        ChannelPipeline cp = ctx.pipeline();
 
-        try {
-            cp.addBefore(NettyConstants.CORE_HANDLER, NettyConstants.HEARTBEAT_HANDLER, heartbeatHandler);
-        } catch (IllegalArgumentException e) {
-            try (Closeable closeable = mdc(ctx).build()) {
-                LOGGER.info("heartbeat handler is already part of this pipeline", e);
-            }
-        }
         ResponseEncoder responseEncoder = new ResponseEncoder(encoder, response);
         processor.processReactive(message, responseEncoder, session)
             .doOnSuccess(type -> {
@@ -298,13 +288,6 @@ public class ImapChannelUpstreamHandler extends ChannelInboundHandlerAdapter imp
             })
             .doOnEach(Throwing.consumer(signal -> {
                 if (signal.isOnComplete() || signal.isOnError()) {
-                    try {
-                        ctx.pipeline().remove(NettyConstants.HEARTBEAT_HANDLER);
-                    } catch (NoSuchElementException e) {
-                        try (Closeable mdc = ReactorUtils.retrieveMDCBuilder(signal).build()) {
-                            LOGGER.info("Heartbeat handler was concurrently removed");
-                        }
-                    }
                     if (message instanceof Closeable) {
                         ((Closeable) message).close();
                     }
