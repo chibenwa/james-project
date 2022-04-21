@@ -262,7 +262,7 @@ public class ImapChannelUpstreamHandler extends ChannelInboundHandlerAdapter imp
 
         ResponseEncoder responseEncoder = new ResponseEncoder(encoder, response);
         processor.processReactive(message, responseEncoder, session)
-            .doOnSuccess(type -> {
+            .doOnEach(Throwing.consumer(signal -> {
                 if (session.getState() == ImapSessionState.LOGOUT) {
                     // Make sure we close the channel after all the buffers were flushed out
                     Channel channel = ctx.channel();
@@ -270,8 +270,6 @@ public class ImapChannelUpstreamHandler extends ChannelInboundHandlerAdapter imp
                         channel.writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
                     }
                 }
-            })
-            .doOnEach(signal -> {
                 if (signal.isOnComplete()) {
                     IOException failure = responseEncoder.getFailure();
                     if (failure != null) {
@@ -285,8 +283,6 @@ public class ImapChannelUpstreamHandler extends ChannelInboundHandlerAdapter imp
                         ctx.fireExceptionCaught(failure);
                     }
                 }
-            })
-            .doOnEach(Throwing.consumer(signal -> {
                 if (signal.isOnComplete() || signal.isOnError()) {
                     if (message instanceof Closeable) {
                         ((Closeable) message).close();
