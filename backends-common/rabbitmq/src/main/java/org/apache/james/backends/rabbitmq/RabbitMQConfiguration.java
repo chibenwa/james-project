@@ -534,8 +534,8 @@ public class RabbitMQConfiguration {
                     quorumQueueReplicationFactor.orElse(DEFAULT_QUORUM_QUEUE_REPLICATION_FACTOR),
                     hostsDefaultingToUri(),
                     queueTTL,
-                    eventBusPublishConfirmEnabled.orElse(true),
-                    eventBusNotificationDurabilityEnabled.orElse(true));
+                    eventBusPublishConfirmEnabled.orElse(false),
+                    eventBusNotificationDurabilityEnabled.orElse(false));
         }
 
         private List<Host> hostsDefaultingToUri() {
