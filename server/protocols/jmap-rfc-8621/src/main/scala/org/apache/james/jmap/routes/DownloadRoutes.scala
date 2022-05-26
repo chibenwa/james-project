@@ -18,6 +18,11 @@
  ****************************************************************/
 package org.apache.james.jmap.routes
 
+import java.io.{ByteArrayInputStream, ByteArrayOutputStream, InputStream}
+import java.nio.charset.StandardCharsets
+import java.util.stream
+import java.util.stream.Stream
+
 import com.google.common.base.CharMatcher
 import eu.timepit.refined.numeric.NonNegative
 import eu.timepit.refined.refineV
@@ -25,6 +30,7 @@ import io.netty.buffer.Unpooled
 import io.netty.handler.codec.http.HttpHeaderNames.{CONTENT_LENGTH, CONTENT_TYPE}
 import io.netty.handler.codec.http.HttpResponseStatus._
 import io.netty.handler.codec.http.{HttpMethod, HttpResponseStatus, QueryStringDecoder}
+import javax.inject.{Inject, Named}
 import org.apache.james.jmap.HttpConstants.JSON_CONTENT_TYPE
 import org.apache.james.jmap.api.model.Size.{Size, sanitizeSize}
 import org.apache.james.jmap.api.model.{Upload, UploadId, UploadNotFoundException}
@@ -52,11 +58,6 @@ import reactor.core.scala.publisher.SMono
 import reactor.core.scheduler.Schedulers
 import reactor.netty.http.server.{HttpServerRequest, HttpServerResponse}
 
-import java.io.{ByteArrayInputStream, ByteArrayOutputStream, InputStream}
-import java.nio.charset.StandardCharsets
-import java.util.stream
-import java.util.stream.Stream
-import javax.inject.{Inject, Named}
 import scala.compat.java8.FunctionConverters._
 import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success, Try}
@@ -271,7 +272,7 @@ class DownloadRoutes @Inject()(@Named(InjectionKeys.RFC_8621) val authenticator:
             ProblemDetails(status = INTERNAL_SERVER_ERROR, detail = e.getMessage),
             INTERNAL_SERVER_ERROR)
       }
-      .subscribeOn(Schedulers.elastic)
+      .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
       .asJava()
       .`then`
 
@@ -316,7 +317,7 @@ class DownloadRoutes @Inject()(@Named(InjectionKeys.RFC_8621) val authenticator:
         .status(OK)
         .send(ReactorUtils.toChunks(stream, BUFFER_SIZE)
           .map(Unpooled.wrappedBuffer(_))
-          .subscribeOn(Schedulers.elastic))
+          .subscribeOn(Schedulers.boundedElastic()))
         .`then`,
       asJavaConsumer[InputStream]((stream: InputStream) => stream.close())))
       .`then`

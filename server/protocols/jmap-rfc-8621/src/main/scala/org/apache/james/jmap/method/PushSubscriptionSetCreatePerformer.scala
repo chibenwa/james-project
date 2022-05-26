@@ -14,7 +14,6 @@ import org.apache.james.jmap.pushsubscription.{PushRequest, PushTTL, WebPushClie
 import org.apache.james.mailbox.MailboxSession
 import play.api.libs.json.{JsObject, JsPath, Json, JsonValidationError}
 import reactor.core.scala.publisher.{SFlux, SMono}
-import reactor.core.scheduler.Schedulers
 
 object PushSubscriptionSetCreatePerformer {
   trait CreationResult
@@ -82,7 +81,6 @@ class PushSubscriptionSetCreatePerformer @Inject()(pushSubscriptionRepository: P
         .`then`(SMono.just(subscription)))
       .map(subscription => CreationSuccess(clientId, PushSubscriptionCreationResponse(subscription.id, showExpires(subscription.expires, request))))
       .onErrorResume(e => SMono.just[CreationResult](CreationFailure(clientId, e)))
-      .subscribeOn(Schedulers.elastic)
 
   private def showExpires(expires: PushSubscriptionExpiredTime, request: PushSubscriptionCreationRequest): Option[PushSubscriptionExpiredTime] = request.expires match {
     case Some(requestExpires) if expires.eq(requestExpires) => None

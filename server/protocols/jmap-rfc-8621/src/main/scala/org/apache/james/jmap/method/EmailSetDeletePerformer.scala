@@ -27,7 +27,6 @@ import org.apache.james.jmap.method.EmailSetDeletePerformer.{DestroyFailure, Des
 import org.apache.james.mailbox.model.{DeleteResult, MessageId}
 import org.apache.james.mailbox.{MailboxSession, MessageIdManager}
 import reactor.core.scala.publisher.SMono
-import reactor.core.scheduler.Schedulers
 
 import scala.jdk.CollectionConverters._
 
@@ -87,7 +86,6 @@ class EmailSetDeletePerformer @Inject()(messageIdManager: MessageIdManager,
 
       SMono(messageIdManager.delete(messageIds.toList.asJava, mailboxSession))
         .map(DestroyResult.from)
-        .subscribeOn(Schedulers.elastic())
         .onErrorResume(e => SMono.just(messageIds.map(id => DestroyFailure(EmailSet.asUnparsed(id), e))))
         .map(_ ++ parsingErrors)
         .map(DestroyResults)

@@ -103,7 +103,7 @@ public interface Store<T, I> {
         @Override
         public Mono<T> read(I blobIds) {
             return Flux.fromIterable(blobIds.asMap().entrySet())
-                .publishOn(Schedulers.elastic())
+                .publishOn(Schedulers.boundedElastic())
                 .collectMap(Map.Entry::getKey, entry -> readByteSource(bucketName, entry.getValue(), entry.getKey().getStoragePolicy()))
                 .map(decoder::decode);
         }
