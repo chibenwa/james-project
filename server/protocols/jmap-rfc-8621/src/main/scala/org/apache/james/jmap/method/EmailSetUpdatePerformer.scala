@@ -224,6 +224,7 @@ class EmailSetUpdatePerformer @Inject() (serializer: EmailSetSerializer,
         .`then`(SMono.just[EmailUpdateResult](EmailUpdateSuccess(messageId)))
         .onErrorResume(e => SMono.just[EmailUpdateResult](EmailUpdateFailure(EmailSet.asUnparsed(messageId), e)))
         .switchIfEmpty(SMono.just[EmailUpdateResult](EmailUpdateSuccess(messageId)))
+        .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
     }
   }
 
@@ -237,6 +238,7 @@ class EmailSetUpdatePerformer @Inject() (serializer: EmailSetSerializer,
     } else {
       SMono(messageIdManager.setFlagsReactive(newFlags, FlagsUpdateMode.REPLACE, messageId, ImmutableList.copyOf(mailboxIds.value.asJavaCollection), session))
         .`then`(SMono.just[EmailUpdateResult](EmailUpdateSuccess(messageId)))
+        .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
     }
   }
 }
