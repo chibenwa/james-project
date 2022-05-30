@@ -34,9 +34,10 @@ public class SMTPSessionImpl extends ProtocolSessionImpl implements SMTPSession 
     private static final Response FATAL_ERROR = new SMTPResponse(SMTPRetCode.LOCAL_ERROR, "Unable to process request").immutable();
     private static final Response UNKNOWN_COMMAND_ERROR = new SMTPResponse(SMTPRetCode.SYNTAX_ERROR_COMMAND_UNRECOGNIZED, "Unable to process request: the command is unknown").immutable();
 
-    private Long currentMessageSize;
+    private long currentMessageSize = 0L;
     private boolean relayingAllowed;
     private boolean headerComplete = false;
+    private boolean messageFailed = false;
 
     public SMTPSessionImpl(ProtocolTransport transport, SMTPConfiguration config) {
         super(transport, config);
@@ -58,8 +59,9 @@ public class SMTPSessionImpl extends ProtocolSessionImpl implements SMTPSession 
         // start again with the old helo mode
         currentHeloMode.ifPresent(heloMode -> setAttachment(CURRENT_HELO_MODE, heloMode, State.Connection));
 
-        currentMessageSize = null;
+        currentMessageSize = 0L;
         headerComplete = false;
+        messageFailed = false;
     }
 
     @Override
@@ -105,12 +107,12 @@ public class SMTPSessionImpl extends ProtocolSessionImpl implements SMTPSession 
     }
 
     @Override
-    public Long currentMessageSize() {
+    public long currentMessageSize() {
         return currentMessageSize;
     }
 
     @Override
-    public void setCurrentMessageSize(Long newSize) {
+    public void setCurrentMessageSize(long newSize) {
         currentMessageSize = newSize;
     }
 
@@ -122,5 +124,15 @@ public class SMTPSessionImpl extends ProtocolSessionImpl implements SMTPSession 
     @Override
     public void setHeaderComplete(boolean value) {
         headerComplete = value;
+    }
+
+    @Override
+    public boolean messageFailed() {
+        return messageFailed;
+    }
+
+    @Override
+    public void setMessageFailed(boolean value) {
+        messageFailed = value;
     }
 }

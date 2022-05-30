@@ -37,8 +37,9 @@ import org.apache.james.protocols.smtp.SMTPSession;
  */
 public class BaseFakeSMTPSession implements SMTPSession {
 
-    private Long currentMessageSize;
+    private long currentMessageSize = 0L;
     private boolean headerComplete = false;
+    private boolean messageFailed = false;
 
     @Override
     public boolean needsCommandInjectionDetection() {
@@ -186,12 +187,12 @@ public class BaseFakeSMTPSession implements SMTPSession {
     }
 
     @Override
-    public Long currentMessageSize() {
+    public long currentMessageSize() {
         return currentMessageSize;
     }
 
     @Override
-    public void setCurrentMessageSize(Long increment) {
+    public void setCurrentMessageSize(long increment) {
         currentMessageSize = increment;
     }
 
@@ -203,5 +204,15 @@ public class BaseFakeSMTPSession implements SMTPSession {
     @Override
     public void setHeaderComplete(boolean value) {
         headerComplete = value;
+    }
+
+    @Override
+    public boolean messageFailed() {
+        return messageFailed;
+    }
+
+    @Override
+    public void setMessageFailed(boolean value) {
+        messageFailed = value;
     }
 }

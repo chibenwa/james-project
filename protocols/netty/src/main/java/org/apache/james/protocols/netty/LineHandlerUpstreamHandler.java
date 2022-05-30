@@ -54,6 +54,7 @@ public class LineHandlerUpstreamHandler<S extends ProtocolSession> extends Chann
             // TODO: This kind of sucks but I was not able to come up with something more elegant here
             ((ProtocolSessionImpl)session).getProtocolTransport().writeResponse(response, session);
         }
+        buf.release();
     }
 
 }

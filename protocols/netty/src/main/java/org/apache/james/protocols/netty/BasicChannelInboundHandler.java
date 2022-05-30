@@ -177,6 +177,7 @@ public class BasicChannelInboundHandler extends ChannelInboundHandlerAdapter imp
 
             }
 
+            ((ByteBuf) msg).release();
             super.channelReadComplete(ctx);
         }
     }

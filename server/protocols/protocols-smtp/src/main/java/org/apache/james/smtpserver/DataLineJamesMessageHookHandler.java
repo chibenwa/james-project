@@ -25,7 +25,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Optional;
 
 import javax.mail.MessagingException;
 
@@ -72,8 +71,7 @@ public class DataLineJamesMessageHookHandler implements DataLineFilter, Extensib
     @Override
     public Response onLine(SMTPSession session, byte[] line, LineHandler<SMTPSession> next) {
         ExtendedSMTPSession extendedSMTPSession = (ExtendedSMTPSession) session;
-        MimeMessageInputStreamSource mmiss = Optional.ofNullable(extendedSMTPSession.getMimeMessageWriter())
-            .orElseThrow(() -> new RuntimeException("'org.apache.james.core.DataCmdHandler.DATA_MIMEMESSAGE_STREAMSOURCE' has not been filled."));
+        MimeMessageInputStreamSource mmiss = extendedSMTPSession.getMimeMessageWriter();
 
         try {
             OutputStream out = mmiss.getWritableOutputStream();
