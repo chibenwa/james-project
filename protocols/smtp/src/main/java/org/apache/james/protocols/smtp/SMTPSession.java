@@ -81,5 +81,13 @@ public interface SMTPSession extends ProtocolSession {
 
     boolean supportsOAuth();
 
+    Long currentMessageSize();
+
+    void setCurrentMessageSize(Long increment);
+
+    boolean headerComplete();
+
+    void setHeaderComplete(boolean value);
+
 }
 
