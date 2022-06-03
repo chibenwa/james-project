@@ -60,12 +60,12 @@
         <dependency>
             <groupId>com.datastax.oss</groupId>
             <artifactId>java-driver-core</artifactId>
-            <version>4.13.0</version>
+            <version>4.14.1</version>
         </dependency>
         <dependency>
             <groupId>com.datastax.oss</groupId>
             <artifactId>java-driver-query-builder</artifactId>
-            <version>4.13.0</version>
+            <version>4.14.1</version>
         </dependency>
         <dependency>
             <groupId>com.github.jnr</groupId>
