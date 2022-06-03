@@ -19,12 +19,12 @@
 
 package org.apache.james.mailrepository.cassandra;
 
-import static com.datastax.driver.core.DataType.text;
-import static com.datastax.driver.core.querybuilder.QueryBuilder.bindMarker;
-import static com.datastax.driver.core.querybuilder.QueryBuilder.delete;
-import static com.datastax.driver.core.querybuilder.QueryBuilder.eq;
-import static com.datastax.driver.core.querybuilder.QueryBuilder.insertInto;
-import static com.datastax.driver.core.querybuilder.QueryBuilder.select;
+import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.bindMarker;
+import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.deleteFrom;
+import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.insertInto;
+import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.selectFrom;
+import static com.datastax.oss.driver.api.querybuilder.relation.Relation.column;
+import static java.util.List.of;
 import static org.apache.james.mailrepository.cassandra.MailRepositoryTableV2.ATTRIBUTES;
 import static org.apache.james.mailrepository.cassandra.MailRepositoryTableV2.BODY_BLOB_ID;
 import static org.apache.james.mailrepository.cassandra.MailRepositoryTableV2.CONTENT_TABLE_NAME;
@@ -69,12 +69,13 @@ import org.apache.mailet.Mail;
 import org.apache.mailet.PerRecipientHeaders;
 import org.apache.mailet.PerRecipientHeaders.Header;
 
-import com.datastax.driver.core.BoundStatement;
-import com.datastax.driver.core.PreparedStatement;
-import com.datastax.driver.core.Row;
-import com.datastax.driver.core.Session;
-import com.datastax.driver.core.TupleType;
-import com.datastax.driver.core.TupleValue;
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.cql.BoundStatement;
+import com.datastax.oss.driver.api.core.cql.PreparedStatement;
+import com.datastax.oss.driver.api.core.cql.Row;
+import com.datastax.oss.driver.api.core.data.TupleValue;
+import com.datastax.oss.driver.api.core.type.DataTypes;
+import com.datastax.oss.driver.api.core.type.TupleType;
 import com.github.fge.lambdas.Throwing;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
@@ -136,7 +137,7 @@ public class CassandraMailRepositoryMailDaoV2 {
 
     @Inject
     @VisibleForTesting
-    CassandraMailRepositoryMailDaoV2(Session session, BlobId.Factory blobIdFactory) {
+    CassandraMailRepositoryMailDaoV2(CqlSession session, BlobId.Factory blobIdFactory) {
         this.executor = new CassandraAsyncExecutor(session);
 
         this.insertMail = prepareInsert(session);
@@ -144,23 +145,23 @@ public class CassandraMailRepositoryMailDaoV2 {
         this.selectMail = prepareSelect(session);
         this.litBlobs = prepareListBlobs(session);
         this.blobIdFactory = blobIdFactory;
-        this.userHeaderNameHeaderValueTriple = session.getCluster().getMetadata().newTupleType(text(), text(), text());
+        this.userHeaderNameHeaderValueTriple = DataTypes.tupleOf(DataTypes.TEXT, DataTypes.TEXT, DataTypes.TEXT);
     }
 
-    private PreparedStatement prepareDelete(Session session) {
-        return session.prepare(delete()
-            .from(CONTENT_TABLE_NAME)
-            .where(eq(REPOSITORY_NAME, bindMarker(REPOSITORY_NAME)))
-            .and(eq(MAIL_KEY, bindMarker(MAIL_KEY))));
+    private PreparedStatement prepareDelete(CqlSession session) {
+        return session.prepare(deleteFrom(CONTENT_TABLE_NAME)
+            .where(of(column(REPOSITORY_NAME).isEqualTo(bindMarker(REPOSITORY_NAME)),
+                column(MAIL_KEY).isEqualTo(bindMarker(MAIL_KEY))))
+            .build());
     }
 
-    private PreparedStatement prepareListBlobs(Session session) {
+    private PreparedStatement prepareListBlobs(CqlSession session) {
         return session.prepare(
-            select(HEADER_BLOB_ID, BODY_BLOB_ID)
-                .from(CONTENT_TABLE_NAME));
+            selectFrom(CONTENT_TABLE_NAME)
+                .columns(HEADER_BLOB_ID, BODY_BLOB_ID).build());
     }
 
-    private PreparedStatement prepareInsert(Session session) {
+    private PreparedStatement prepareInsert(CqlSession session) {
         return session.prepare(insertInto(CONTENT_TABLE_NAME)
             .value(REPOSITORY_NAME, bindMarker(REPOSITORY_NAME))
             .value(MAIL_KEY, bindMarker(MAIL_KEY))
@@ -174,15 +175,17 @@ public class CassandraMailRepositoryMailDaoV2 {
             .value(LAST_UPDATED, bindMarker(LAST_UPDATED))
             .value(HEADER_BLOB_ID, bindMarker(HEADER_BLOB_ID))
             .value(BODY_BLOB_ID, bindMarker(BODY_BLOB_ID))
-            .value(PER_RECIPIENT_SPECIFIC_HEADERS, bindMarker(PER_RECIPIENT_SPECIFIC_HEADERS)));
+            .value(PER_RECIPIENT_SPECIFIC_HEADERS, bindMarker(PER_RECIPIENT_SPECIFIC_HEADERS))
+            .build());
     }
 
-    private PreparedStatement prepareSelect(Session session) {
+    private PreparedStatement prepareSelect(CqlSession session) {
         return session.prepare(
-            select(MAIL_PROPERTIES)
-                .from(CONTENT_TABLE_NAME)
-                .where(eq(REPOSITORY_NAME, bindMarker(REPOSITORY_NAME)))
-                .and(eq(MAIL_KEY, bindMarker(MAIL_KEY))));
+            selectFrom(CONTENT_TABLE_NAME)
+                .columns(MAIL_PROPERTIES)
+                .where(of(column(REPOSITORY_NAME).isEqualTo(bindMarker(REPOSITORY_NAME)),
+                    column(MAIL_KEY).isEqualTo(bindMarker(MAIL_KEY))))
+                .build());
     }
 
     public Mono<Void> store(MailRepositoryUrl url, Mail mail, BlobId headerId, BlobId bodyId) {
@@ -193,12 +196,12 @@ public class CassandraMailRepositoryMailDaoV2 {
                 .setString(HEADER_BLOB_ID, headerId.asString())
                 .setString(BODY_BLOB_ID, bodyId.asString())
                 .setString(STATE, mail.getState())
-                .setList(RECIPIENTS, asStringList(mail.getRecipients()))
+                .setList(RECIPIENTS, asStringList(mail.getRecipients()), String.class)
                 .setString(REMOTE_ADDR, mail.getRemoteAddr())
                 .setString(REMOTE_HOST, mail.getRemoteHost())
-                .setTimestamp(LAST_UPDATED, mail.getLastUpdated())
-                .setMap(ATTRIBUTES, toRawAttributeMap(mail))
-                .setList(PER_RECIPIENT_SPECIFIC_HEADERS, toTupleList(mail.getPerRecipientSpecificHeaders()));
+                .setInstant(LAST_UPDATED, mail.getLastUpdated().toInstant())
+                .setMap(ATTRIBUTES, toRawAttributeMap(mail), String.class, String.class)
+                .setList(PER_RECIPIENT_SPECIFIC_HEADERS, toTupleList(mail.getPerRecipientSpecificHeaders()), TupleValue.class);
 
             Optional.ofNullable(mail.getErrorMessage())
                 .ifPresent(errorMessage -> boundStatement.setString(MailRepositoryTable.ERROR_MESSAGE, mail.getErrorMessage()));
@@ -237,7 +240,7 @@ public class CassandraMailRepositoryMailDaoV2 {
         String remoteHost = row.getString(REMOTE_HOST);
         String errorMessage = row.getString(ERROR_MESSAGE);
         String name = row.getString(MAIL_KEY);
-        Date lastUpdated = row.getTimestamp(LAST_UPDATED);
+        Date lastUpdated = Date.from(row.getInstant(LAST_UPDATED));
         Map<String, String> rawAttributes = row.getMap(ATTRIBUTES, String.class, String.class);
         PerRecipientHeaders perRecipientHeaders = fromList(row.getList(PER_RECIPIENT_SPECIFIC_HEADERS, TupleValue.class));
 
@@ -310,7 +313,7 @@ public class CassandraMailRepositoryMailDaoV2 {
 
     Flux<BlobId> listBlobs() {
         return executor.executeRows(litBlobs.bind())
-            .flatMapIterable(row -> ImmutableList.of(
+            .flatMapIterable(row -> List.of(
                 blobIdFactory.from(row.getString(HEADER_BLOB_ID)),
                 blobIdFactory.from(row.getString(BODY_BLOB_ID))
             ));
