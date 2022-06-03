@@ -55,8 +55,8 @@ public class CassandraHealthCheck implements HealthCheck {
     public Mono<Result> check() {
         // execute a simple query to check if cassandra is responding
         // idea from: https://stackoverflow.com/questions/10246287
-        return Mono.from(queryExecutor.execute(SimpleStatement.newInstance(SAMPLE_QUERY)))
-            .map(resultSet -> Result.healthy(COMPONENT_NAME))
+        return Mono.from(queryExecutor.executeSingleRow(SimpleStatement.newInstance(SAMPLE_QUERY)))
+            .map(row -> Result.healthy(COMPONENT_NAME))
             .onErrorResume(e -> Mono.just(Result.unhealthy(COMPONENT_NAME, "Error checking Cassandra backend", e)));
     }
 }
