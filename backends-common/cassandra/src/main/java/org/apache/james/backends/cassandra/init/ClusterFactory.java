@@ -59,6 +59,7 @@ public class ClusterFactory {
             throw e;
         }
     }
+
     private static void ensureContactable(CqlSession session) {
         session.execute("SELECT dateof(now()) FROM system.local ;");
     }
