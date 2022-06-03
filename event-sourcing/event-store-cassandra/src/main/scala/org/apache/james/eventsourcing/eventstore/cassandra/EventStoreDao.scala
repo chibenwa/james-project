@@ -24,6 +24,7 @@ import com.datastax.oss.driver.api.core.cql.{BatchStatementBuilder, BatchType, B
 import com.datastax.oss.driver.api.querybuilder.QueryBuilder
 import com.datastax.oss.driver.api.querybuilder.QueryBuilder.{bindMarker, insertInto}
 import javax.inject.Inject
+import org.apache.james.backends.cassandra.init.configuration.JamesExecutionProfiles
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor
 import org.apache.james.eventsourcing.eventstore.History
 import org.apache.james.eventsourcing.eventstore.cassandra.CassandraEventStoreTable.{AGGREGATE_ID, EVENT, EVENTS_TABLE, EVENT_ID}
@@ -35,6 +36,7 @@ class EventStoreDao @Inject() (val session: CqlSession,
   private val cassandraAsyncExecutor = new CassandraAsyncExecutor(session)
   private val insert = prepareInsert(session)
   private val select = prepareSelect(session)
+  private val executionProfile = JamesExecutionProfiles.getLWTProfile(session)
 
   private def prepareInsert(session: CqlSession): PreparedStatement =
     session.prepare(
@@ -73,7 +75,9 @@ class EventStoreDao @Inject() (val session: CqlSession,
       .setString(EVENT, jsonEventSerializer.serialize(event))
 
   private[cassandra] def getEventsOfAggregate(aggregateId: AggregateId): SMono[History] = {
-    val preparedStatement = select.bind().setString(AGGREGATE_ID, aggregateId.asAggregateKey)
+    val preparedStatement = select.bind()
+      .setString(AGGREGATE_ID, aggregateId.asAggregateKey)
+      .setExecutionProfile(executionProfile)
     val rows: SFlux[Row] = SFlux[Row](cassandraAsyncExecutor.executeRows(preparedStatement))
 
     val events: SFlux[Event] = rows.map(toEvent)
