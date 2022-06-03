@@ -51,7 +51,7 @@ public final class CassandraCluster implements AutoCloseable {
 
     private final CassandraModule module;
     private final CqlSession nonPrivilegedCluster;
-    private final CqlSession nonPrivilegedSession;
+    private final TestingSession nonPrivilegedSession;
     private final CassandraTypesProvider typesProvider;
     private final ClusterConfiguration clusterConfiguration;
 
@@ -64,7 +64,7 @@ public final class CassandraCluster implements AutoCloseable {
             .replicationFactor(1)
             .disableDurableWrites();
         this.nonPrivilegedCluster = ClusterFactory.create(clusterConfiguration, keyspaceConfiguration);
-        this.nonPrivilegedSession = new SessionWithInitializedTablesFactory(nonPrivilegedCluster, module).get();
+        this.nonPrivilegedSession = new TestingSession(new SessionWithInitializedTablesFactory(nonPrivilegedCluster, module).get());
         this.typesProvider = new CassandraTypesProvider(module, nonPrivilegedSession);
     }
 
@@ -72,7 +72,7 @@ public final class CassandraCluster implements AutoCloseable {
         return clusterConfiguration;
     }
 
-    public CqlSession getConf() {
+    public TestingSession getConf() {
         return nonPrivilegedSession;
     }
 
@@ -82,7 +82,7 @@ public final class CassandraCluster implements AutoCloseable {
 
     @Override
     public void close() {
-       // nonPrivilegedSession.resetInstrumentation();
+        nonPrivilegedSession.resetInstrumentation();
         if (!nonPrivilegedCluster.isClosed()) {
             clearTables();
             closeCluster();
@@ -90,7 +90,7 @@ public final class CassandraCluster implements AutoCloseable {
     }
 
     void closeCluster() {
-      //  nonPrivilegedCluster.closeAsync().force();
+        nonPrivilegedCluster.forceCloseAsync();
         startStackTrace = Optional.empty();
     }
 

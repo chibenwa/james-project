@@ -74,11 +74,11 @@ class PaggingTest {
             .blockLast();
 
         assertThat(
-            Flux.from(executor.execute(selectFrom(TABLE_NAME)
+            executor.executeRows(selectFrom(TABLE_NAME)
                     .all()
                     .whereColumn(ID).isEqualTo(literal(UUID))
                     .build()
-                    .setFetchSize(fetchSize)))
+                    .setFetchSize(fetchSize))
                 .count()
                 .block())
             .isEqualTo(size);

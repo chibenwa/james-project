@@ -18,7 +18,7 @@
  ****************************************************************/
 
 package org.apache.james.backends.cassandra;
-/*
+
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
@@ -37,4 +37,4 @@ class ScenarioTest {
             .times(-1))
             .isInstanceOf(IllegalArgumentException.class);
     }
-}*/
+}

@@ -18,14 +18,14 @@
  ****************************************************************/
 
 package org.apache.james.backends.cassandra;
-/*
+
 
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.function.Predicate;
 
-import com.datastax.driver.core.BoundStatement;
-import com.datastax.driver.core.Statement;
+import com.datastax.oss.driver.api.core.cql.BoundStatement;
+import com.datastax.oss.driver.api.core.cql.Statement;
 import com.google.common.collect.ImmutableList;
 
 public class StatementRecorder {
@@ -34,11 +34,11 @@ public class StatementRecorder {
         Selector ALL = statements -> statements;
 
         static Selector preparedStatement(String statementString) {
-            return preparedStatementMatching(statement -> statement.preparedStatement().getQueryString().equals(statementString));
+            return preparedStatementMatching(statement -> statement.getPreparedStatement().getQuery().equals(statementString));
         }
 
         static Selector preparedStatementStartingWith(String statementString) {
-            return preparedStatementMatching(statement -> statement.preparedStatement().getQueryString().startsWith(statementString));
+            return preparedStatementMatching(statement -> statement.getPreparedStatement().getQuery().startsWith(statementString));
         }
 
         private static StatementRecorder.Selector preparedStatementMatching(Predicate<BoundStatement> condition) {
@@ -70,4 +70,3 @@ public class StatementRecorder {
         return selector.select(ImmutableList.copyOf(statements));
     }
 }
-*/
