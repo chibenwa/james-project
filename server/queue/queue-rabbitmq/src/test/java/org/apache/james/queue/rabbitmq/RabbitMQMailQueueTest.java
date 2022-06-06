@@ -19,7 +19,7 @@
 
 package org.apache.james.queue.rabbitmq;
 
-import static com.datastax.driver.core.querybuilder.QueryBuilder.select;
+import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.selectFrom;
 import static java.time.temporal.ChronoUnit.HOURS;
 import static org.apache.james.backends.cassandra.Scenario.Builder.executeNormally;
 import static org.apache.james.backends.cassandra.Scenario.Builder.fail;
@@ -204,7 +204,8 @@ class RabbitMQMailQueueTest {
                     return mailQueueItem;
                 })).blockLast(Duration.ofSeconds(10));
 
-            assertThat(cassandra.getConf().execute(select().from(BlobTables.DefaultBucketBlobTable.TABLE_NAME)))
+            assertThat(cassandra.getConf().execute(selectFrom(BlobTables.DefaultBucketBlobTable.TABLE_NAME)
+                .all().build()))
                 .isEmpty();
         }
 
@@ -217,7 +218,8 @@ class RabbitMQMailQueueTest {
 
             getManageableMailQueue().clear();
 
-            assertThat(cassandra.getConf().execute(select().from(BlobTables.DefaultBucketBlobTable.TABLE_NAME)))
+            assertThat(cassandra.getConf().execute(selectFrom(BlobTables.DefaultBucketBlobTable.TABLE_NAME)
+                .all().build()))
                 .isEmpty();
         }
 
@@ -230,7 +232,8 @@ class RabbitMQMailQueueTest {
 
             getManageableMailQueue().remove(ManageableMailQueue.Type.Name, name1);
 
-            assertThat(cassandra.getConf().execute(select().from(BlobTables.DefaultBucketBlobTable.TABLE_NAME)))
+            assertThat(cassandra.getConf().execute(selectFrom(BlobTables.DefaultBucketBlobTable.TABLE_NAME)
+                .all().build()))
                 .isEmpty();
         }
 
@@ -244,7 +247,8 @@ class RabbitMQMailQueueTest {
 
             getManageableMailQueue().remove(ManageableMailQueue.Type.Recipient, RECIPIENT1.asString());
 
-            assertThat(cassandra.getConf().execute(select().from(BlobTables.DefaultBucketBlobTable.TABLE_NAME)))
+            assertThat(cassandra.getConf().execute(selectFrom(BlobTables.DefaultBucketBlobTable.TABLE_NAME)
+                .all().build()))
                 .isEmpty();
         }
 
@@ -258,7 +262,8 @@ class RabbitMQMailQueueTest {
 
             getManageableMailQueue().remove(ManageableMailQueue.Type.Sender, SENDER.asString());
 
-            assertThat(cassandra.getConf().execute(select().from(BlobTables.DefaultBucketBlobTable.TABLE_NAME)))
+            assertThat(cassandra.getConf().execute(selectFrom(BlobTables.DefaultBucketBlobTable.TABLE_NAME)
+                .all().build()))
                 .isEmpty();
         }
 
