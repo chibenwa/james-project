@@ -38,12 +38,12 @@ public interface CassandraMailRepositoryModule {
 
         .table(MailRepositoryTable.COUNT_TABLE)
         .comment("Projection maintaining per mail repository mail counter")
-        .statement(statement -> statement
+        .statement(statement -> types -> statement
             .withPartitionKey(MailRepositoryTable.REPOSITORY_NAME, TEXT)
             .withColumn(MailRepositoryTable.COUNT, COUNTER))
         .table(MailRepositoryTable.KEYS_TABLE_NAME)
         .comment("Per-mailRepository mail key list")
-        .statement(statement -> statement
+        .statement(statement -> types -> statement
             .withPartitionKey(MailRepositoryTable.REPOSITORY_NAME, TEXT)
             .withClusteringColumn(MailRepositoryTable.MAIL_KEY, TEXT))
 
@@ -52,7 +52,7 @@ public interface CassandraMailRepositoryModule {
             "Content is stored with other blobs. " +
             "This v2 version was introduced to support multiple headers for each user. " +
             "The attributes are store as Json introduced in Mailet API v3.2.")
-        .statement(statement -> statement
+        .statement(statement -> types -> statement
             .withPartitionKey(MailRepositoryTable.REPOSITORY_NAME, TEXT)
             .withPartitionKey(MailRepositoryTable.MAIL_KEY, TEXT)
             .withColumn(MailRepositoryTable.MESSAGE_SIZE, BIGINT)
