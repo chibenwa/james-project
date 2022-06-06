@@ -28,6 +28,17 @@ import com.datastax.oss.driver.api.core.config.DriverExecutionProfile;
 
 public interface JamesExecutionProfiles {
     /**
+     * James application configuration allows for some operation to choose
+     * or not to enable LWTs.
+     *
+     * When LWTs are enable underlying DAOs will use LWT execution profiles.
+     */
+    enum ConsistencyChoice {
+        WEAK, // DAO should use default execution profile
+        STRONG // DAO should use LWT execution profile
+    }
+
+    /**
      * Applied for SERIAL reads.
      *
      * This profile can allow, amongst other, to choose betweem SERIAL and LOCAL_SERIAL consistency level.
