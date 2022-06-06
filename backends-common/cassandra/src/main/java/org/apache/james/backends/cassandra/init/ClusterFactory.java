@@ -43,7 +43,7 @@ public class ClusterFactory {
             configuration.getPassword().ifPresent(password ->
                 sessionBuilder.withAuthCredentials(username, password)));
 
-        sessionBuilder.withLocalDatacenter("datacenter1");
+        sessionBuilder.withLocalDatacenter(configuration.getLocalDC().orElse("datacenter1"));
 
         try (CqlSession session = sessionBuilder.build()) {
             KeyspaceFactory.createKeyspace(keyspaceConfiguration, session);
