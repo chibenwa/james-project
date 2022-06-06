@@ -28,6 +28,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 
+import org.apache.james.backends.cassandra.init.CassandraTypesProvider;
+
 import com.datastax.oss.driver.api.querybuilder.schema.CreateTable;
 import com.datastax.oss.driver.api.querybuilder.schema.CreateTableStart;
 import com.datastax.oss.driver.api.querybuilder.schema.CreateTableWithOptions;
@@ -136,17 +138,19 @@ public interface CassandraModule {
             return this;
         }
 
-        public Builder statement(Function<CreateTableStart, CreateTable> toCreateStatement) {
+        public Builder statement(Function<CreateTableStart,  Function<CassandraTypesProvider, CreateTable>> toCreateStatement) {
             Preconditions.checkState(comment.isPresent(), "`comment` is compulsory");
 
-            CreateTable createStatement = toCreateStatement.apply(
+            Function<CassandraTypesProvider, CreateTable> createStatement = toCreateStatement.apply(
                 createTable(tableName)
                     .ifNotExists());
 
+            Function<CassandraTypesProvider, CreateTableWithOptions> finalStatement = options.map(optionTramsformation ->
+               createStatement.andThen(table -> optionTramsformation.apply(table).withComment(comment.get())))
+                .orElseGet(() -> createStatement.andThen(table -> table.withComment(comment.get())));
+
             return originalBuilderReference.addTable(
-                new CassandraTable(tableName,
-                    options.orElse(Function.identity())
-                        .apply(createStatement.withComment(comment.get()))));
+                new CassandraTable(tableName, finalStatement));
         }
     }
 

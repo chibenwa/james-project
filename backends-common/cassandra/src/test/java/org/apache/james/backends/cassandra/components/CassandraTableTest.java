@@ -31,6 +31,7 @@ import java.util.Optional;
 import java.util.stream.Stream;
 
 import org.apache.james.backends.cassandra.components.CassandraTable.InitializationStatus;
+import org.apache.james.backends.cassandra.init.CassandraTypesProvider;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -48,7 +49,7 @@ import nl.jqno.equalsverifier.EqualsVerifier;
 class CassandraTableTest {
     private static final String NAME = "tableName";
     private static final CreateTable STATEMENT = SchemaBuilder.createTable(NAME).withPartitionKey("a", DataTypes.TEXT);
-    private static final CassandraTable TABLE = new CassandraTable(NAME, STATEMENT);
+    private static final CassandraTable TABLE = new CassandraTable(NAME, any -> STATEMENT);
 
     @Test
     void shouldRespectBeanContract() {
@@ -66,7 +67,7 @@ class CassandraTableTest {
         when(keyspace.getTable(NAME)).thenReturn(Optional.empty());
         CqlSession session = mock(CqlSession.class);
 
-        assertThat(TABLE.initialize(keyspace, session))
+        assertThat(TABLE.initialize(keyspace, session, new CassandraTypesProvider(CassandraModule.EMPTY_MODULE, session)))
                 .isEqualByComparingTo(FULL);
 
         verify(keyspace).getTable(NAME);
@@ -79,7 +80,7 @@ class CassandraTableTest {
         when(keyspace.getTable(NAME)).thenReturn(Optional.of(mock(TableMetadata.class)));
         CqlSession session = mock(CqlSession.class);
 
-        assertThat(TABLE.initialize(keyspace, session))
+        assertThat(TABLE.initialize(keyspace, session, new CassandraTypesProvider(CassandraModule.EMPTY_MODULE, session)))
                 .isEqualByComparingTo(ALREADY_DONE);
 
         verify(keyspace).getTable(NAME);

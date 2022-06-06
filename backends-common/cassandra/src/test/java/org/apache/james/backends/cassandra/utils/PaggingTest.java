@@ -48,7 +48,7 @@ class PaggingTest {
     @RegisterExtension
     static CassandraClusterExtension cassandraCluster = new CassandraClusterExtension(CassandraModule.table(TABLE_NAME)
         .comment("Testing table")
-        .statement(statement -> statement
+        .statement(statement -> types -> statement
             .withPartitionKey(ID, DataTypes.TIMEUUID)
             .withClusteringColumn(CLUSTERING,  DataTypes.BIGINT))
         .build());

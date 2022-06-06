@@ -43,7 +43,7 @@ class CassandraTableManagerTest {
             CassandraSchemaVersionModule.MODULE,
             CassandraModule.table(TABLE_NAME)
                 .comment("Testing table")
-                .statement(statement -> statement
+                .statement(statement -> types -> statement
                     .withPartitionKey("id", DataTypes.TIMEUUID)
                     .withClusteringColumn("clustering", DataTypes.BIGINT))
                 .build());
@@ -68,7 +68,7 @@ class CassandraTableManagerTest {
         cassandra.getConf().execute(SchemaBuilder.dropTable(TABLE_NAME).build());
         cassandra.getConf().execute(SchemaBuilder.dropTable(CassandraSchemaVersionTable.TABLE_NAME).build());
 
-        assertThat(new CassandraTableManager(MODULE, cassandra.getConf()).initializeTables())
+        assertThat(new CassandraTableManager(MODULE, cassandra.getConf()).initializeTables(new CassandraTypesProvider(MODULE, cassandra.getConf())))
                 .isEqualByComparingTo(CassandraTable.InitializationStatus.FULL);
 
         ensureTableExistence(TABLE_NAME);
@@ -78,7 +78,7 @@ class CassandraTableManagerTest {
     void initializeTableShouldCreateAllTheMissingTable() {
         cassandra.getConf().execute(SchemaBuilder.dropTable(TABLE_NAME).build());
 
-        assertThat(new CassandraTableManager(MODULE, cassandra.getConf()).initializeTables())
+        assertThat(new CassandraTableManager(MODULE, cassandra.getConf()).initializeTables(new CassandraTypesProvider(MODULE, cassandra.getConf())))
                 .isEqualByComparingTo(CassandraTable.InitializationStatus.PARTIAL);
 
         ensureTableExistence(TABLE_NAME);
@@ -86,13 +86,13 @@ class CassandraTableManagerTest {
 
     @Test
     void initializeTableShouldNotPerformIfCalledASecondTime() {
-        assertThat(new CassandraTableManager(MODULE, cassandra.getConf()).initializeTables())
+        assertThat(new CassandraTableManager(MODULE, cassandra.getConf()).initializeTables(new CassandraTypesProvider(MODULE, cassandra.getConf())))
                 .isEqualByComparingTo(CassandraTable.InitializationStatus.ALREADY_DONE);
     }
 
     @Test
     void initializeTableShouldNotFailIfCalledASecondTime() {
-        new CassandraTableManager(MODULE, cassandra.getConf()).initializeTables();
+        new CassandraTableManager(MODULE, cassandra.getConf()).initializeTables(new CassandraTypesProvider(MODULE, cassandra.getConf()));
 
         ensureTableExistence(TABLE_NAME);
     }

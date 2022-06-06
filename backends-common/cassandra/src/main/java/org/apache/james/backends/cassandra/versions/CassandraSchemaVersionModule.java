@@ -27,7 +27,7 @@ import com.datastax.oss.driver.api.core.type.DataTypes;
 public interface CassandraSchemaVersionModule {
     CassandraModule MODULE = CassandraModule.table(CassandraSchemaVersionTable.TABLE_NAME)
         .comment("Holds the history of the versions of the schema used.")
-        .statement(statement -> statement
+        .statement(statement -> types -> statement
             .withPartitionKey(CassandraSchemaVersionTable.KEY, DataTypes.TIMEUUID)
             .withClusteringColumn(CassandraSchemaVersionTable.VALUE, DataTypes.INT))
         .build();

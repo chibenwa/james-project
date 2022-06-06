@@ -38,15 +38,19 @@ public class CassandraTypesProvider {
 
     @Inject
     public CassandraTypesProvider(CassandraModule module, CqlSession session) {
-        KeyspaceMetadata keyspaceMetadata = session.getMetadata().getKeyspaces().get(session.getKeyspace().get());
-        Map<CqlIdentifier, UserDefinedType> userDefinedTypes = keyspaceMetadata.getUserDefinedTypes();
-        System.out.println(userDefinedTypes);
+        Map<CqlIdentifier, UserDefinedType> userDefinedTypes = session.getKeyspace().map(keyspace -> userDefinedTypes(session, keyspace))
+            .orElse(ImmutableMap.of());
 
         userTypes = module.moduleTypes()
             .stream()
             .collect(ImmutableMap.toImmutableMap(
                     CassandraType::getName,
                     type -> userDefinedTypes.get(CqlIdentifier.fromInternal(type.getName()))));
+    }
+
+    public Map<CqlIdentifier, UserDefinedType> userDefinedTypes(CqlSession session, CqlIdentifier keyspace) {
+        KeyspaceMetadata keyspaceMetadata = session.getMetadata().getKeyspaces().get(keyspace);
+        return keyspaceMetadata.getUserDefinedTypes();
     }
 
     public UserDefinedType getDefinedUserType(String typeName) {
