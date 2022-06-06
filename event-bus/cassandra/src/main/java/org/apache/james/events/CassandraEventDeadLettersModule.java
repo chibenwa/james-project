@@ -34,13 +34,13 @@ public interface CassandraEventDeadLettersModule {
         .comment("Holds event dead letter")
         .options(options -> options
             .withCaching(true, rows(CassandraConstants.DEFAULT_CACHED_ROW_PER_PARTITION)))
-        .statement(statement -> statement
+        .statement(statement -> types -> statement
             .withPartitionKey(CassandraEventDeadLettersTable.GROUP, DataTypes.TEXT)
             .withClusteringColumn(CassandraEventDeadLettersTable.INSERTION_ID, DataTypes.UUID)
             .withColumn(CassandraEventDeadLettersTable.EVENT, DataTypes.TEXT))
         .table(CassandraEventDeadLettersGroupTable.TABLE_NAME)
         .comment("Projection table for retrieving groups for all failed events")
-        .statement(statement -> statement
+        .statement(statement -> types -> statement
             .withPartitionKey(CassandraEventDeadLettersGroupTable.GROUP, DataTypes.TEXT))
         .build();
 }
