@@ -39,6 +39,7 @@ public class ClusterConfiguration {
         private Optional<Integer> maxRetry;
         private Optional<String> username;
         private Optional<String> password;
+        private Optional<String> localDC;
 
         public Builder() {
             hosts = ImmutableList.builder();
@@ -47,6 +48,7 @@ public class ClusterConfiguration {
             maxRetry = Optional.empty();
             username = Optional.empty();
             password = Optional.empty();
+            localDC = Optional.empty();
         }
 
         public Builder host(Host host) {
@@ -61,6 +63,16 @@ public class ClusterConfiguration {
 
         public Builder hosts(Host... hosts) {
             this.hosts.addAll(Arrays.asList(hosts));
+            return this;
+        }
+
+        public Builder localDC(Optional<String> localDC) {
+            this.localDC = localDC;
+            return this;
+        }
+
+        public Builder localDC(String localDC) {
+            this.localDC = Optional.of(localDC);
             return this;
         }
 
@@ -106,12 +118,10 @@ public class ClusterConfiguration {
             return password(Optional.of(password));
         }
 
-
-
         public ClusterConfiguration build() {
             return new ClusterConfiguration(
                 hosts.build(),
-                createKeyspace,
+                localDC, createKeyspace,
                 minDelay.orElse(DEFAULT_CONNECTION_MIN_DELAY),
                 maxRetry.orElse(DEFAULT_CONNECTION_MAX_RETRIES),
                 username,
@@ -124,16 +134,11 @@ public class ClusterConfiguration {
     public static final String CASSANDRA_USER = "cassandra.user";
     public static final String CASSANDRA_PASSWORD = "cassandra.password";
     public static final String CASSANDRA_LOCAL_DC = "cassandra.local.dc";
-    public static final String CASSANDRA_SSL = "cassandra.ssl";
-    public static final String READ_TIMEOUT_MILLIS = "cassandra.readTimeoutMillis";
-    public static final String CONNECT_TIMEOUT_MILLIS = "cassandra.connectTimeoutMillis";
     public static final String CONNECTION_MAX_RETRY = "cassandra.retryConnection.maxRetries";
     public static final String CONNECTION_RETRY_MIN_DELAY = "cassandra.retryConnection.minDelay";
 
     private static final int DEFAULT_CONNECTION_MAX_RETRIES = 10;
     private static final int DEFAULT_CONNECTION_MIN_DELAY = 5000;
-    private static final int DEFAULT_READ_TIMEOUT_MILLIS = 5000;
-    private static final int DEFAULT_CONNECT_TIMEOUT_MILLIS = 5000;
     public static final int DEFAULT_CASSANDRA_PORT = 9042;
 
     public static Builder builder() {
@@ -147,6 +152,7 @@ public class ClusterConfiguration {
 
         ClusterConfiguration.Builder builder = ClusterConfiguration.builder()
             .hosts(listCassandraServers(configuration))
+            .localDC(Optional.ofNullable(configuration.getString(CASSANDRA_LOCAL_DC, null)))
             .minDelay(Optional.ofNullable(configuration.getInteger(CONNECTION_RETRY_MIN_DELAY, null)))
             .maxRetry(Optional.ofNullable(configuration.getInteger(CONNECTION_MAX_RETRY, null)))
             .username(Optional.ofNullable(configuration.getString(CASSANDRA_USER, null)))
@@ -167,20 +173,26 @@ public class ClusterConfiguration {
 
 
     private final List<Host> hosts;
+    private final Optional<String> localDC;
     private final boolean createKeyspace;
     private final int minDelay;
     private final int maxRetry;
     private final Optional<String> username;
     private final Optional<String> password;
 
-    public ClusterConfiguration(List<Host> hosts, boolean createKeyspace, int minDelay, int maxRetry,Optional<String> username,
+    private ClusterConfiguration(List<Host> hosts, Optional<String> localDC, boolean createKeyspace, int minDelay, int maxRetry, Optional<String> username,
                                 Optional<String> password) {
         this.hosts = hosts;
+        this.localDC = localDC;
         this.createKeyspace = createKeyspace;
         this.minDelay = minDelay;
         this.maxRetry = maxRetry;
         this.username = username;
         this.password = password;
+    }
+
+    public Optional<String> getLocalDC() {
+        return localDC;
     }
 
     public List<Host> getHosts() {
