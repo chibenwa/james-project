@@ -32,7 +32,7 @@ object CassandraEventStoreModule {
       .withCaching(
         true,
         SchemaBuilder.RowsPerPartition.rows(CassandraConstants.DEFAULT_CACHED_ROW_PER_PARTITION)))
-    .statement(_.withPartitionKey(CassandraEventStoreTable.AGGREGATE_ID, DataTypes.TEXT)
+    .statement(statement => _ => statement.withPartitionKey(CassandraEventStoreTable.AGGREGATE_ID, DataTypes.TEXT)
       .withClusteringColumn(CassandraEventStoreTable.EVENT_ID, DataTypes.INT)
       .withColumn(CassandraEventStoreTable.EVENT, DataTypes.TEXT))
     .build
