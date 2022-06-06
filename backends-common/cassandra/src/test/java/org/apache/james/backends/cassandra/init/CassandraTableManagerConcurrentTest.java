@@ -42,7 +42,7 @@ class CassandraTableManagerConcurrentTest {
             CassandraSchemaVersionModule.MODULE,
             CassandraModule.table(TABLE_NAME)
                 .comment("Testing table")
-                .statement(statement -> statement
+                .statement(statement -> types -> statement
                         .withPartitionKey("id", DataTypes.TIMEUUID)
                         .withClusteringColumn("clustering", DataTypes.BIGINT))
                 .build());

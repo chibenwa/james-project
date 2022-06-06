@@ -19,8 +19,6 @@
 
 package org.apache.james.backends.cassandra.init;
 
-import java.util.stream.Stream;
-
 import javax.annotation.PreDestroy;
 import javax.inject.Inject;
 import javax.inject.Provider;
@@ -61,8 +59,9 @@ public class SessionWithInitializedTablesFactory implements Provider<CqlSession>
     }
 
     private boolean allOperationsAreFullyPerformed(CqlSession session, CassandraModule module) {
-        Stream<Boolean> operations = Stream.of(createTypes(session, module), createTables(session, module));
-        return operations.allMatch(updated -> updated);
+        boolean types = createTypes(session, module);
+        boolean tables = createTables(session, module);
+        return types && tables;
     }
 
     private boolean createTypes(CqlSession session, CassandraModule module) {
@@ -71,8 +70,9 @@ public class SessionWithInitializedTablesFactory implements Provider<CqlSession>
     }
 
     private boolean createTables(CqlSession session, CassandraModule module) {
+        CassandraTypesProvider cassandraTypesProvider = new CassandraTypesProvider(module, session);
         return new CassandraTableManager(module, session)
-            .initializeTables() == CassandraTable.InitializationStatus.FULL;
+            .initializeTables(cassandraTypesProvider) == CassandraTable.InitializationStatus.FULL;
     }
 
     @Override

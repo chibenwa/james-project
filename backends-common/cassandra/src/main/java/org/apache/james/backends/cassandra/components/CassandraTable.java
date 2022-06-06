@@ -20,6 +20,9 @@
 package org.apache.james.backends.cassandra.components;
 
 import java.util.Objects;
+import java.util.function.Function;
+
+import org.apache.james.backends.cassandra.init.CassandraTypesProvider;
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.metadata.schema.KeyspaceMetadata;
@@ -41,10 +44,10 @@ public class CassandraTable {
         }
     }
 
-    private final CreateTableWithOptions createStatement;
+    private final Function<CassandraTypesProvider, CreateTableWithOptions> createStatement;
     private final String name;
 
-    public CassandraTable(String name, CreateTableWithOptions createStatement) {
+    public CassandraTable(String name, Function<CassandraTypesProvider, CreateTableWithOptions> createStatement) {
         this.createStatement = createStatement;
         this.name = name;
     }
@@ -53,12 +56,12 @@ public class CassandraTable {
         return name;
     }
 
-    public InitializationStatus initialize(KeyspaceMetadata keyspaceMetadata, CqlSession session) {
+    public InitializationStatus initialize(KeyspaceMetadata keyspaceMetadata, CqlSession session, CassandraTypesProvider typesProvider) {
         if (keyspaceMetadata.getTable(name).isPresent()) {
             return InitializationStatus.ALREADY_DONE;
         }
 
-        session.execute(createStatement.build());
+        session.execute(createStatement.apply(typesProvider).build());
 
         return InitializationStatus.FULL;
     }
