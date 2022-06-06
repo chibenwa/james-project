@@ -153,8 +153,7 @@ public class CassandraUsersDAO implements UsersDAO {
                     .setString(PASSWORD, defaultUser.getHashedPassword())
                     .setString(ALGORITHM, defaultUser.getHashAlgorithm().asString())
                     .setString(NAME, defaultUser.getUserName().asString()))
-            .blockOptional()
-            .orElseThrow();
+            .block();
 
         if (!executed) {
             throw new UsersRepositoryException("Unable to update user");
@@ -197,8 +196,7 @@ public class CassandraUsersDAO implements UsersDAO {
         boolean executed = executor.executeReturnApplied(
                 removeUserStatement.bind()
                     .setString(NAME, name.asString()))
-            .blockOptional()
-            .orElseThrow();
+            .block();
 
         if (!executed) {
             throw new UsersRepositoryException("unable to remove unknown user " + name.asString());
@@ -219,8 +217,7 @@ public class CassandraUsersDAO implements UsersDAO {
     public int countUsers() {
         return executor.executeSingleRow(countUserStatement.bind())
             .map(row -> Ints.checkedCast(row.getLong(0)))
-            .blockOptional()
-            .orElseThrow();
+            .block();
     }
 
     @Override
@@ -242,8 +239,7 @@ public class CassandraUsersDAO implements UsersDAO {
                     .setString(REALNAME, user.getUserName().asString())
                     .setString(PASSWORD, user.getHashedPassword())
                     .setString(ALGORITHM, user.getHashAlgorithm().asString()))
-            .blockOptional()
-            .orElseThrow();
+            .block();
 
         if (!executed) {
             throw new AlreadyExistInUsersRepositoryException("User with username " + username + " already exist!");
