@@ -27,6 +27,11 @@ import com.datastax.oss.driver.api.core.config.DefaultDriverOption;
 import com.datastax.oss.driver.api.core.config.DriverExecutionProfile;
 
 public interface JamesExecutionProfiles {
+    /**
+     * Applied for SERIAL reads.
+     *
+     * This profile can allow, amongst other, to choose betweem SERIAL and LOCAL_SERIAL consistency level.
+     */
     static DriverExecutionProfile getLWTProfile(CqlSession session) {
         DriverExecutionProfile executionProfile = session.getContext().getConfig().getProfiles().get("LWT");
         return Optional.ofNullable(executionProfile)
@@ -35,9 +40,17 @@ public interface JamesExecutionProfiles {
 
     private static DriverExecutionProfile defaultLWTProfile(CqlSession session) {
         return session.getContext().getConfig().getDefaultProfile()
-            .withString(DefaultDriverOption.REQUEST_CONSISTENCY, DefaultConsistencyLevel.SERIAL.name());
+            .withString(DefaultDriverOption.REQUEST_CONSISTENCY, DefaultConsistencyLevel.SERIAL.name())
+            .withString(DefaultDriverOption.REQUEST_SERIAL_CONSISTENCY, DefaultConsistencyLevel.SERIAL.name());
     }
 
+    /**
+     * Applied for Caching related data.
+     *
+     * Can be used to set either ONE or LOCAL_ONE consistency level.
+     *
+     * If missing (inconsistency) the data can safely and automatically be recomputed from the main data source.
+     */
     static DriverExecutionProfile getCachingProfile(CqlSession session) {
         DriverExecutionProfile executionProfile = session.getContext().getConfig().getProfiles().get("CACHING");
         return Optional.ofNullable(executionProfile)
@@ -49,6 +62,28 @@ public interface JamesExecutionProfiles {
             .withString(DefaultDriverOption.REQUEST_CONSISTENCY, DefaultConsistencyLevel.ONE.name());
     }
 
+    /**
+     * For idempotent data (nether updated / deleted while referenced), we can downgrade the consistency level
+     * to ONE and implement a fallback to QUORUM on missing data (inconsistency).
+     *
+     * This optional behaviour is based on the fact that data is generally well replicated.
+     *
+     * Can be used to set either ONE or LOCAL_ONE consistency level.
+     */
+    static DriverExecutionProfile getOptimisticConsistencyLevelProfile(CqlSession session) {
+        DriverExecutionProfile executionProfile = session.getContext().getConfig().getProfiles().get("OPTIMISTIC_CONSISTE_LEVEL");
+        return Optional.ofNullable(executionProfile)
+            .orElseGet(() -> defaultOptimisticConsistencyLevelProfile(session));
+    }
+
+    private static DriverExecutionProfile defaultOptimisticConsistencyLevelProfile(CqlSession session) {
+        return session.getContext().getConfig().getDefaultProfile()
+            .withString(DefaultDriverOption.REQUEST_CONSISTENCY, DefaultConsistencyLevel.LOCAL_ONE.name());
+    }
+
+    /**
+     * Applied for large backgrond queries, EG applied for large entity listings upon tasks.
+     */
     static DriverExecutionProfile getBatchProfile(CqlSession session) {
         DriverExecutionProfile executionProfile = session.getContext().getConfig().getProfiles().get("BATCH");
         return Optional.ofNullable(executionProfile)
