@@ -48,4 +48,15 @@ public interface JamesExecutionProfiles {
         return session.getContext().getConfig().getDefaultProfile()
             .withString(DefaultDriverOption.REQUEST_CONSISTENCY, DefaultConsistencyLevel.ONE.name());
     }
+
+    static DriverExecutionProfile getBatchProfile(CqlSession session) {
+        DriverExecutionProfile executionProfile = session.getContext().getConfig().getProfiles().get("BATCH");
+        return Optional.ofNullable(executionProfile)
+            .orElseGet(() -> defaultBatchProfile(session));
+    }
+
+    private static DriverExecutionProfile defaultBatchProfile(CqlSession session) {
+        return session.getContext().getConfig().getDefaultProfile()
+            .withLong(DefaultDriverOption.REQUEST_TIMEOUT, 3600000);
+    }
 }
