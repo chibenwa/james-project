@@ -20,8 +20,6 @@
 package org.apache.james.blob.cassandra.cache;
 
 
-import static com.datastax.oss.driver.api.core.ConsistencyLevel.ALL;
-import static com.datastax.oss.driver.api.core.ConsistencyLevel.ONE;
 import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.bindMarker;
 import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.deleteFrom;
 import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.insertInto;
@@ -32,18 +30,19 @@ import static org.apache.james.blob.cassandra.BlobTables.BlobStoreCache.TTL_FOR_
 import static org.apache.james.blob.cassandra.BlobTables.BucketBlobTable.ID;
 
 import java.nio.ByteBuffer;
-import java.time.Duration;
 
 import javax.inject.Inject;
 import javax.inject.Named;
 
 import org.apache.james.backends.cassandra.init.configuration.InjectionNames;
+import org.apache.james.backends.cassandra.init.configuration.JamesExecutionProfiles;
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor;
 import org.apache.james.blob.api.BlobId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.config.DriverExecutionProfile;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 import com.datastax.oss.driver.api.core.cql.Row;
 import com.google.common.annotations.VisibleForTesting;
@@ -59,15 +58,14 @@ public class CassandraBlobStoreCache implements BlobStoreCache {
     private final PreparedStatement selectStatement;
     private final PreparedStatement deleteStatement;
 
-    private final int readTimeOutFromDataBase;
     private final int timeToLive;
+    private final DriverExecutionProfile cachingProfile;
 
     @Inject
     @VisibleForTesting
     CassandraBlobStoreCache(@Named(InjectionNames.CACHE) CqlSession session,
                             CassandraCacheConfiguration cacheConfiguration) {
         this.cassandraAsyncExecutor = new CassandraAsyncExecutor(session);
-        this.readTimeOutFromDataBase = Math.toIntExact(cacheConfiguration.getReadTimeOut().toMillis());
         this.timeToLive = Math.toIntExact(cacheConfiguration.getTtl().getSeconds());
 
         this.insertStatement = session.prepare(insertInto(TABLE_NAME)
@@ -84,6 +82,8 @@ public class CassandraBlobStoreCache implements BlobStoreCache {
         this.deleteStatement = session.prepare(deleteFrom(TABLE_NAME)
             .whereColumn(ID).isEqualTo(bindMarker(ID))
             .build());
+
+        cachingProfile = JamesExecutionProfiles.getCachingProfile(session);
     }
 
     @Override
@@ -96,8 +96,7 @@ public class CassandraBlobStoreCache implements BlobStoreCache {
         return cassandraAsyncExecutor.executeSingleRow(
                 selectStatement.bind()
                     .setString(ID, blobId.asString())
-                    .setConsistencyLevel(ONE)
-                    .setTimeout(Duration.ofDays(readTimeOutFromDataBase)))
+                    .setExecutionProfile(cachingProfile))
             .map(this::toByteArray)
             .onErrorResume(e -> {
                 LOGGER.warn("Fail reading blob store cache", e);
@@ -110,7 +109,7 @@ public class CassandraBlobStoreCache implements BlobStoreCache {
         return cassandraAsyncExecutor.executeVoid(
             deleteStatement.bind()
                 .setString(ID, blobId.asString())
-                .setConsistencyLevel(ALL));
+                .setExecutionProfile(cachingProfile));
     }
 
     private Mono<Void> save(BlobId blobId, ByteBuffer data) {
@@ -119,7 +118,7 @@ public class CassandraBlobStoreCache implements BlobStoreCache {
                     .setString(ID, blobId.asString())
                     .setByteBuffer(DATA, data)
                     .setInt(TTL_FOR_ROW, timeToLive)
-                    .setConsistencyLevel(ONE))
+                    .setExecutionProfile(cachingProfile))
             .onErrorResume(e -> {
                 LOGGER.warn("Failed saving {} in blob store cache", blobId, e);
                 return Mono.empty();
