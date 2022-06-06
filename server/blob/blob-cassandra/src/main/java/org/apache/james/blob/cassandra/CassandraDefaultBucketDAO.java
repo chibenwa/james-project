@@ -19,7 +19,6 @@
 
 package org.apache.james.blob.cassandra;
 
-import static com.datastax.oss.driver.api.core.ConsistencyLevel.LOCAL_ONE;
 import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.bindMarker;
 import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.deleteFrom;
 import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.insertInto;
@@ -31,11 +30,13 @@ import java.nio.ByteBuffer;
 
 import javax.inject.Inject;
 
+import org.apache.james.backends.cassandra.init.configuration.JamesExecutionProfiles;
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor;
 import org.apache.james.blob.api.BlobId;
 import org.apache.james.blob.cassandra.BlobTables.DefaultBucketBlobParts;
 
 import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.config.DriverExecutionProfile;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 import com.datastax.oss.driver.api.core.cql.Row;
 import com.google.common.annotations.VisibleForTesting;
@@ -53,6 +54,7 @@ public class CassandraDefaultBucketDAO {
     private final PreparedStatement deleteParts;
     private final PreparedStatement listBlobs;
     private final BlobId.Factory blobIdFactory;
+    private final DriverExecutionProfile optimisticConsistencyLevelProfile;
 
     @Inject
     @VisibleForTesting
@@ -93,6 +95,8 @@ public class CassandraDefaultBucketDAO {
         this.listBlobs = session.prepare(selectFrom(DefaultBucketBlobParts.TABLE_NAME)
             .column(DefaultBucketBlobParts.ID)
             .build());
+
+        optimisticConsistencyLevelProfile = JamesExecutionProfiles.getOptimisticConsistencyLevelProfile(session);
     }
 
     Mono<Void> writePart(ByteBuffer data, BlobId blobId, int position) {
@@ -121,7 +125,7 @@ public class CassandraDefaultBucketDAO {
         return cassandraAsyncExecutor.executeSingleRow(
                 select.bind()
                     .setString(ID, blobId.asString())
-                    .setConsistencyLevel(LOCAL_ONE))
+                    .setExecutionProfile(optimisticConsistencyLevelProfile))
             .map(row -> row.getInt(NUMBER_OF_CHUNK));
     }
 
@@ -138,7 +142,7 @@ public class CassandraDefaultBucketDAO {
                 selectPart.bind()
                     .setString(DefaultBucketBlobParts.ID, blobId.asString())
                     .setInt(DefaultBucketBlobParts.CHUNK_NUMBER, position)
-                    .setConsistencyLevel(LOCAL_ONE))
+                    .setExecutionProfile(optimisticConsistencyLevelProfile))
             .map(this::rowToData);
     }
 
