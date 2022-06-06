@@ -37,4 +37,15 @@ public interface JamesExecutionProfiles {
         return session.getContext().getConfig().getDefaultProfile()
             .withString(DefaultDriverOption.REQUEST_CONSISTENCY, DefaultConsistencyLevel.SERIAL.name());
     }
+
+    static DriverExecutionProfile getCachingProfile(CqlSession session) {
+        DriverExecutionProfile executionProfile = session.getContext().getConfig().getProfiles().get("CACHING");
+        return Optional.ofNullable(executionProfile)
+            .orElseGet(() -> defaultCachingProfile(session));
+    }
+
+    private static DriverExecutionProfile defaultCachingProfile(CqlSession session) {
+        return session.getContext().getConfig().getDefaultProfile()
+            .withString(DefaultDriverOption.REQUEST_CONSISTENCY, DefaultConsistencyLevel.ONE.name());
+    }
 }
