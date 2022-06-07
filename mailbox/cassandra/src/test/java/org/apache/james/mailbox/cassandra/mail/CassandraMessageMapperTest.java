@@ -63,7 +63,6 @@ class CassandraMessageMapperTest extends MessageMapperTest {
     protected MapperProvider createMapperProvider() {
         return new CassandraMapperProvider(
             cassandraCluster.getCassandraCluster(),
-            cassandraCluster.getCassandraConsistenciesConfiguration(),
             CassandraConfiguration.DEFAULT_CONFIGURATION);
     }
 
@@ -326,7 +325,6 @@ class CassandraMessageMapperTest extends MessageMapperTest {
             CassandraMessageIdToImapUidDAO imapUidDAO = new CassandraMessageIdToImapUidDAO(
                 cassandra.getConf(),
                 new HashBlobId.Factory(),
-                cassandraCluster.getCassandraConsistenciesConfiguration(),
                 CassandraConfiguration.DEFAULT_CONFIGURATION);
 
             SoftAssertions.assertSoftly(Throwing.consumer(softly -> {
