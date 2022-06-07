@@ -28,10 +28,10 @@ import com.datastax.oss.driver.api.core.config.DriverExecutionProfile;
 
 public interface JamesExecutionProfiles {
     /**
-     * James application configuration allows for some operation to choose
+     * James' application configuration allows for some operation to choose
      * or not to enable LWTs.
      *
-     * When LWTs are enable underlying DAOs will use LWT execution profiles.
+     * When LWTs are enabled underlying DAOs will use LWT execution profiles.
      */
     enum ConsistencyChoice {
         WEAK, // DAO should use default execution profile
@@ -41,7 +41,7 @@ public interface JamesExecutionProfiles {
     /**
      * Applied for SERIAL reads.
      *
-     * This profile can allow, amongst other, to choose betweem SERIAL and LOCAL_SERIAL consistency level.
+     * This profile can allow, amongst other, to choose between SERIAL and LOCAL_SERIAL consistency level.
      */
     static DriverExecutionProfile getLWTProfile(CqlSession session) {
         DriverExecutionProfile executionProfile = session.getContext().getConfig().getProfiles().get("LWT");
@@ -82,7 +82,7 @@ public interface JamesExecutionProfiles {
      * Can be used to set either ONE or LOCAL_ONE consistency level.
      */
     static DriverExecutionProfile getOptimisticConsistencyLevelProfile(CqlSession session) {
-        DriverExecutionProfile executionProfile = session.getContext().getConfig().getProfiles().get("OPTIMISTIC_CONSISTE_LEVEL");
+        DriverExecutionProfile executionProfile = session.getContext().getConfig().getProfiles().get("OPTIMISTIC_CONSISTENCY_LEVEL");
         return Optional.ofNullable(executionProfile)
             .orElseGet(() -> defaultOptimisticConsistencyLevelProfile(session));
     }
@@ -93,7 +93,7 @@ public interface JamesExecutionProfiles {
     }
 
     /**
-     * Applied for large backgrond queries, EG applied for large entity listings upon tasks.
+     * Applied for large background queries, EG applied for large entity listings upon tasks.
      */
     static DriverExecutionProfile getBatchProfile(CqlSession session) {
         DriverExecutionProfile executionProfile = session.getContext().getConfig().getProfiles().get("BATCH");
