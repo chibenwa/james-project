@@ -24,6 +24,7 @@ import java.util.Optional;
 import javax.inject.Inject;
 
 import com.datastax.dse.driver.api.core.cql.reactive.ReactiveResultSet;
+import com.datastax.dse.driver.api.core.cql.reactive.ReactiveRow;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.Row;
 import com.datastax.oss.driver.api.core.cql.Statement;
@@ -45,8 +46,8 @@ public class CassandraAsyncExecutor {
     }
 
     public Mono<Boolean> executeReturnApplied(Statement statement) {
-        return Mono.from(execute(statement)
-            .wasApplied());
+        return Mono.from(execute(statement))
+            .map(ReactiveRow::wasApplied);
     }
 
     public Mono<Void> executeVoid(Statement statement) {
