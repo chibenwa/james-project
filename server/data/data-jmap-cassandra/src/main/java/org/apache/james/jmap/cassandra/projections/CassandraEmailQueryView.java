@@ -283,21 +283,21 @@ public class CassandraEmailQueryView implements EmailQueryView {
         CassandraMessageId cassandraMessageId = (CassandraMessageId) messageId;
         CassandraId cassandraId = (CassandraId) mailboxId;
 
-        return Flux.concat(
-            executor.executeVoid(insertInLookupTable.bind()
-                .setUuid(MESSAGE_ID, cassandraMessageId.get())
-                .setUuid(MAILBOX_ID, cassandraId.asUuid())
-                .setInstant(RECEIVED_AT, receivedAt.toInstant())
-                .setInstant(SENT_AT, sentAt.toInstant())),
-            executor.executeVoid(insertSentAt.bind()
-                .setUuid(MESSAGE_ID, cassandraMessageId.get())
-                .setUuid(MAILBOX_ID, cassandraId.asUuid())
-                .setInstant(SENT_AT, sentAt.toInstant())),
-            executor.executeVoid(insertReceivedAt.bind()
-                .setUuid(MESSAGE_ID, cassandraMessageId.get())
-                .setUuid(MAILBOX_ID, cassandraId.asUuid())
-                .setInstant(RECEIVED_AT, receivedAt.toInstant())
-                .setInstant(SENT_AT, sentAt.toInstant())))
-            .then();
+        return executor.executeVoid(insertInLookupTable.bind()
+            .setUuid(MESSAGE_ID, cassandraMessageId.get())
+            .setUuid(MAILBOX_ID, cassandraId.asUuid())
+            .setInstant(RECEIVED_AT, receivedAt.toInstant())
+            .setInstant(SENT_AT, sentAt.toInstant()))
+            .then(Flux.concat(
+                executor.executeVoid(insertSentAt.bind()
+                    .setUuid(MESSAGE_ID, cassandraMessageId.get())
+                    .setUuid(MAILBOX_ID, cassandraId.asUuid())
+                    .setInstant(SENT_AT, sentAt.toInstant())),
+                executor.executeVoid(insertReceivedAt.bind()
+                    .setUuid(MESSAGE_ID, cassandraMessageId.get())
+                    .setUuid(MAILBOX_ID, cassandraId.asUuid())
+                    .setInstant(RECEIVED_AT, receivedAt.toInstant())
+                    .setInstant(SENT_AT, sentAt.toInstant())))
+                .then());
     }
 }
