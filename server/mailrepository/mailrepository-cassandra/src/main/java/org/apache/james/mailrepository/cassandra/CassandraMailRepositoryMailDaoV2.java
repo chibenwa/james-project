@@ -200,7 +200,7 @@ public class CassandraMailRepositoryMailDaoV2 {
                     .setList(RECIPIENTS, asStringList(mail.getRecipients()), String.class)
                     .setString(REMOTE_ADDR, mail.getRemoteAddr())
                     .setString(REMOTE_HOST, mail.getRemoteHost())
-                    .setInstant(LAST_UPDATED, mail.getLastUpdated().toInstant())
+                    .setInstant(LAST_UPDATED, Optional.ofNullable(mail.getLastUpdated()).map(Date::toInstant).orElse(null))
                     .setMap(ATTRIBUTES, toRawAttributeMap(mail), String.class, String.class)
                     .setList(PER_RECIPIENT_SPECIFIC_HEADERS, toTupleList(mail.getPerRecipientSpecificHeaders()), TupleValue.class);
 

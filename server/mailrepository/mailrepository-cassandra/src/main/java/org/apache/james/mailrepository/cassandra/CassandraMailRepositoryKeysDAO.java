@@ -92,9 +92,15 @@ public class CassandraMailRepositoryKeysDAO {
     }
 
     public Mono<Boolean> store(MailRepositoryUrl url, MailKey key) {
-        return executor.executeReturnApplied(insertKey.bind()
+        Mono<Boolean> operation = executor.executeReturnApplied(insertKey.bind()
             .setString(REPOSITORY_NAME, url.asString())
             .setString(MAIL_KEY, key.asString()));
+
+        if (strongConsistency) {
+            return operation;
+        } else {
+            return operation.switchIfEmpty(Mono.just(true));
+        }
     }
 
     public Flux<MailKey> list(MailRepositoryUrl url) {
@@ -104,8 +110,14 @@ public class CassandraMailRepositoryKeysDAO {
     }
 
     public Mono<Boolean> remove(MailRepositoryUrl url, MailKey key) {
-        return executor.executeReturnApplied(deleteKey.bind()
+        Mono<Boolean> operation = executor.executeReturnApplied(deleteKey.bind()
             .setString(REPOSITORY_NAME, url.asString())
             .setString(MAIL_KEY, key.asString()));
+
+        if (strongConsistency) {
+            return operation;
+        } else {
+            return operation.switchIfEmpty(Mono.just(true));
+        }
     }
 }
