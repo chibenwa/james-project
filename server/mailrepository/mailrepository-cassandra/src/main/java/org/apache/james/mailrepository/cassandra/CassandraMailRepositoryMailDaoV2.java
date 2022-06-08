@@ -56,7 +56,6 @@ import javax.mail.internet.AddressException;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor;
-import org.apache.james.backends.cassandra.utils.MutableSettableStatementWrapper;
 import org.apache.james.blob.api.BlobId;
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.MaybeSender;
@@ -204,16 +203,15 @@ public class CassandraMailRepositoryMailDaoV2 {
                     .setMap(ATTRIBUTES, toRawAttributeMap(mail), String.class, String.class)
                     .setList(PER_RECIPIENT_SPECIFIC_HEADERS, toTupleList(mail.getPerRecipientSpecificHeaders()), TupleValue.class);
 
-                MutableSettableStatementWrapper statementWrapper = new MutableSettableStatementWrapper(statement);
                 Optional.ofNullable(mail.getErrorMessage())
-                    .ifPresent(errorMessage -> statementWrapper.setNewStatement(statement.setString(MailRepositoryTable.ERROR_MESSAGE, mail.getErrorMessage())));
+                    .ifPresent(errorMessage -> statement.setString(MailRepositoryTable.ERROR_MESSAGE, mail.getErrorMessage()));
 
                 mail.getMaybeSender()
                     .asOptional()
                     .map(MailAddress::asString)
-                    .ifPresent(mailAddress -> statementWrapper.setNewStatement(statement.setString(MailRepositoryTable.SENDER, mailAddress)));
+                    .ifPresent(mailAddress -> statement.setString(MailRepositoryTable.SENDER, mailAddress));
 
-                return ((BoundStatementBuilder) statementWrapper.getStatement()).build();
+                return statement.build();
             })
             .flatMap(executor::executeVoid);
     }
