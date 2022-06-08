@@ -47,11 +47,13 @@ import static org.apache.james.queue.rabbitmq.view.cassandra.EnqueuedMailsDaoUti
 import static org.apache.james.queue.rabbitmq.view.cassandra.EnqueuedMailsDaoUtil.toTupleList;
 
 import java.nio.ByteBuffer;
+import java.util.Date;
 import java.util.Optional;
 
 import javax.inject.Inject;
 
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor;
+import org.apache.james.backends.cassandra.utils.MutableSettableStatementWrapper;
 import org.apache.james.blob.api.BlobId;
 import org.apache.james.blob.mail.MimeMessagePartsId;
 import org.apache.james.core.MailAddress;
@@ -63,7 +65,7 @@ import org.apache.james.queue.rabbitmq.view.cassandra.model.EnqueuedItemWithSlic
 import org.apache.mailet.Mail;
 
 import com.datastax.oss.driver.api.core.CqlSession;
-import com.datastax.oss.driver.api.core.cql.BoundStatement;
+import com.datastax.oss.driver.api.core.cql.BoundStatementBuilder;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 import com.datastax.oss.driver.api.core.data.TupleValue;
 import com.datastax.oss.driver.api.core.type.DataTypes;
@@ -148,7 +150,7 @@ public class EnqueuedMailsDAO {
         Mail mail = enqueuedItem.getMail();
         MimeMessagePartsId mimeMessagePartsId = enqueuedItem.getPartsId();
 
-        BoundStatement statement = insertStatement.bind()
+        BoundStatementBuilder statement = insertStatement.boundStatementBuilder()
             .setString(QUEUE_NAME, enqueuedItem.getMailQueueName().asString())
             .setInstant(TIME_RANGE_START, slicingContext.getTimeRangeStart())
             .setInt(BUCKET_ID, slicingContext.getBucketId().getValue())
@@ -161,19 +163,23 @@ public class EnqueuedMailsDAO {
             .setList(RECIPIENTS, asStringList(mail.getRecipients()), String.class)
             .setString(REMOTE_ADDR, mail.getRemoteAddr())
             .setString(REMOTE_HOST, mail.getRemoteHost())
-            .setInstant(LAST_UPDATED, mail.getLastUpdated().toInstant())
             .setMap(ATTRIBUTES, toRawAttributeMap(mail), String.class, ByteBuffer.class)
             .setList(PER_RECIPIENT_SPECIFIC_HEADERS, toTupleList(userHeaderNameHeaderValueTriple, mail.getPerRecipientSpecificHeaders()), TupleValue.class);
 
+        MutableSettableStatementWrapper statementWrapper = new MutableSettableStatementWrapper(statement);
         Optional.ofNullable(mail.getErrorMessage())
-            .ifPresent(errorMessage -> statement.setString(ERROR_MESSAGE, mail.getErrorMessage()));
+            .ifPresent(errorMessage -> statementWrapper.setNewStatement(statement.setString(ERROR_MESSAGE, mail.getErrorMessage())));
+
+        Optional.ofNullable(mail.getLastUpdated())
+            .map(Date::toInstant)
+            .ifPresent(lastUpdated -> statementWrapper.setNewStatement(statement.setInstant(LAST_UPDATED, lastUpdated)));
 
         mail.getMaybeSender()
             .asOptional()
             .map(MailAddress::asString)
-            .ifPresent(mailAddress -> statement.setString(SENDER, mailAddress));
+            .ifPresent(mailAddress -> statementWrapper.setNewStatement(statement.setString(SENDER, mailAddress)));
 
-        return executor.executeVoid(statement);
+        return executor.executeVoid(((BoundStatementBuilder) statementWrapper.getStatement()).build());
     }
 
     @VisibleForTesting
