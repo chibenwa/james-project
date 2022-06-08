@@ -48,6 +48,7 @@ import static org.apache.james.queue.rabbitmq.view.cassandra.EnqueuedMailsDaoUti
 
 import java.nio.ByteBuffer;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 
 import javax.inject.Inject;
 
@@ -165,15 +166,16 @@ public class EnqueuedMailsDAO {
             .setMap(ATTRIBUTES, toRawAttributeMap(mail), String.class, ByteBuffer.class)
             .setList(PER_RECIPIENT_SPECIFIC_HEADERS, toTupleList(userHeaderNameHeaderValueTriple, mail.getPerRecipientSpecificHeaders()), TupleValue.class);
 
+        AtomicReference<BoundStatement> finalBoundStatement = new AtomicReference<>(statement);
         Optional.ofNullable(mail.getErrorMessage())
-            .ifPresent(errorMessage -> statement.setString(ERROR_MESSAGE, mail.getErrorMessage()));
+            .ifPresent(errorMessage -> finalBoundStatement.set(statement.setString(ERROR_MESSAGE, mail.getErrorMessage())));
 
         mail.getMaybeSender()
             .asOptional()
             .map(MailAddress::asString)
-            .ifPresent(mailAddress -> statement.setString(SENDER, mailAddress));
+            .ifPresent(mailAddress -> finalBoundStatement.set(statement.setString(SENDER, mailAddress)));
 
-        return executor.executeVoid(statement);
+        return executor.executeVoid(finalBoundStatement.get());
     }
 
     @VisibleForTesting
