@@ -32,7 +32,7 @@ public interface CassandraAccessModule {
         .comment("Holds JMAP access token required to process to authentication.")
         .options(options -> options
             .withCaching(true, rows(CassandraConstants.DEFAULT_CACHED_ROW_PER_PARTITION)))
-        .statement(statement -> statement
+        .statement(statement -> types -> statement
             .withPartitionKey(CassandraAccessTokenTable.TOKEN, DataTypes.UUID)
             .withColumn(CassandraAccessTokenTable.USERNAME, DataTypes.TEXT))
         .build();

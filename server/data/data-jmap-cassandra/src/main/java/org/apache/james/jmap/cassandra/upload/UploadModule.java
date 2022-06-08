@@ -45,13 +45,12 @@ public interface UploadModule {
             .withCompaction(SchemaBuilder.timeWindowCompactionStrategy()
                 .withCompactionWindow(7, DAYS))
             .withCaching(true, rows(DEFAULT_CACHED_ROW_PER_PARTITION)))
-        .statement(statement -> statement
+        .statement(statement -> types -> statement
             .withPartitionKey(ID, DataTypes.TIMEUUID)
             .withColumn(CONTENT_TYPE, DataTypes.TEXT)
             .withColumn(SIZE, DataTypes.BIGINT)
             .withColumn(BUCKET_ID, DataTypes.TEXT)
             .withColumn(BLOB_ID, DataTypes.TEXT)
             .withColumn(USER, DataTypes.TEXT))
-
         .build();
 }
