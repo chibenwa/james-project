@@ -64,7 +64,6 @@ class AuthenticatedCassandraJamesServerTest {
                 .toInstance(DockerCassandra.configurationBuilder(cassandraExtension.getCassandra().getHost())
                     .username(CASSANDRA_USER)
                     .password(VALID_PASSWORD)
-                    .useSsl()
                     .build()))
             .build();
 
