@@ -100,10 +100,6 @@ Controls the number of retries upon Cassandra flags update, in MessageMapper.
 | Optional. Defaults to 1000.
 Controls the number of retries upon Cassandra flags update, in MessageIdMapper.
 
-| fetch.advance.row.count
-| Optional. Defaults to 1000.
-Controls the number of remaining rows we should wait before prefetch when paging.
-
 | chunk.size.message.read
 | Optional. Defaults to 100.
 Controls the number of messages to be retrieved in parallel.
