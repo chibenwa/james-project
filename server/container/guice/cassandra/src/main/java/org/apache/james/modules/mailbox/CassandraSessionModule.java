@@ -26,14 +26,11 @@ import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.backends.cassandra.components.CassandraModule;
 import org.apache.james.backends.cassandra.init.CassandraZonedDateTimeModule;
 import org.apache.james.backends.cassandra.init.KeyspaceFactory;
-import org.apache.james.backends.cassandra.init.ResilientClusterProvider;
 import org.apache.james.backends.cassandra.init.SessionWithInitializedTablesFactory;
 import org.apache.james.backends.cassandra.init.configuration.CassandraConfiguration;
-import org.apache.james.backends.cassandra.init.configuration.CassandraConsistenciesConfiguration;
 import org.apache.james.backends.cassandra.init.configuration.ClusterConfiguration;
 import org.apache.james.backends.cassandra.init.configuration.KeyspaceConfiguration;
 import org.apache.james.backends.cassandra.utils.CassandraHealthCheck;
-import org.apache.james.backends.cassandra.utils.CassandraUtils;
 import org.apache.james.backends.cassandra.versions.CassandraSchemaVersionDAO;
 import org.apache.james.backends.cassandra.versions.CassandraSchemaVersionManager;
 import org.apache.james.backends.cassandra.versions.CassandraSchemaVersionModule;
@@ -47,8 +44,7 @@ import org.apache.james.utils.PropertiesProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datastax.driver.core.Cluster;
-import com.datastax.driver.core.Session;
+import com.datastax.oss.driver.api.core.CqlSession;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
@@ -68,12 +64,9 @@ public class CassandraSessionModule extends AbstractModule {
 
     @Override
     protected void configure() {
-        bind(CassandraUtils.class).in(Scopes.SINGLETON);
-        bind(Cluster.class).toProvider(ResilientClusterProvider.class);
-
         bind(InitializedCluster.class).in(Scopes.SINGLETON);
 
-        bind(Session.class).toProvider(SessionWithInitializedTablesFactory.class);
+        bind(CqlSession.class).toProvider(SessionWithInitializedTablesFactory.class);
 
         Multibinder<CassandraModule> cassandraDataDefinitions = Multibinder.newSetBinder(binder(), CassandraModule.class);
         cassandraDataDefinitions.addBinding().toInstance(CassandraZonedDateTimeModule.MODULE);
@@ -92,10 +85,9 @@ public class CassandraSessionModule extends AbstractModule {
 
     @Singleton
     @Provides
-    SessionWithInitializedTablesFactory provideSessionFactory(KeyspaceConfiguration keyspaceConfiguration,
-                                               InitializedCluster cluster,
-                                               CassandraModule module) {
-        return new SessionWithInitializedTablesFactory(keyspaceConfiguration, cluster.cluster, module);
+    SessionWithInitializedTablesFactory provideSessionFactory(InitializedCluster cluster,
+                                                              CassandraModule module) {
+        return new SessionWithInitializedTablesFactory(cluster.cluster, module);
     }
 
     @Provides
@@ -110,13 +102,13 @@ public class CassandraSessionModule extends AbstractModule {
         try {
             Configuration configuration = propertiesProvider.getConfiguration(BATCHSIZES_FILE_NAME);
             BatchSizes batchSizes = BatchSizes.builder()
-                    .fetchMetadata(configuration.getInt("fetch.metadata", BatchSizes.DEFAULT_BATCH_SIZE))
-                    .fetchHeaders(configuration.getInt("fetch.headers", BatchSizes.DEFAULT_BATCH_SIZE))
-                    .fetchBody(configuration.getInt("fetch.body", BatchSizes.DEFAULT_BATCH_SIZE))
-                    .fetchFull(configuration.getInt("fetch.full", BatchSizes.DEFAULT_BATCH_SIZE))
-                    .copyBatchSize(configuration.getInt("copy", BatchSizes.DEFAULT_BATCH_SIZE))
-                    .moveBatchSize(configuration.getInt("move", BatchSizes.DEFAULT_BATCH_SIZE))
-                    .build();
+                .fetchMetadata(configuration.getInt("fetch.metadata", BatchSizes.DEFAULT_BATCH_SIZE))
+                .fetchHeaders(configuration.getInt("fetch.headers", BatchSizes.DEFAULT_BATCH_SIZE))
+                .fetchBody(configuration.getInt("fetch.body", BatchSizes.DEFAULT_BATCH_SIZE))
+                .fetchFull(configuration.getInt("fetch.full", BatchSizes.DEFAULT_BATCH_SIZE))
+                .copyBatchSize(configuration.getInt("copy", BatchSizes.DEFAULT_BATCH_SIZE))
+                .moveBatchSize(configuration.getInt("move", BatchSizes.DEFAULT_BATCH_SIZE))
+                .build();
             LOGGER.debug("BatchSize configuration: {}", batchSizes);
             return batchSizes;
         } catch (FileNotFoundException | ConfigurationException e) {
@@ -134,13 +126,6 @@ public class CassandraSessionModule extends AbstractModule {
         } catch (FileNotFoundException e) {
             return CassandraConfiguration.DEFAULT_CONFIGURATION;
         }
-    }
-
-    @VisibleForTesting
-    @Provides
-    @Singleton
-    CassandraConsistenciesConfiguration provideCassandraConsistenciesConfiguration(CassandraConfiguration configuration) {
-        return CassandraConsistenciesConfiguration.fromConfiguration(configuration);
     }
 
     @Provides
@@ -174,10 +159,10 @@ public class CassandraSessionModule extends AbstractModule {
     }
 
     static class InitializedCluster {
-        private final Cluster cluster;
+        private final CqlSession cluster;
 
         @Inject
-        private InitializedCluster(Cluster cluster, ClusterConfiguration clusterConfiguration, KeyspacesConfiguration keyspacesConfiguration) {
+        private InitializedCluster(CqlSession cluster, ClusterConfiguration clusterConfiguration, KeyspacesConfiguration keyspacesConfiguration) {
             this.cluster = cluster;
 
             if (clusterConfiguration.shouldCreateKeyspace()) {
