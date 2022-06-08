@@ -47,12 +47,13 @@ import static org.apache.james.queue.rabbitmq.view.cassandra.EnqueuedMailsDaoUti
 import static org.apache.james.queue.rabbitmq.view.cassandra.EnqueuedMailsDaoUtil.toTupleList;
 
 import java.nio.ByteBuffer;
+import java.util.Date;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
 
 import javax.inject.Inject;
 
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor;
+import org.apache.james.backends.cassandra.utils.MutableSettableStatementWrapper;
 import org.apache.james.blob.api.BlobId;
 import org.apache.james.blob.mail.MimeMessagePartsId;
 import org.apache.james.core.MailAddress;
@@ -162,20 +163,23 @@ public class EnqueuedMailsDAO {
             .setList(RECIPIENTS, asStringList(mail.getRecipients()), String.class)
             .setString(REMOTE_ADDR, mail.getRemoteAddr())
             .setString(REMOTE_HOST, mail.getRemoteHost())
-            .setInstant(LAST_UPDATED, mail.getLastUpdated().toInstant())
             .setMap(ATTRIBUTES, toRawAttributeMap(mail), String.class, ByteBuffer.class)
             .setList(PER_RECIPIENT_SPECIFIC_HEADERS, toTupleList(userHeaderNameHeaderValueTriple, mail.getPerRecipientSpecificHeaders()), TupleValue.class);
 
-        AtomicReference<BoundStatementBuilder> finalBoundStatement = new AtomicReference<>(statement);
+        MutableSettableStatementWrapper statementWrapper = new MutableSettableStatementWrapper(statement);
         Optional.ofNullable(mail.getErrorMessage())
-            .ifPresent(errorMessage -> finalBoundStatement.set(statement.setString(ERROR_MESSAGE, mail.getErrorMessage())));
+            .ifPresent(errorMessage -> statementWrapper.setNewStatement(statement.setString(ERROR_MESSAGE, mail.getErrorMessage())));
+
+        Optional.ofNullable(mail.getLastUpdated())
+            .map(Date::toInstant)
+            .ifPresent(lastUpdated -> statementWrapper.setNewStatement(statement.setInstant(LAST_UPDATED, lastUpdated)));
 
         mail.getMaybeSender()
             .asOptional()
             .map(MailAddress::asString)
-            .ifPresent(mailAddress -> finalBoundStatement.set(statement.setString(SENDER, mailAddress)));
+            .ifPresent(mailAddress -> statementWrapper.setNewStatement(statement.setString(SENDER, mailAddress)));
 
-        return executor.executeVoid(finalBoundStatement.get().build());
+        return executor.executeVoid(((BoundStatementBuilder) statementWrapper.getStatement()).build());
     }
 
     @VisibleForTesting
