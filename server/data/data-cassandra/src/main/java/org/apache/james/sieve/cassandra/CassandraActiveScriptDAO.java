@@ -70,7 +70,7 @@ public class CassandraActiveScriptDAO {
             .build());
     }
 
-    public Mono<ActiveScriptInfo> getActiveSctiptInfo(Username username) {
+    public Mono<ActiveScriptInfo> getActiveScriptInfo(Username username) {
         return cassandraAsyncExecutor.executeSingleRow(
                 selectActiveName.bind()
                     .setString(USER_NAME, username.asString()))
@@ -79,7 +79,7 @@ public class CassandraActiveScriptDAO {
                 ZonedDateTime.ofInstant(row.getInstant(DATE), ZoneOffset.UTC)));
     }
 
-    public Mono<Void> unactivate(Username username) {
+    public Mono<Void> unActivate(Username username) {
         return cassandraAsyncExecutor.executeVoid(
             deleteActive.bind()
                 .setString(USER_NAME, username.asString()));
