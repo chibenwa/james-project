@@ -30,7 +30,7 @@ public interface CassandraMailRepositoryUrlModule {
         .comment("Holds the list of available mail repository")
         .options(options -> options
             .withCaching(true, rows(CassandraConstants.DEFAULT_CACHED_ROW_PER_PARTITION)))
-        .statement(statement -> statement
+        .statement(statement -> types -> statement
             .withPartitionKey(UrlsTable.URL, TEXT))
         .build();
 }
