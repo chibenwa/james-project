@@ -66,7 +66,6 @@ import javax.mail.Flags;
 import javax.mail.Flags.Flag;
 
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor;
-import org.apache.james.backends.cassandra.utils.MutableBoundStatementWrapper;
 import org.apache.james.blob.api.BlobId;
 import org.apache.james.mailbox.MessageUid;
 import org.apache.james.mailbox.ModSeq;
@@ -82,6 +81,7 @@ import org.apache.james.util.streams.Limit;
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.BoundStatement;
+import com.datastax.oss.driver.api.core.cql.BoundStatementBuilder;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 import com.datastax.oss.driver.api.core.cql.Row;
 import com.datastax.oss.driver.api.querybuilder.QueryBuilder;
@@ -297,13 +297,13 @@ public class CassandraMessageIdDAO {
         Flags flags = metadata.getComposedMessageId().getFlags();
         ThreadId threadId = metadata.getComposedMessageId().getThreadId();
 
-        MutableBoundStatementWrapper statementWrapper = new MutableBoundStatementWrapper(insert.bind());
+        BoundStatementBuilder statementBuilder = insert.boundStatementBuilder();
         if (flags.getUserFlags().length == 0) {
-            statementWrapper.setNewStatement(statementWrapper.getStatement().unset(USER_FLAGS));
+            statementBuilder.unset(USER_FLAGS);
         } else {
-            statementWrapper.setNewStatement(statementWrapper.getStatement().setSet(USER_FLAGS, ImmutableSet.copyOf(flags.getUserFlags()), String.class));
+            statementBuilder.setSet(USER_FLAGS, ImmutableSet.copyOf(flags.getUserFlags()), String.class);
         }
-        return cassandraAsyncExecutor.executeVoid(statementWrapper.getStatement()
+        return cassandraAsyncExecutor.executeVoid(statementBuilder
             .setUuid(MAILBOX_ID, ((CassandraId) composedMessageId.getMailboxId()).asUuid())
             .setLong(IMAP_UID, composedMessageId.getUid().asLong())
             .setUuid(MESSAGE_ID, ((CassandraMessageId) composedMessageId.getMessageId()).get())
@@ -319,7 +319,8 @@ public class CassandraMessageIdDAO {
             .setInstant(INTERNAL_DATE, metadata.getInternalDate().get().toInstant())
             .setInt(BODY_START_OCTET, Math.toIntExact(metadata.getBodyStartOctet().get()))
             .setLong(FULL_CONTENT_OCTETS, metadata.getSize().get())
-            .setString(HEADER_CONTENT, metadata.getHeaderContent().get().asString()));
+            .setString(HEADER_CONTENT, metadata.getHeaderContent().get().asString())
+            .build());
     }
 
     public Mono<Void> updateMetadata(ComposedMessageId composedMessageId, UpdatedFlags updatedFlags) {
@@ -327,46 +328,45 @@ public class CassandraMessageIdDAO {
     }
 
     private BoundStatement updateBoundStatement(ComposedMessageId id, UpdatedFlags updatedFlags) {
-        final BoundStatement boundStatement = update.bind()
+        final BoundStatementBuilder statementBuilder = update.boundStatementBuilder()
             .setLong(MOD_SEQ, updatedFlags.getModSeq().asLong())
             .setUuid(MAILBOX_ID, ((CassandraId) id.getMailboxId()).asUuid())
             .setLong(IMAP_UID, id.getUid().asLong());
 
-        MutableBoundStatementWrapper statementWrapper = new MutableBoundStatementWrapper(boundStatement);
         if (updatedFlags.isChanged(Flag.ANSWERED)) {
-            statementWrapper.setNewStatement(boundStatement.setBoolean(ANSWERED, updatedFlags.isModifiedToSet(Flag.ANSWERED)));
+            statementBuilder.setBoolean(ANSWERED, updatedFlags.isModifiedToSet(Flag.ANSWERED));
         } else {
-            statementWrapper.setNewStatement(boundStatement.unset(ANSWERED));
+            statementBuilder.unset(ANSWERED);
         }
         if (updatedFlags.isChanged(Flag.DRAFT)) {
-            statementWrapper.setNewStatement(statementWrapper.getStatement().setBoolean(DRAFT, updatedFlags.isModifiedToSet(Flag.DRAFT)));
+            statementBuilder.setBoolean(DRAFT, updatedFlags.isModifiedToSet(Flag.DRAFT));
         } else {
-            statementWrapper.setNewStatement(statementWrapper.getStatement().unset(DRAFT));
+            statementBuilder.unset(DRAFT);
         }
         if (updatedFlags.isChanged(Flag.FLAGGED)) {
-            statementWrapper.setNewStatement(statementWrapper.getStatement().setBoolean(FLAGGED, updatedFlags.isModifiedToSet(Flag.FLAGGED)));
+            statementBuilder.setBoolean(FLAGGED, updatedFlags.isModifiedToSet(Flag.FLAGGED));
         } else {
-            statementWrapper.setNewStatement(statementWrapper.getStatement().unset(FLAGGED));
+            statementBuilder.unset(FLAGGED);
         }
         if (updatedFlags.isChanged(Flag.DELETED)) {
-            statementWrapper.setNewStatement(statementWrapper.getStatement().setBoolean(DELETED, updatedFlags.isModifiedToSet(Flag.DELETED)));
+            statementBuilder.setBoolean(DELETED, updatedFlags.isModifiedToSet(Flag.DELETED));
         } else {
-            statementWrapper.setNewStatement(statementWrapper.getStatement().unset(DELETED));
+            statementBuilder.unset(DELETED);
         }
         if (updatedFlags.isChanged(Flag.RECENT)) {
-            statementWrapper.setNewStatement(statementWrapper.getStatement().setBoolean(RECENT, updatedFlags.getNewFlags().contains(Flag.RECENT)));
+            statementBuilder.setBoolean(RECENT, updatedFlags.getNewFlags().contains(Flag.RECENT));
         } else {
-            statementWrapper.setNewStatement(statementWrapper.getStatement().unset(RECENT));
+            statementBuilder.unset(RECENT);
         }
         if (updatedFlags.isChanged(Flag.SEEN)) {
-            statementWrapper.setNewStatement(statementWrapper.getStatement().setBoolean(SEEN, updatedFlags.isModifiedToSet(Flag.SEEN)));
+            statementBuilder.setBoolean(SEEN, updatedFlags.isModifiedToSet(Flag.SEEN));
         } else {
-            statementWrapper.setNewStatement(statementWrapper.getStatement().unset(SEEN));
+            statementBuilder.unset(SEEN);
         }
         if (updatedFlags.isChanged(Flag.USER)) {
-            statementWrapper.setNewStatement(statementWrapper.getStatement().setBoolean(USER, updatedFlags.isModifiedToSet(Flag.USER)));
+            statementBuilder.setBoolean(USER, updatedFlags.isModifiedToSet(Flag.USER));
         } else {
-            statementWrapper.setNewStatement(statementWrapper.getStatement().unset(USER));
+            statementBuilder.unset(USER);
         }
         Sets.SetView<String> removedFlags = Sets.difference(
             ImmutableSet.copyOf(updatedFlags.getOldFlags().getUserFlags()),
@@ -375,16 +375,16 @@ public class CassandraMessageIdDAO {
             ImmutableSet.copyOf(updatedFlags.getNewFlags().getUserFlags()),
             ImmutableSet.copyOf(updatedFlags.getOldFlags().getUserFlags()));
         if (addedFlags.isEmpty()) {
-            statementWrapper.setNewStatement(statementWrapper.getStatement().unset(ADDED_USERS_FLAGS));
+            statementBuilder.unset(ADDED_USERS_FLAGS);
         } else {
-            statementWrapper.setNewStatement(statementWrapper.getStatement().setSet(ADDED_USERS_FLAGS, addedFlags, String.class));
+            statementBuilder.setSet(ADDED_USERS_FLAGS, addedFlags, String.class);
         }
         if (removedFlags.isEmpty()) {
-            statementWrapper.setNewStatement(statementWrapper.getStatement().unset(REMOVED_USERS_FLAGS));
+            statementBuilder.unset(REMOVED_USERS_FLAGS);
         } else {
-            statementWrapper.setNewStatement(statementWrapper.getStatement().setSet(REMOVED_USERS_FLAGS, removedFlags, String.class));
+            statementBuilder.setSet(REMOVED_USERS_FLAGS, removedFlags, String.class);
         }
-        return statementWrapper.getStatement();
+        return statementBuilder.build();
     }
 
     public Mono<Optional<CassandraMessageMetadata>> retrieve(CassandraId mailboxId, MessageUid uid) {

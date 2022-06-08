@@ -53,7 +53,6 @@ import java.util.Optional;
 import javax.inject.Inject;
 
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor;
-import org.apache.james.backends.cassandra.utils.MutableSettableStatementWrapper;
 import org.apache.james.blob.api.BlobId;
 import org.apache.james.blob.mail.MimeMessagePartsId;
 import org.apache.james.core.MailAddress;
@@ -166,20 +165,19 @@ public class EnqueuedMailsDAO {
             .setMap(ATTRIBUTES, toRawAttributeMap(mail), String.class, ByteBuffer.class)
             .setList(PER_RECIPIENT_SPECIFIC_HEADERS, toTupleList(userHeaderNameHeaderValueTriple, mail.getPerRecipientSpecificHeaders()), TupleValue.class);
 
-        MutableSettableStatementWrapper statementWrapper = new MutableSettableStatementWrapper(statement);
         Optional.ofNullable(mail.getErrorMessage())
-            .ifPresent(errorMessage -> statementWrapper.setNewStatement(statement.setString(ERROR_MESSAGE, mail.getErrorMessage())));
+            .ifPresent(errorMessage -> statement.setString(ERROR_MESSAGE, mail.getErrorMessage()));
 
         Optional.ofNullable(mail.getLastUpdated())
             .map(Date::toInstant)
-            .ifPresent(lastUpdated -> statementWrapper.setNewStatement(statement.setInstant(LAST_UPDATED, lastUpdated)));
+            .ifPresent(lastUpdated -> statement.setInstant(LAST_UPDATED, lastUpdated));
 
         mail.getMaybeSender()
             .asOptional()
             .map(MailAddress::asString)
-            .ifPresent(mailAddress -> statementWrapper.setNewStatement(statement.setString(SENDER, mailAddress)));
+            .ifPresent(mailAddress -> statement.setString(SENDER, mailAddress));
 
-        return executor.executeVoid(((BoundStatementBuilder) statementWrapper.getStatement()).build());
+        return executor.executeVoid(statement.build());
     }
 
     @VisibleForTesting

@@ -38,7 +38,6 @@ import javax.inject.Inject;
 
 import org.apache.james.backends.cassandra.init.configuration.JamesExecutionProfiles;
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor;
-import org.apache.james.backends.cassandra.utils.MutableBoundStatementWrapper;
 import org.apache.james.core.Username;
 import org.apache.james.mailbox.cassandra.GhostMailbox;
 import org.apache.james.mailbox.cassandra.ids.CassandraId;
@@ -51,6 +50,7 @@ import org.apache.james.util.ReactorUtils;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.config.DriverExecutionProfile;
 import com.datastax.oss.driver.api.core.cql.BoundStatement;
+import com.datastax.oss.driver.api.core.cql.BoundStatementBuilder;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 import com.datastax.oss.driver.api.core.cql.Row;
 
@@ -139,14 +139,15 @@ public class CassandraMailboxPathV3DAO {
     }
 
     public Flux<Mailbox> listUserMailboxes(String namespace, Username user, JamesExecutionProfiles.ConsistencyChoice consistencyChoice) {
-        MutableBoundStatementWrapper wrapper = new MutableBoundStatementWrapper(selectUser.bind()
+        BoundStatementBuilder statementBuilder = selectUser.boundStatementBuilder()
             .setString(NAMESPACE, namespace)
-            .setString(USER, sanitizeUser(user)));
+            .setString(USER, sanitizeUser(user));
+
         if (consistencyChoice.equals(STRONG)) {
-            wrapper.setNewStatement(wrapper.getStatement().setExecutionProfile(lwtProfile));
+            statementBuilder.setExecutionProfile(lwtProfile);
         }
 
-        return cassandraAsyncExecutor.executeRows(wrapper.getStatement())
+        return cassandraAsyncExecutor.executeRows(statementBuilder.build())
             .map(row -> fromRow(row, user, namespace))
             .map(FunctionalUtils.toFunction(this::logReadSuccess));
     }
