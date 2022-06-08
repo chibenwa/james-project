@@ -33,7 +33,6 @@ import static org.apache.james.user.cassandra.tables.CassandraUserTable.PASSWORD
 import static org.apache.james.user.cassandra.tables.CassandraUserTable.REALNAME;
 import static org.apache.james.user.cassandra.tables.CassandraUserTable.TABLE_NAME;
 
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.Optional;
 
@@ -82,6 +81,7 @@ public class CassandraUsersDAO implements UsersDAO {
 
         this.getUserStatement = session.prepare(selectFrom(TABLE_NAME)
             .columns(NAME, PASSWORD, ALGORITHM)
+            .whereColumn(NAME).isEqualTo(bindMarker(NAME))
             .build());
 
         this.updateUserStatement = session.prepare(update(TABLE_NAME)
@@ -163,7 +163,7 @@ public class CassandraUsersDAO implements UsersDAO {
     public Mono<Void> addAuthorizedUsers(Username baseUser, Username userWithAccess) {
         return executor.executeVoid(
             update(TABLE_NAME)
-                .appendSetElement(AUTHORIZED_USERS, literal(Collections.singleton(userWithAccess.asString())))
+                .appendSetElement(AUTHORIZED_USERS, literal(userWithAccess.asString()))
                 .whereColumn(NAME).isEqualTo(literal(baseUser.asString()))
                 .build());
     }
@@ -171,7 +171,7 @@ public class CassandraUsersDAO implements UsersDAO {
     public Mono<Void> removeAuthorizedUser(Username baseUser, Username userWithAccess) {
         return executor.executeVoid(
             update(TABLE_NAME)
-                .removeSetElement(AUTHORIZED_USERS, literal(Collections.singleton(userWithAccess.asString())))
+                .removeSetElement(AUTHORIZED_USERS, literal(userWithAccess.asString()))
                 .whereColumn(NAME).isEqualTo(literal(baseUser.asString()))
                 .build());
     }

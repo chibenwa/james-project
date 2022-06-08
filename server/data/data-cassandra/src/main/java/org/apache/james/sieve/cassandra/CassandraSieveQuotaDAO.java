@@ -89,7 +89,7 @@ public class CassandraSieveQuotaDAO {
 
         updateUserQuotaStatement = session.prepare(
             update(CassandraSieveQuotaTable.TABLE_NAME)
-                .increment(CassandraSieveQuotaTable.QUOTA, bindMarker(CassandraSieveQuotaTable.QUOTA))
+                .setColumn(CassandraSieveQuotaTable.QUOTA, bindMarker(CassandraSieveQuotaTable.QUOTA))
                 .whereColumn(CassandraSieveQuotaTable.USER_NAME).isEqualTo(bindMarker(CassandraSieveQuotaTable.USER_NAME))
                 .build());
 

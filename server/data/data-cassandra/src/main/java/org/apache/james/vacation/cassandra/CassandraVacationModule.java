@@ -28,7 +28,6 @@ import org.apache.james.backends.cassandra.utils.CassandraConstants;
 import org.apache.james.vacation.cassandra.tables.CassandraVacationTable;
 
 import com.datastax.oss.driver.api.core.type.DataTypes;
-import com.datastax.oss.driver.api.querybuilder.SchemaBuilder;
 
 public interface CassandraVacationModule {
     CassandraModule MODULE = CassandraModule.table(CassandraVacationTable.TABLE_NAME)
@@ -38,8 +37,8 @@ public interface CassandraVacationModule {
         .statement(statement -> types -> statement
             .withPartitionKey(CassandraVacationTable.ACCOUNT_ID, DataTypes.TEXT)
             .withColumn(CassandraVacationTable.IS_ENABLED, DataTypes.BOOLEAN)
-            .withColumn(CassandraVacationTable.FROM_DATE, SchemaBuilder.udt(CassandraZonedDateTimeModule.ZONED_DATE_TIME, true))
-            .withColumn(CassandraVacationTable.TO_DATE, SchemaBuilder.udt(CassandraZonedDateTimeModule.ZONED_DATE_TIME, true))
+            .withColumn(CassandraVacationTable.FROM_DATE, types.getDefinedUserType(CassandraZonedDateTimeModule.ZONED_DATE_TIME))
+            .withColumn(CassandraVacationTable.TO_DATE, types.getDefinedUserType(CassandraZonedDateTimeModule.ZONED_DATE_TIME))
             .withColumn(CassandraVacationTable.TEXT, DataTypes.TEXT)
             .withColumn(CassandraVacationTable.SUBJECT, DataTypes.TEXT)
             .withColumn(CassandraVacationTable.HTML, DataTypes.TEXT))
