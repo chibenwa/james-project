@@ -75,7 +75,7 @@ class CassandraTypesCreatorTest {
         assertThat(new CassandraTypesCreator(MODULE, cassandra.getConf()).initializeTypes())
                 .isEqualByComparingTo(CassandraType.InitializationStatus.FULL);
 
-        CassandraTypesProvider cassandraTypesProviderTest = new CassandraTypesProvider(MODULE, cassandra.getConf());
+        CassandraTypesProvider cassandraTypesProviderTest = new CassandraTypesProvider(cassandra.getConf());
         assertThat(cassandraTypesProviderTest.getDefinedUserType(TYPE_NAME_1))
                 .isNotNull();
         assertThat(cassandraTypesProviderTest.getDefinedUserType(TYPE_NAME_2))
@@ -89,7 +89,7 @@ class CassandraTypesCreatorTest {
         assertThat(new CassandraTypesCreator(MODULE, cassandra.getConf()).initializeTypes())
                 .isEqualByComparingTo(CassandraType.InitializationStatus.PARTIAL);
 
-        CassandraTypesProvider cassandraTypesProviderTest = new CassandraTypesProvider(MODULE, cassandra.getConf());
+        CassandraTypesProvider cassandraTypesProviderTest = new CassandraTypesProvider(cassandra.getConf());
         assertThat(cassandraTypesProviderTest.getDefinedUserType(TYPE_NAME_1))
                 .isNotNull();
     }

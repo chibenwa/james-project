@@ -24,37 +24,30 @@ import java.util.Optional;
 
 import javax.inject.Inject;
 
-import org.apache.james.backends.cassandra.components.CassandraModule;
-import org.apache.james.backends.cassandra.components.CassandraType;
-
 import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.CqlSession;
-import com.datastax.oss.driver.api.core.metadata.schema.KeyspaceMetadata;
 import com.datastax.oss.driver.api.core.type.UserDefinedType;
 import com.google.common.collect.ImmutableMap;
 
 public class CassandraTypesProvider {
-    private final ImmutableMap<String, UserDefinedType> userTypes;
+    private final CqlSession session;
 
     @Inject
-    public CassandraTypesProvider(CassandraModule module, CqlSession session) {
-        Map<CqlIdentifier, UserDefinedType> userDefinedTypes = session.getKeyspace().map(keyspace -> userDefinedTypes(session, keyspace))
-            .orElse(ImmutableMap.of());
-
-        userTypes = module.moduleTypes()
-            .stream()
-            .collect(ImmutableMap.toImmutableMap(
-                    CassandraType::getName,
-                    type -> userDefinedTypes.get(CqlIdentifier.fromInternal(type.getName()))));
+    public CassandraTypesProvider(CqlSession session) {
+        this.session = session;
     }
 
-    public Map<CqlIdentifier, UserDefinedType> userDefinedTypes(CqlSession session, CqlIdentifier keyspace) {
-        KeyspaceMetadata keyspaceMetadata = session.getMetadata().getKeyspaces().get(keyspace);
-        return keyspaceMetadata.getUserDefinedTypes();
+    public Map<CqlIdentifier, UserDefinedType> userDefinedTypes() {
+        return session.getKeyspace().map(keyspace ->
+            session.getMetadata()
+                .getKeyspaces()
+                .get(keyspace)
+                .getUserDefinedTypes())
+            .orElse(ImmutableMap.of());
     }
 
     public UserDefinedType getDefinedUserType(String typeName) {
-        return Optional.ofNullable(userTypes.get(typeName))
+        return Optional.ofNullable(userDefinedTypes().get(CqlIdentifier.fromCql(typeName)))
             .orElseThrow(() -> new RuntimeException("Cassandra UDT " + typeName + " can not be retrieved"));
     }
 

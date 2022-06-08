@@ -67,7 +67,7 @@ class CassandraTableTest {
         when(keyspace.getTable(NAME)).thenReturn(Optional.empty());
         CqlSession session = mock(CqlSession.class);
 
-        assertThat(TABLE.initialize(keyspace, session, new CassandraTypesProvider(CassandraModule.EMPTY_MODULE, session)))
+        assertThat(TABLE.initialize(keyspace, session, new CassandraTypesProvider(session)))
                 .isEqualByComparingTo(FULL);
 
         verify(keyspace).getTable(NAME);
@@ -80,7 +80,7 @@ class CassandraTableTest {
         when(keyspace.getTable(NAME)).thenReturn(Optional.of(mock(TableMetadata.class)));
         CqlSession session = mock(CqlSession.class);
 
-        assertThat(TABLE.initialize(keyspace, session, new CassandraTypesProvider(CassandraModule.EMPTY_MODULE, session)))
+        assertThat(TABLE.initialize(keyspace, session, new CassandraTypesProvider(session)))
                 .isEqualByComparingTo(ALREADY_DONE);
 
         verify(keyspace).getTable(NAME);

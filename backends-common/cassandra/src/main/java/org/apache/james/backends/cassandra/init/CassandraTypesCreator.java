@@ -41,7 +41,7 @@ public class CassandraTypesCreator {
 
         return types.stream()
                 .map(type -> type.initialize(keyspaceMetadata, session))
-                .reduce((left, right) -> left.reduce(right))
+                .reduce(InitializationStatus::reduce)
                 .orElse(InitializationStatus.ALREADY_DONE);
     }
 }

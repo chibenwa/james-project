@@ -65,7 +65,7 @@ public final class CassandraCluster implements AutoCloseable {
             .disableDurableWrites();
         this.nonPrivilegedCluster = ClusterFactory.create(clusterConfiguration, keyspaceConfiguration);
         this.nonPrivilegedSession = new TestingSession(new SessionWithInitializedTablesFactory(nonPrivilegedCluster, module).get());
-        this.typesProvider = new CassandraTypesProvider(module, nonPrivilegedSession);
+        this.typesProvider = new CassandraTypesProvider(nonPrivilegedSession);
     }
 
     public ClusterConfiguration getClusterConfiguration() {

@@ -55,7 +55,7 @@ public class CassandraType {
     }
 
     public InitializationStatus initialize(KeyspaceMetadata keyspaceMetadata, CqlSession session) {
-        if (keyspaceMetadata.getUserDefinedTypes().get(CqlIdentifier.fromInternal(name)) != null) {
+        if (keyspaceMetadata.getUserDefinedTypes().get(CqlIdentifier.fromCql(name)) != null) {
             return InitializationStatus.ALREADY_DONE;
         }
 

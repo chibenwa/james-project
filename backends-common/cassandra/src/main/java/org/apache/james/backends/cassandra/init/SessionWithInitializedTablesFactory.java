@@ -60,6 +60,7 @@ public class SessionWithInitializedTablesFactory implements Provider<CqlSession>
 
     private boolean allOperationsAreFullyPerformed(CqlSession session, CassandraModule module) {
         boolean types = createTypes(session, module);
+
         boolean tables = createTables(session, module);
         return types && tables;
     }
@@ -70,7 +71,7 @@ public class SessionWithInitializedTablesFactory implements Provider<CqlSession>
     }
 
     private boolean createTables(CqlSession session, CassandraModule module) {
-        CassandraTypesProvider cassandraTypesProvider = new CassandraTypesProvider(module, session);
+        CassandraTypesProvider cassandraTypesProvider = new CassandraTypesProvider(session);
         return new CassandraTableManager(module, session)
             .initializeTables(cassandraTypesProvider) == CassandraTable.InitializationStatus.FULL;
     }
