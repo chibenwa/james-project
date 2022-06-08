@@ -81,7 +81,7 @@ class CassandraMailRepositoryWithFakeImplementationsTest {
             cassandra.getConf()
                 .registerScenario(fail()
                     .forever()
-                    .whenQueryStartsWith("INSERT INTO blobParts (id,chunkNumber,data) VALUES (:id,:chunkNumber,:data);"));
+                    .whenQueryStartsWith("INSERT INTO blobparts"));
 
             MailImpl mail = MailImpl.builder()
                 .name("mymail")
@@ -109,7 +109,7 @@ class CassandraMailRepositoryWithFakeImplementationsTest {
             cassandra.getConf()
                 .registerScenario(fail()
                     .forever()
-                    .whenQueryStartsWith("INSERT INTO mailRepositoryContent"));
+                    .whenQueryStartsWith("INSERT INTO mailrepositorycontent"));
 
             MailImpl mail = MailImpl.builder()
                 .name("mymail")
@@ -134,7 +134,7 @@ class CassandraMailRepositoryWithFakeImplementationsTest {
             cassandra.getConf()
                 .registerScenario(fail()
                     .forever()
-                    .whenQueryStartsWith("INSERT INTO mailRepositoryContent"));
+                    .whenQueryStartsWith("INSERT INTO mailrepositorycontent"));
 
             MailImpl mail = MailImpl.builder()
                 .name("mymail")
@@ -163,7 +163,7 @@ class CassandraMailRepositoryWithFakeImplementationsTest {
             cassandra.getConf()
                 .registerScenario(fail()
                     .forever()
-                    .whenQueryStartsWith("INSERT INTO mailRepositoryKeys (name,mailKey)"));
+                    .whenQueryStartsWith("INSERT INTO mailrepositorykeys"));
 
             MailImpl mail = MailImpl.builder()
                 .name("mymail")
@@ -188,7 +188,7 @@ class CassandraMailRepositoryWithFakeImplementationsTest {
             cassandra.getConf()
                 .registerScenario(fail()
                     .forever()
-                    .whenQueryStartsWith("INSERT INTO mailRepositoryKeys (name,mailKey)"));
+                    .whenQueryStartsWith("INSERT INTO mailrepositorykeys"));
 
             MailImpl mail = MailImpl.builder()
                 .name("mymail")
@@ -214,7 +214,7 @@ class CassandraMailRepositoryWithFakeImplementationsTest {
             cassandra.getConf()
                 .registerScenario(fail()
                     .forever()
-                    .whenQueryStartsWith("INSERT INTO mailRepositoryKeys (name,mailKey)"));
+                    .whenQueryStartsWith("INSERT INTO mailrepositorykeys"));
 
             MailImpl mail = MailImpl.builder()
                 .name("mymail")
