@@ -64,7 +64,7 @@ import org.apache.james.queue.rabbitmq.view.cassandra.model.EnqueuedItemWithSlic
 import org.apache.mailet.Mail;
 
 import com.datastax.oss.driver.api.core.CqlSession;
-import com.datastax.oss.driver.api.core.cql.BoundStatement;
+import com.datastax.oss.driver.api.core.cql.BoundStatementBuilder;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 import com.datastax.oss.driver.api.core.data.TupleValue;
 import com.datastax.oss.driver.api.core.type.DataTypes;
@@ -149,7 +149,7 @@ public class EnqueuedMailsDAO {
         Mail mail = enqueuedItem.getMail();
         MimeMessagePartsId mimeMessagePartsId = enqueuedItem.getPartsId();
 
-        BoundStatement statement = insertStatement.bind()
+        BoundStatementBuilder statement = insertStatement.boundStatementBuilder()
             .setString(QUEUE_NAME, enqueuedItem.getMailQueueName().asString())
             .setInstant(TIME_RANGE_START, slicingContext.getTimeRangeStart())
             .setInt(BUCKET_ID, slicingContext.getBucketId().getValue())
@@ -166,7 +166,7 @@ public class EnqueuedMailsDAO {
             .setMap(ATTRIBUTES, toRawAttributeMap(mail), String.class, ByteBuffer.class)
             .setList(PER_RECIPIENT_SPECIFIC_HEADERS, toTupleList(userHeaderNameHeaderValueTriple, mail.getPerRecipientSpecificHeaders()), TupleValue.class);
 
-        AtomicReference<BoundStatement> finalBoundStatement = new AtomicReference<>(statement);
+        AtomicReference<BoundStatementBuilder> finalBoundStatement = new AtomicReference<>(statement);
         Optional.ofNullable(mail.getErrorMessage())
             .ifPresent(errorMessage -> finalBoundStatement.set(statement.setString(ERROR_MESSAGE, mail.getErrorMessage())));
 
@@ -175,7 +175,7 @@ public class EnqueuedMailsDAO {
             .map(MailAddress::asString)
             .ifPresent(mailAddress -> finalBoundStatement.set(statement.setString(SENDER, mailAddress)));
 
-        return executor.executeVoid(finalBoundStatement.get());
+        return executor.executeVoid(finalBoundStatement.get().build());
     }
 
     @VisibleForTesting
