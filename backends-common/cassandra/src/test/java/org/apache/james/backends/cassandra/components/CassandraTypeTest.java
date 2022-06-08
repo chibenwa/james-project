@@ -77,7 +77,7 @@ class CassandraTypeTest {
     @Test
     void initializeShouldReturnAlreadyDoneWhenTypeExists() {
         KeyspaceMetadata keyspace = mock(KeyspaceMetadata.class);
-        when(keyspace.getUserDefinedTypes()).thenReturn(ImmutableMap.of(CqlIdentifier.fromInternal(NAME), mock(UserDefinedType.class)));
+        when(keyspace.getUserDefinedTypes()).thenReturn(ImmutableMap.of(CqlIdentifier.fromCql(NAME), mock(UserDefinedType.class)));
         CqlSession session = mock(CqlSession.class);
 
         assertThat(TYPE.initialize(keyspace, session))

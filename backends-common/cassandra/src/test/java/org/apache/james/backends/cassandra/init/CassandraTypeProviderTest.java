@@ -63,14 +63,14 @@ class CassandraTypeProviderTest {
         assertThat(new CassandraTypesCreator(MODULE, cassandra.getConf()).initializeTypes())
             .isEqualByComparingTo(CassandraType.InitializationStatus.FULL);
 
-        CassandraTypesProvider cassandraTypesProviderTest = new CassandraTypesProvider(MODULE, cassandra.getConf());
+        CassandraTypesProvider cassandraTypesProviderTest = new CassandraTypesProvider(cassandra.getConf());
         assertThat(cassandraTypesProviderTest.getDefinedUserType(TYPE_NAME))
             .isNotNull();
     }
 
     @Test
     void initializeTypesShouldNotFailIfCalledTwice() {
-        new CassandraTypesProvider(MODULE, cassandra.getConf());
+        new CassandraTypesProvider(cassandra.getConf());
         assertThat(cassandra.getTypesProvider().getDefinedUserType(TYPE_NAME))
             .isNotNull();
     }
