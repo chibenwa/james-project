@@ -19,8 +19,9 @@
 
 package org.apache.james.webadmin.integration.rabbitmq;
 
-import static com.datastax.driver.core.querybuilder.QueryBuilder.delete;
-import static com.datastax.driver.core.querybuilder.QueryBuilder.eq;
+import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.deleteFrom;
+import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.literal;
+import static com.datastax.oss.driver.api.querybuilder.relation.Relation.column;
 import static io.restassured.RestAssured.given;
 import static io.restassured.RestAssured.with;
 import static io.restassured.config.EncoderConfig.encoderConfig;
@@ -52,7 +53,6 @@ import org.apache.james.JamesServerExtension;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.backends.cassandra.init.ClusterFactory;
 import org.apache.james.backends.cassandra.init.configuration.CassandraConfiguration;
-import org.apache.james.backends.cassandra.init.configuration.CassandraConsistenciesConfiguration;
 import org.apache.james.backends.cassandra.init.configuration.ClusterConfiguration;
 import org.apache.james.core.Username;
 import org.apache.james.jmap.AccessToken;
@@ -89,8 +89,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import com.datastax.driver.core.Cluster;
-import com.datastax.driver.core.Session;
+import com.datastax.oss.driver.api.core.CqlSession;
 
 import io.restassured.RestAssured;
 import io.restassured.builder.RequestSpecBuilder;
@@ -117,10 +116,10 @@ class FixingGhostMailboxTest {
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
             .blobStore(BlobStoreConfiguration.builder()
-                    .s3()
-                    .disableCache()
-                    .deduplication()
-                    .noCryptoConfig())
+                .s3()
+                .disableCache()
+                .deduplication()
+                .noCryptoConfig())
             .searchConfiguration(SearchConfiguration.elasticSearch())
             .build())
         .extension(new DockerElasticSearchExtension())
@@ -171,14 +170,12 @@ class FixingGhostMailboxTest {
 
         CassandraProbe probe = server.getProbe(CassandraProbe.class);
         ClusterConfiguration cassandraConfiguration = probe.getConfiguration();
-        try (Cluster cluster = ClusterFactory.create(cassandraConfiguration, CassandraConsistenciesConfiguration.DEFAULT)) {
-            try (Session session = cluster.connect(probe.getMainKeyspaceConfiguration().getKeyspace())) {
-                simulateGhostMailboxBug(session);
-            }
+        try (CqlSession session = ClusterFactory.create(cassandraConfiguration, probe.getMainKeyspaceConfiguration())) {
+            simulateGhostMailboxBug(session);
         }
     }
 
-    private void simulateGhostMailboxBug(Session session) throws MailboxException, IOException {
+    private void simulateGhostMailboxBug(CqlSession session) throws MailboxException, IOException {
         // State before ghost mailbox bug
         // Alice INBOX is delegated to Bob and contains one message
         aliceInboxPath = MailboxPath.inbox(Username.of(ALICE));
@@ -188,18 +185,19 @@ class FixingGhostMailboxTest {
         testExtension.await();
 
         // Simulate ghost mailbox bug
-        session.execute(delete().from(CassandraMailboxPathV3Table.TABLE_NAME)
-            .where(eq(CassandraMailboxPathV3Table.NAMESPACE, MailboxConstants.USER_NAMESPACE))
-            .and(eq(CassandraMailboxPathV3Table.USER, ALICE))
-            .and(eq(CassandraMailboxPathV3Table.MAILBOX_NAME, MailboxConstants.INBOX)));
+        session.execute(deleteFrom(CassandraMailboxPathV3Table.TABLE_NAME)
+            .where(column(CassandraMailboxPathV3Table.NAMESPACE).isEqualTo(literal(MailboxConstants.USER_NAMESPACE)),
+                column(CassandraMailboxPathV3Table.USER).isEqualTo(literal(ALICE)),
+                column(CassandraMailboxPathV3Table.MAILBOX_NAME).isEqualTo(literal(MailboxConstants.INBOX)))
+            .build());
 
         // trigger provisioning
         given()
             .header("Authorization", accessToken.asString())
             .body("[[\"getMailboxes\", {}, \"#0\"]]")
-        .when()
+            .when()
             .post("/jmap")
-        .then()
+            .then()
             .statusCode(200);
 
         // Received a new message
@@ -231,9 +229,9 @@ class FixingGhostMailboxTest {
                 given()
                     .header("Authorization", accessToken.asString())
                     .body("[[\"getMessageList\", {\"filter\":{\"inMailboxes\":[\"" + newAliceInbox.serialize() + "\"]}}, \"#0\"]]")
-                .when()
+                    .when()
                     .post("/jmap")
-                .then()
+                    .then()
                     .statusCode(200)
                     .body(NAME, equalTo("messageList"))
                     .body(ARGUMENTS + ".messageIds", hasSize(1))
@@ -259,9 +257,9 @@ class FixingGhostMailboxTest {
         given()
             .header("Authorization", accessToken.asString())
             .body("[[\"getMessageList\", {\"filter\":{\"inMailboxes\":[\"" + newAliceInbox.serialize() + "\"]}}, \"#0\"]]")
-        .when()
+            .when()
             .post("/jmap")
-        .then()
+            .then()
             .statusCode(200)
             .body(NAME, equalTo("messageList"))
             .body(ARGUMENTS + ".messageIds", hasSize(2))
@@ -280,9 +278,9 @@ class FixingGhostMailboxTest {
         given()
             .header("Authorization", accessToken.asString())
             .body("[[\"getMailboxes\", {\"ids\": [\"" + newAliceInbox.serialize() + "\"]}, \"#0\"]]")
-        .when()
+            .when()
             .post("/jmap")
-        .then()
+            .then()
             .statusCode(200)
             .body(NAME, equalTo("mailboxes"))
             .body(FIRST_MAILBOX + ".sharedWith", hasKey(BOB))
@@ -299,9 +297,9 @@ class FixingGhostMailboxTest {
         given()
             .header("Authorization", accessToken.asString())
             .body("[[\"getMailboxes\", {\"ids\": [\"" + aliceGhostInboxId.serialize() + "\"]}, \"#0\"]]")
-        .when()
+            .when()
             .post("/jmap")
-        .then()
+            .then()
             .statusCode(200)
             .body(NAME, equalTo("mailboxes"))
             .body(ARGUMENTS + ".list", hasSize(0));
@@ -316,9 +314,9 @@ class FixingGhostMailboxTest {
         with()
             .spec(webadminSpecification)
             .basePath(TasksRoutes.BASE)
-        .when()
+            .when()
             .get(taskId + "/await")
-        .then()
+            .then()
             .body("status", is(TaskManager.Status.COMPLETED.getValue()))
             .body("taskId", is(taskId))
             .body("additionalInformation.oldMailboxId", is(aliceGhostInboxId.serialize()))
