@@ -56,6 +56,7 @@ import javax.mail.internet.AddressException;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor;
+import org.apache.james.backends.cassandra.utils.MutableSettableStatementWrapper;
 import org.apache.james.blob.api.BlobId;
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.MaybeSender;
@@ -70,7 +71,7 @@ import org.apache.mailet.PerRecipientHeaders;
 import org.apache.mailet.PerRecipientHeaders.Header;
 
 import com.datastax.oss.driver.api.core.CqlSession;
-import com.datastax.oss.driver.api.core.cql.BoundStatement;
+import com.datastax.oss.driver.api.core.cql.BoundStatementBuilder;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 import com.datastax.oss.driver.api.core.cql.Row;
 import com.datastax.oss.driver.api.core.data.TupleValue;
@@ -190,29 +191,30 @@ public class CassandraMailRepositoryMailDaoV2 {
 
     public Mono<Void> store(MailRepositoryUrl url, Mail mail, BlobId headerId, BlobId bodyId) {
         return Mono.fromCallable(() -> {
-            BoundStatement boundStatement = insertMail.bind()
-                .setString(REPOSITORY_NAME, url.asString())
-                .setString(MAIL_KEY, mail.getName())
-                .setString(HEADER_BLOB_ID, headerId.asString())
-                .setString(BODY_BLOB_ID, bodyId.asString())
-                .setString(STATE, mail.getState())
-                .setList(RECIPIENTS, asStringList(mail.getRecipients()), String.class)
-                .setString(REMOTE_ADDR, mail.getRemoteAddr())
-                .setString(REMOTE_HOST, mail.getRemoteHost())
-                .setInstant(LAST_UPDATED, mail.getLastUpdated().toInstant())
-                .setMap(ATTRIBUTES, toRawAttributeMap(mail), String.class, String.class)
-                .setList(PER_RECIPIENT_SPECIFIC_HEADERS, toTupleList(mail.getPerRecipientSpecificHeaders()), TupleValue.class);
+                BoundStatementBuilder statement = insertMail.boundStatementBuilder()
+                    .setString(REPOSITORY_NAME, url.asString())
+                    .setString(MAIL_KEY, mail.getName())
+                    .setString(HEADER_BLOB_ID, headerId.asString())
+                    .setString(BODY_BLOB_ID, bodyId.asString())
+                    .setString(STATE, mail.getState())
+                    .setList(RECIPIENTS, asStringList(mail.getRecipients()), String.class)
+                    .setString(REMOTE_ADDR, mail.getRemoteAddr())
+                    .setString(REMOTE_HOST, mail.getRemoteHost())
+                    .setInstant(LAST_UPDATED, mail.getLastUpdated().toInstant())
+                    .setMap(ATTRIBUTES, toRawAttributeMap(mail), String.class, String.class)
+                    .setList(PER_RECIPIENT_SPECIFIC_HEADERS, toTupleList(mail.getPerRecipientSpecificHeaders()), TupleValue.class);
 
-            Optional.ofNullable(mail.getErrorMessage())
-                .ifPresent(errorMessage -> boundStatement.setString(MailRepositoryTable.ERROR_MESSAGE, mail.getErrorMessage()));
+                MutableSettableStatementWrapper statementWrapper = new MutableSettableStatementWrapper(statement);
+                Optional.ofNullable(mail.getErrorMessage())
+                    .ifPresent(errorMessage -> statementWrapper.setNewStatement(statement.setString(MailRepositoryTable.ERROR_MESSAGE, mail.getErrorMessage())));
 
-            mail.getMaybeSender()
-                .asOptional()
-                .map(MailAddress::asString)
-                .ifPresent(mailAddress -> boundStatement.setString(MailRepositoryTable.SENDER, mailAddress));
+                mail.getMaybeSender()
+                    .asOptional()
+                    .map(MailAddress::asString)
+                    .ifPresent(mailAddress -> statementWrapper.setNewStatement(statement.setString(MailRepositoryTable.SENDER, mailAddress)));
 
-            return boundStatement;
-        })
+                return ((BoundStatementBuilder) statementWrapper.getStatement()).build();
+            })
             .flatMap(executor::executeVoid);
     }
 
@@ -240,7 +242,10 @@ public class CassandraMailRepositoryMailDaoV2 {
         String remoteHost = row.getString(REMOTE_HOST);
         String errorMessage = row.getString(ERROR_MESSAGE);
         String name = row.getString(MAIL_KEY);
-        Date lastUpdated = Date.from(row.getInstant(LAST_UPDATED));
+        Date lastUpdated = Optional.ofNullable(row.getInstant(LAST_UPDATED))
+            .map(Date::from)
+            .orElse(null);
+
         Map<String, String> rawAttributes = row.getMap(ATTRIBUTES, String.class, String.class);
         PerRecipientHeaders perRecipientHeaders = fromList(row.getList(PER_RECIPIENT_SPECIFIC_HEADERS, TupleValue.class));
 
