@@ -59,7 +59,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import com.datastax.driver.core.Session;
+import com.datastax.oss.driver.api.core.CqlSession;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Provides;
@@ -90,7 +90,7 @@ public class ReadLevelTest {
                 .addBinding()
                 .to(TestingSessionProbe.class);
 
-            bind(Session.class).to(TestingSession.class);
+            bind(CqlSession.class).to(TestingSession.class);
         }
 
         @Provides
