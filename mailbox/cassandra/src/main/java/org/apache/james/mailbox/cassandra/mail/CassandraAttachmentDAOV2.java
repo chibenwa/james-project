@@ -154,13 +154,13 @@ public class CassandraAttachmentDAOV2 {
     public CassandraAttachmentDAOV2(BlobId.Factory blobIdFactory, CqlSession session) {
         this.blobIdFactory = blobIdFactory;
         this.cassandraAsyncExecutor = new CassandraAsyncExecutor(session);
+        this.session = session;
 
         this.selectStatement = prepareSelect();
         this.insertStatement = prepareInsert();
         this.deleteStatement = prepareDelete();
         this.listBlobs = prepareSelectBlobs();
         this.insertMessageIdStatement = prepareInsertMessageId();
-        this.session = session;
     }
 
     private PreparedStatement prepareSelectBlobs() {

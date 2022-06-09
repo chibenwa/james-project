@@ -71,7 +71,7 @@ public class CassandraApplicableFlagDAO {
 
     private PreparedStatement prepareUpdate(CqlSession session) {
         return session.prepare(QueryBuilder.update(TABLE_NAME)
-            .appendSetElement(USER_FLAGS, bindMarker(USER_FLAGS))
+            .append(USER_FLAGS, bindMarker(USER_FLAGS))
             .where(column(MAILBOX_ID).isEqualTo(bindMarker(MAILBOX_ID)))
             .build());
     }

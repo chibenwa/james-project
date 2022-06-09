@@ -72,12 +72,12 @@ public class CassandraACLDAOV1 {
     public CassandraACLDAOV1(CqlSession session,
                              CassandraConfiguration cassandraConfiguration) {
         this.executor = new CassandraAsyncExecutor(session);
+        this.session = session;
         this.maxAclRetry = cassandraConfiguration.getAclMaxRetry();
         this.conditionalInsertStatement = prepareConditionalInsert();
         this.conditionalUpdateStatement = prepareConditionalUpdate();
         this.readStatement = prepareReadStatement();
         this.deleteStatement = prepareDelete();
-        this.session = session;
         this.lwtProfile = JamesExecutionProfiles.getLWTProfile(session);
     }
 

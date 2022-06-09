@@ -115,6 +115,7 @@ public class CassandraMessageIdToImapUidDAO {
     public CassandraMessageIdToImapUidDAO(CqlSession session, BlobId.Factory blobIdFactory,
                                           CassandraConfiguration cassandraConfiguration) {
         this.cassandraAsyncExecutor = new CassandraAsyncExecutor(session);
+        this.session = session;
         this.blobIdFactory = blobIdFactory;
         this.cassandraConfiguration = cassandraConfiguration;
         this.delete = prepareDelete();
@@ -124,7 +125,6 @@ public class CassandraMessageIdToImapUidDAO {
         this.selectAll = prepareSelectAll();
         this.select = prepareSelect();
         this.listStatement = prepareList();
-        this.session = session;
         this.lwtProfile = JamesExecutionProfiles.getLWTProfile(session);
     }
 
@@ -171,7 +171,7 @@ public class CassandraMessageIdToImapUidDAO {
                     setColumn(BODY_START_OCTET, bindMarker(BODY_START_OCTET)),
                     setColumn(FULL_CONTENT_OCTETS, bindMarker(FULL_CONTENT_OCTETS)),
                     setColumn(HEADER_CONTENT, bindMarker(HEADER_CONTENT)))
-                .appendSetElement(USER_FLAGS, bindMarker(USER_FLAGS))
+                .append(USER_FLAGS, bindMarker(USER_FLAGS))
                 .where(column(MESSAGE_ID).isEqualTo(bindMarker(MESSAGE_ID)),
                     column(MAILBOX_ID).isEqualTo(bindMarker(MAILBOX_ID)),
                     column(IMAP_UID).isEqualTo(bindMarker(IMAP_UID)))
@@ -210,8 +210,8 @@ public class CassandraMessageIdToImapUidDAO {
                 setColumn(RECENT, bindMarker(RECENT)),
                 setColumn(SEEN, bindMarker(SEEN)),
                 setColumn(USER, bindMarker(USER)))
-            .appendSetElement(USER_FLAGS, bindMarker(ADDED_USERS_FLAGS))
-            .removeSetElement(USER_FLAGS, bindMarker(REMOVED_USERS_FLAGS))
+            .append(USER_FLAGS, bindMarker(ADDED_USERS_FLAGS))
+            .remove(USER_FLAGS, bindMarker(REMOVED_USERS_FLAGS))
             .where(column(MESSAGE_ID).isEqualTo(bindMarker(MESSAGE_ID)),
                 column(MAILBOX_ID).isEqualTo(bindMarker(MAILBOX_ID)),
                 column(IMAP_UID).isEqualTo(bindMarker(IMAP_UID)));

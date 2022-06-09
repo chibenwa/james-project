@@ -48,7 +48,8 @@ public class CassandraTypesProvider {
 
     public UserDefinedType getDefinedUserType(String typeName) {
         return Optional.ofNullable(userDefinedTypes().get(CqlIdentifier.fromCql(typeName)))
-            .orElseThrow(() -> new RuntimeException("Cassandra UDT " + typeName + " can not be retrieved"));
+            .orElseThrow(() -> new RuntimeException("Cassandra UDT " + typeName + " can not be retrieved"))
+            .copy(true);
     }
 
 }
