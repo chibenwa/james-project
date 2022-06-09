@@ -138,7 +138,7 @@ public interface CassandraModule {
             return this;
         }
 
-        public Builder statement(Function<CreateTableStart,  Function<CassandraTypesProvider, CreateTable>> toCreateStatement) {
+        public Builder statement(Function<CreateTableStart, Function<CassandraTypesProvider, CreateTable>> toCreateStatement) {
             Preconditions.checkState(comment.isPresent(), "`comment` is compulsory");
 
             Function<CassandraTypesProvider, CreateTable> createStatement = toCreateStatement.apply(
