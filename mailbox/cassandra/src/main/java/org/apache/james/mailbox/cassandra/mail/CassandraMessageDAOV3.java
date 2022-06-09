@@ -28,7 +28,7 @@ import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.deleteFrom;
 import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.selectFrom;
 import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.update;
 import static com.datastax.oss.driver.api.querybuilder.relation.Relation.column;
-import static com.datastax.oss.driver.api.querybuilder.update.Assignment.prependListElement;
+import static com.datastax.oss.driver.api.querybuilder.update.Assignment.prepend;
 import static com.datastax.oss.driver.api.querybuilder.update.Assignment.setColumn;
 import static org.apache.james.blob.api.BlobStore.StoragePolicy.LOW_COST;
 import static org.apache.james.blob.api.BlobStore.StoragePolicy.SIZE_BASED;
@@ -172,7 +172,7 @@ public class CassandraMessageDAOV3 {
                 setColumn(CONTENT_DISPOSITION_PARAMETERS, bindMarker(CONTENT_DISPOSITION_PARAMETERS)),
                 setColumn(CONTENT_TYPE_PARAMETERS, bindMarker(CONTENT_TYPE_PARAMETERS)),
                 setColumn(TEXTUAL_LINE_COUNT, bindMarker(TEXTUAL_LINE_COUNT)),
-                prependListElement(ATTACHMENTS, bindMarker(ATTACHMENTS)))
+                prepend(ATTACHMENTS, bindMarker(ATTACHMENTS)))
             .where(column(MESSAGE_ID).isEqualTo(bindMarker(MESSAGE_ID)))
             .build());
     }

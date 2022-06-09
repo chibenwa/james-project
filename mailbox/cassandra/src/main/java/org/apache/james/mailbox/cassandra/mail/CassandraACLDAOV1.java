@@ -71,13 +71,13 @@ public class CassandraACLDAOV1 {
     @Inject
     public CassandraACLDAOV1(CqlSession session,
                              CassandraConfiguration cassandraConfiguration) {
+        this.session = session;
         this.executor = new CassandraAsyncExecutor(session);
         this.maxAclRetry = cassandraConfiguration.getAclMaxRetry();
         this.conditionalInsertStatement = prepareConditionalInsert();
         this.conditionalUpdateStatement = prepareConditionalUpdate();
         this.readStatement = prepareReadStatement();
         this.deleteStatement = prepareDelete();
-        this.session = session;
         this.lwtProfile = JamesExecutionProfiles.getLWTProfile(session);
     }
 

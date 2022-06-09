@@ -68,7 +68,7 @@ public class CassandraACLDAOV2 {
 
     private PreparedStatement prepareInsertRights(CqlSession session) {
         return session.prepare(update(CassandraACLV2Table.TABLE_NAME)
-            .appendSetElement(CassandraACLV2Table.RIGHTS, bindMarker(CassandraACLV2Table.RIGHTS))
+            .append(CassandraACLV2Table.RIGHTS, bindMarker(CassandraACLV2Table.RIGHTS))
             .where(column(CassandraACLV2Table.ID).isEqualTo(bindMarker(CassandraACLV2Table.ID)),
                 column(CassandraACLV2Table.KEY).isEqualTo(bindMarker(CassandraACLV2Table.KEY)))
             .build());
@@ -84,7 +84,7 @@ public class CassandraACLDAOV2 {
 
     private PreparedStatement prepareRemoveRights(CqlSession session) {
         return session.prepare(update(CassandraACLV2Table.TABLE_NAME)
-            .removeSetElement(CassandraACLV2Table.RIGHTS, bindMarker(CassandraACLV2Table.RIGHTS))
+            .remove(CassandraACLV2Table.RIGHTS, bindMarker(CassandraACLV2Table.RIGHTS))
             .where(column(CassandraACLV2Table.ID).isEqualTo(bindMarker(CassandraACLV2Table.ID)),
                 column(CassandraACLV2Table.KEY).isEqualTo(bindMarker(CassandraACLV2Table.KEY)))
             .build());
