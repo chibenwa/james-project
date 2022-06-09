@@ -41,26 +41,26 @@ public class CassandraAsyncExecutor {
         this.session = session;
     }
 
-    public ReactiveResultSet execute(Statement statement) {
+    private ReactiveResultSet execute(Statement statement) {
         return session.executeReactive(statement);
     }
 
     public Mono<Boolean> executeReturnApplied(Statement statement) {
-        return Mono.from(execute(statement))
+        return Mono.defer(() -> Mono.from(execute(statement)))
             .map(ReactiveRow::wasApplied);
     }
 
     public Mono<Void> executeVoid(Statement statement) {
-        return Mono.from(execute(statement))
+        return Mono.defer(() -> Mono.from(execute(statement)))
                 .then();
     }
 
     public Mono<Row> executeSingleRow(Statement statement) {
-        return Mono.from(execute(statement));
+        return Mono.defer(() -> Mono.from(execute(statement)));
     }
 
     public Flux<Row> executeRows(Statement statement) {
-        return Flux.from(execute(statement));
+        return Flux.defer(() -> Flux.from(execute(statement)));
     }
 
     public Mono<Optional<Row>> executeSingleRowOptional(Statement statement) {
