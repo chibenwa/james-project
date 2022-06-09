@@ -252,7 +252,7 @@ class CassandraMailboxMapperTest {
                 cassandra.getConf()
                     .registerScenario(fail()
                         .times(1)
-                        .whenQueryStartsWith("DELETE FROM mailbox"));
+                        .whenQueryStartsWith("DELETE FROM mailbox "));
 
                 testee.delete(inbox).block();
 
