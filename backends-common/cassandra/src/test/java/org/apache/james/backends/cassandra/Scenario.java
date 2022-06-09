@@ -39,6 +39,9 @@ import com.datastax.oss.driver.api.core.cql.Statement;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
+
 public class Scenario {
     public static class InjectedFailureException extends RuntimeException {
         public InjectedFailureException() {
@@ -131,8 +134,15 @@ public class Scenario {
 
         @Override
         public void subscribe(Subscriber<? super ReactiveRow> s) {
-            barrier.call();
-            delegate.subscribe(s);
+            // Might be called from the Cassandra driver event loop.
+            // If synchronisation is attempted on request B and code looks like A.then(B)
+            // Then the event loop will be blocked.
+            // Switch the blocking synchronization to another thread to not starve the driver.
+            Mono.fromRunnable(() -> {
+                barrier.call();
+                delegate.subscribe(s);
+            }).subscribeOn(Schedulers.elastic())
+                .subscribe();
         }
     }
 
