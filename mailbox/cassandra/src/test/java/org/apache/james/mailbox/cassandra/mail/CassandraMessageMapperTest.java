@@ -88,8 +88,8 @@ class CassandraMessageMapperTest extends MessageMapperTest {
             FlagsUpdateCalculator markAsRead = new FlagsUpdateCalculator(new Flags(Flags.Flag.SEEN), MessageManager.FlagsUpdateMode.ADD);
             messageMapper.updateFlags(benwaInboxMailbox, markAsRead, MessageRange.all());
 
-            assertThat(statementRecorder.listExecutedStatements(Selector.preparedStatement(
-                "UPDATE modseq SET nextmodseq=:nextmodseq WHERE mailboxId=:mailboxId")))
+            assertThat(statementRecorder.listExecutedStatements(Selector.preparedStatementStartingWith(
+                "UPDATE modseq SET nextmodseq=:nextmodseq WHERE mailboxid=:mailboxid")))
                 .hasSize(2);
         }
 
@@ -205,7 +205,7 @@ class CassandraMessageMapperTest extends MessageMapperTest {
 
             messageMapper.updateFlags(benwaInboxMailbox, new FlagsUpdateCalculator(new Flags(Flags.Flag.ANSWERED), MessageManager.FlagsUpdateMode.REPLACE), MessageRange.all());
 
-            assertThat(statementRecorder.listExecutedStatements(Selector.preparedStatement(
+            assertThat(statementRecorder.listExecutedStatements(Selector.preparedStatementStartingWith(
                 "UPDATE modseq SET nextmodseq=:nextmodseq WHERE mailboxid=:mailboxid")))
                 .hasSize(1);
         }
