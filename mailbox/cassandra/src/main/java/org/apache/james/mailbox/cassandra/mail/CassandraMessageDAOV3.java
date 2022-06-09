@@ -92,6 +92,7 @@ import org.apache.james.mailbox.store.mail.model.impl.PropertyBuilder;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.config.DriverExecutionProfile;
 import com.datastax.oss.driver.api.core.cql.BoundStatement;
+import com.datastax.oss.driver.api.core.cql.BoundStatementBuilder;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 import com.datastax.oss.driver.api.core.cql.Row;
 import com.datastax.oss.driver.api.core.data.UdtValue;
@@ -190,7 +191,7 @@ public class CassandraMessageDAOV3 {
 
     public Mono<Void> save(MessageRepresentation message) {
         CassandraMessageId messageId = (CassandraMessageId) message.getMessageId();
-        BoundStatement boundStatement = insert.bind()
+        BoundStatementBuilder boundStatement = insert.boundStatementBuilder()
             .setUuid(MESSAGE_ID, messageId.get())
             .setInstant(INTERNAL_DATE, message.getInternalDate().toInstant())
             .setInt(BODY_START_OCTET, message.getBodyStartOctet())
@@ -212,9 +213,9 @@ public class CassandraMessageDAOV3 {
             .setMap(CONTENT_TYPE_PARAMETERS, message.getProperties().getContentTypeParameters(), String.class, String.class);
 
         if (message.getAttachments().isEmpty()) {
-            return cassandraAsyncExecutor.executeVoid(boundStatement.unset(ATTACHMENTS));
+            return cassandraAsyncExecutor.executeVoid(boundStatement.unset(ATTACHMENTS).build());
         } else {
-            return cassandraAsyncExecutor.executeVoid(boundStatement.setList(ATTACHMENTS, buildAttachmentUdt(message.getAttachments()), UdtValue.class));
+            return cassandraAsyncExecutor.executeVoid(boundStatement.setList(ATTACHMENTS, buildAttachmentUdt(message.getAttachments()), UdtValue.class).build());
         }
 
     }
@@ -295,15 +296,13 @@ public class CassandraMessageDAOV3 {
             .setString(Attachments.ID, messageAttachment.getAttachmentId().getId())
             .setBoolean(Attachments.IS_INLINE, messageAttachment.isInline());
 
-        Optional<UdtValue> maybeSetNameUdtValue = messageAttachment.getName()
-            .map(name -> result.setString(Attachments.NAME, name));
+        UdtValue setNameUdtValue = messageAttachment.getName()
+            .map(name -> result.setString(Attachments.NAME, name))
+            .orElse(result);
 
-        Optional<UdtValue> maybeSetCidUdtValue = maybeSetNameUdtValue
-            .map(setNameUdtValue -> messageAttachment.getCid()
+        return messageAttachment.getCid()
                 .map(cid -> setNameUdtValue.setString(Attachments.CID, cid.getValue()))
-                .orElse(setNameUdtValue));
-
-        return maybeSetCidUdtValue.orElse(result);
+                .orElse(setNameUdtValue);
     }
 
     private UdtValue toUDT(MessageAttachmentRepresentation messageAttachment) {
