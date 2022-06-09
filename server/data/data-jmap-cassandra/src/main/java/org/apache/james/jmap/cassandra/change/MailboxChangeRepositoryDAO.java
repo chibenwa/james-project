@@ -66,7 +66,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public class MailboxChangeRepositoryDAO {
-    private static final TypeCodec<Set<UUID>> SET_OF_UUIDS_CODEC = CodecRegistry.DEFAULT.codecFor(DataTypes.frozenListOf(DataTypes.UUID), GenericType.setOf(UUID.class));
+    private static final TypeCodec<Set<UUID>> SET_OF_UUIDS_CODEC = CodecRegistry.DEFAULT.codecFor(DataTypes.frozenSetOf(DataTypes.UUID), GenericType.setOf(UUID.class));
 
     private final CassandraAsyncExecutor executor;
     private final UserDefinedType zonedDateTimeUserType;

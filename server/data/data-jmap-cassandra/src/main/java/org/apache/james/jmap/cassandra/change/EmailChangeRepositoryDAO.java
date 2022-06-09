@@ -23,6 +23,7 @@ import static com.datastax.oss.driver.api.core.metadata.schema.ClusteringOrder.A
 import static com.datastax.oss.driver.api.core.metadata.schema.ClusteringOrder.DESC;
 import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.bindMarker;
 import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.insertInto;
+import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.literal;
 import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.selectFrom;
 import static org.apache.james.jmap.cassandra.change.tables.CassandraEmailChangeTable.ACCOUNT_ID;
 import static org.apache.james.jmap.cassandra.change.tables.CassandraEmailChangeTable.CREATED;
@@ -63,7 +64,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public class EmailChangeRepositoryDAO {
-    private static final TypeCodec<Set<UUID>> SET_OF_UUIDS_CODEC = CodecRegistry.DEFAULT.codecFor(DataTypes.frozenListOf(DataTypes.UUID), GenericType.setOf(UUID.class));
+    private static final TypeCodec<Set<UUID>> SET_OF_UUIDS_CODEC = CodecRegistry.DEFAULT.codecFor(DataTypes.frozenSetOf(DataTypes.UUID), GenericType.setOf(UUID.class));
 
     private final CassandraAsyncExecutor executor;
     private final UserDefinedType zonedDateTimeUserType;
@@ -97,7 +98,7 @@ public class EmailChangeRepositoryDAO {
         selectFromStatement = session.prepare(selectFrom(TABLE_NAME)
             .all()
             .whereColumn(ACCOUNT_ID).isEqualTo(bindMarker(ACCOUNT_ID))
-            .whereColumn(STATE).isGreaterThanOrEqualTo(bindMarker(ACCOUNT_ID))
+            .whereColumn(STATE).isGreaterThanOrEqualTo(bindMarker(STATE))
             .orderBy(STATE, ASC)
             .build());
 
@@ -111,7 +112,7 @@ public class EmailChangeRepositoryDAO {
         selectLatestNotDelegatedStatement = session.prepare(selectFrom(TABLE_NAME)
             .column(STATE)
             .whereColumn(ACCOUNT_ID).isEqualTo(bindMarker(ACCOUNT_ID))
-            .whereColumn(IS_DELEGATED).isEqualTo(bindMarker(IS_DELEGATED))
+            .whereColumn(IS_DELEGATED).isEqualTo(literal(false))
             .orderBy(STATE, DESC)
             .limit(1)
             .allowFiltering()

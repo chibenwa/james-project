@@ -19,7 +19,6 @@
 
 package org.apache.james.jmap.cassandra.pushsubscription;
 
-
 import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.bindMarker;
 import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.deleteFrom;
 import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.insertInto;
@@ -56,7 +55,7 @@ import org.apache.james.jmap.api.model.TypeName;
 import org.apache.james.jmap.api.model.VerificationCode;
 
 import com.datastax.oss.driver.api.core.CqlSession;
-import com.datastax.oss.driver.api.core.cql.BoundStatement;
+import com.datastax.oss.driver.api.core.cql.BoundStatementBuilder;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 import com.datastax.oss.driver.api.core.cql.Row;
 import com.google.common.collect.ImmutableSet;
@@ -110,7 +109,7 @@ public class CassandraPushSubscriptionDAO {
             .toSet());
         Instant utcInstant = subscription.expires().value().withZoneSameInstant(ZoneOffset.UTC).toInstant();
 
-        BoundStatement insertSubscription = insert.bind()
+        BoundStatementBuilder insertSubscription = insert.boundStatementBuilder()
             .setString(USER, username.asString())
             .setString(DEVICE_CLIENT_ID, subscription.deviceClientId())
             .setUuid(ID, subscription.id().value())
@@ -124,7 +123,7 @@ public class CassandraPushSubscriptionDAO {
             .ifPresent(keys -> insertSubscription.setString(ENCRYPT_PUBLIC_KEY, keys.p256dh())
                 .setString(ENCRYPT_AUTH_SECRET, keys.auth()));
 
-        return executor.executeVoid(insertSubscription)
+        return executor.executeVoid(insertSubscription.build())
             .thenReturn(subscription);
     }
 
