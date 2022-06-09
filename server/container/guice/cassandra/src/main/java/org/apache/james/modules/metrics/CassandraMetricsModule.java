@@ -41,8 +41,8 @@ public class CassandraMetricsModule extends AbstractModule {
     InitializationOperation injectMetrics(MetricRegistry metricRegistry, CqlSession session) {
         return InitilizationOperationBuilder
             .forClass(CassandraMetricsInjector.class)
-            .init(() -> metricRegistry.registerAll(
-                session.getMetrics().map(Metrics::getRegistry).orElse(null)));
+            .init(() -> session.getMetrics().map(Metrics::getRegistry)
+                .ifPresent(metricRegistry::registerAll));
     }
 
     public static class CassandraMetricsInjector implements Startable {

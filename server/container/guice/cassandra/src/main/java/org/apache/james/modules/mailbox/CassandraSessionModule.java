@@ -26,6 +26,7 @@ import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.backends.cassandra.components.CassandraModule;
 import org.apache.james.backends.cassandra.init.CassandraZonedDateTimeModule;
 import org.apache.james.backends.cassandra.init.KeyspaceFactory;
+import org.apache.james.backends.cassandra.init.ResilientClusterProvider;
 import org.apache.james.backends.cassandra.init.SessionWithInitializedTablesFactory;
 import org.apache.james.backends.cassandra.init.configuration.CassandraConfiguration;
 import org.apache.james.backends.cassandra.init.configuration.ClusterConfiguration;
@@ -162,8 +163,8 @@ public class CassandraSessionModule extends AbstractModule {
         private final CqlSession cluster;
 
         @Inject
-        private InitializedCluster(CqlSession cluster, ClusterConfiguration clusterConfiguration, KeyspacesConfiguration keyspacesConfiguration) {
-            this.cluster = cluster;
+        private InitializedCluster(ResilientClusterProvider sessionProvider, ClusterConfiguration clusterConfiguration, KeyspacesConfiguration keyspacesConfiguration) {
+            this.cluster = sessionProvider.get();
 
             if (clusterConfiguration.shouldCreateKeyspace()) {
                 KeyspaceFactory.createKeyspace(keyspacesConfiguration.mainKeyspaceConfiguration(), cluster);
