@@ -23,8 +23,8 @@ import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.bindMarker;
 import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.deleteFrom;
 import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.update;
 import static com.datastax.oss.driver.api.querybuilder.relation.Relation.column;
-import static com.datastax.oss.driver.api.querybuilder.update.Assignment.appendSetElement;
-import static com.datastax.oss.driver.api.querybuilder.update.Assignment.removeSetElement;
+import static com.datastax.oss.driver.api.querybuilder.update.Assignment.append;
+import static com.datastax.oss.driver.api.querybuilder.update.Assignment.remove;
 import static com.datastax.oss.driver.api.querybuilder.update.Assignment.setColumn;
 import static org.apache.james.mailbox.cassandra.table.CassandraMessageIdTable.TABLE_NAME;
 import static org.apache.james.mailbox.cassandra.table.CassandraMessageIdTable.THREAD_ID;
@@ -160,7 +160,7 @@ public class CassandraMessageIdDAO {
                 setColumn(BODY_START_OCTET, bindMarker(BODY_START_OCTET)),
                 setColumn(FULL_CONTENT_OCTETS, bindMarker(FULL_CONTENT_OCTETS)),
                 setColumn(HEADER_CONTENT, bindMarker(HEADER_CONTENT)),
-                appendSetElement(USER_FLAGS, bindMarker(USER_FLAGS)))
+                append(USER_FLAGS, bindMarker(USER_FLAGS)))
             .where(column(MAILBOX_ID).isEqualTo(bindMarker(MAILBOX_ID)),
                 column(IMAP_UID).isEqualTo(bindMarker(IMAP_UID)))
             .build());
@@ -176,8 +176,8 @@ public class CassandraMessageIdDAO {
                 setColumn(RECENT, bindMarker(RECENT)),
                 setColumn(SEEN, bindMarker(SEEN)),
                 setColumn(USER, bindMarker(USER)),
-                appendSetElement(USER_FLAGS, bindMarker(ADDED_USERS_FLAGS)),
-                removeSetElement(USER_FLAGS, bindMarker(REMOVED_USERS_FLAGS)))
+                append(USER_FLAGS, bindMarker(ADDED_USERS_FLAGS)),
+                remove(USER_FLAGS, bindMarker(REMOVED_USERS_FLAGS)))
             .where(column(MAILBOX_ID).isEqualTo(bindMarker(MAILBOX_ID)),
                 column(IMAP_UID).isEqualTo(bindMarker(IMAP_UID)))
             .build());

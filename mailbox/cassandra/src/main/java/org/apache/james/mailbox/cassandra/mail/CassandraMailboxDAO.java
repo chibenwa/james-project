@@ -70,6 +70,7 @@ public class CassandraMailboxDAO {
 
     @Inject
     public CassandraMailboxDAO(CqlSession session, CassandraTypesProvider typesProvider) {
+        this.session = session;
         this.executor = new CassandraAsyncExecutor(session);
         this.mailboxBaseTupleUtil = new MailboxBaseTupleUtil(typesProvider);
         this.insertStatement = prepareInsert();
@@ -78,7 +79,6 @@ public class CassandraMailboxDAO {
         this.deleteStatement = prepareDelete();
         this.listStatement = prepareList();
         this.readStatement = prepareRead();
-        this.session = session;
         this.lwtProfile = JamesExecutionProfiles.getLWTProfile(session);
     }
 

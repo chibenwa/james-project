@@ -106,8 +106,8 @@ public interface CassandraMessageModule {
             .withColumn(CassandraMessageV2Table.FULL_CONTENT_OCTETS, BIGINT)
             .withColumn(CassandraMessageV2Table.BODY_CONTENT, TEXT)
             .withColumn(CassandraMessageV2Table.HEADER_CONTENT, TEXT)
-            .withColumn(CassandraMessageV2Table.ATTACHMENTS, listOf(types.getDefinedUserType(CassandraMessageV2Table.ATTACHMENTS)))
-            .withColumn(CassandraMessageV2Table.PROPERTIES, listOf(types.getDefinedUserType(CassandraMessageV2Table.PROPERTIES))))
+            .withColumn(CassandraMessageV2Table.ATTACHMENTS, listOf(SchemaBuilder.udt(CassandraMessageV2Table.ATTACHMENTS, true)))
+            .withColumn(CassandraMessageV2Table.PROPERTIES, listOf(SchemaBuilder.udt(CassandraMessageV2Table.PROPERTIES, true))))
         .table(CassandraMessageV3Table.TABLE_NAME)
         .comment("Holds message metadata, independently of any mailboxes. Content of messages is stored " +
             "in `blobs` and `blobparts` tables. Optimizes property storage compared to V2.")
@@ -131,7 +131,7 @@ public interface CassandraMessageModule {
             .withColumn(CassandraMessageV3Table.Properties.CONTENT_LANGUAGE, frozenListOf(TEXT))
             .withColumn(CassandraMessageV3Table.Properties.CONTENT_DISPOSITION_PARAMETERS, frozenMapOf(TEXT, TEXT))
             .withColumn(CassandraMessageV3Table.Properties.CONTENT_TYPE_PARAMETERS, frozenMapOf(TEXT, TEXT))
-            .withColumn(CassandraMessageV3Table.ATTACHMENTS, listOf(types.getDefinedUserType(CassandraMessageV3Table.ATTACHMENTS))))
+            .withColumn(CassandraMessageV3Table.ATTACHMENTS, listOf(SchemaBuilder.udt(CassandraMessageV3Table.ATTACHMENTS, true))))
         .type(CassandraMessageV2Table.PROPERTIES)
         .statement(statement -> statement
             .withField(CassandraMessageV2Table.Properties.NAMESPACE, TEXT)
