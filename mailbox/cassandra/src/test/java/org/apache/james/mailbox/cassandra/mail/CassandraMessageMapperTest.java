@@ -75,7 +75,7 @@ class CassandraMessageMapperTest extends MessageMapperTest {
             cassandra.getConf()
                 .registerScenario(fail()
                     .forever()
-                    .whenQueryStartsWith("DELETE FROM messageIdTable WHERE mailboxId=:mailboxId AND uid=:uid;"));
+                    .whenQueryStartsWith("DELETE FROM messageidtable"));
             try {
                 messageMapper.deleteMessages(benwaInboxMailbox, ImmutableList.of(message1.getUid(), message2.getUid(), message3.getUid()));
             } catch (Exception e) {
@@ -222,7 +222,7 @@ class CassandraMessageMapperTest extends MessageMapperTest {
             cassandra.getConf()
                 .registerScenario(fail()
                     .forever()
-                    .whenQueryStartsWith("UPDATE messageV3"));
+                    .whenQueryStartsWith("UPDATE messagev3"));
 
             try {
                 messageMapper.add(benwaInboxMailbox, message1);
@@ -245,7 +245,7 @@ class CassandraMessageMapperTest extends MessageMapperTest {
             cassandra.getConf()
                 .registerScenario(fail()
                     .forever()
-                    .whenQueryStartsWith("INSERT INTO blobParts (id,chunkNumber,data) VALUES (:id,:chunkNumber,:data);"));
+                    .whenQueryStartsWith("INSERT INTO blobparts (id,chunknumber,data)"));
 
             try {
                 messageMapper.add(benwaInboxMailbox, message1);
@@ -268,7 +268,7 @@ class CassandraMessageMapperTest extends MessageMapperTest {
             cassandra.getConf()
                 .registerScenario(fail()
                     .forever()
-                    .whenQueryStartsWith("INSERT INTO blobs (id,position) VALUES (:id,:position);"));
+                    .whenQueryStartsWith("INSERT INTO blobs (id,position)"));
 
             try {
                 messageMapper.add(benwaInboxMailbox, message1);
@@ -291,7 +291,7 @@ class CassandraMessageMapperTest extends MessageMapperTest {
             cassandra.getConf()
                 .registerScenario(fail()
                     .forever()
-                    .whenQueryStartsWith("INSERT INTO imapUidTable"));
+                    .whenQueryStartsWith("INSERT INTO imapuidtable"));
 
             try {
                 messageMapper.add(benwaInboxMailbox, message1);
@@ -314,7 +314,7 @@ class CassandraMessageMapperTest extends MessageMapperTest {
             cassandra.getConf()
                 .registerScenario(fail()
                     .forever()
-                    .whenQueryStartsWith("UPDATE messageIdTable"));
+                    .whenQueryStartsWith("UPDATE messageidtable"));
 
             try {
                 messageMapper.add(benwaInboxMailbox, message1);
@@ -341,7 +341,7 @@ class CassandraMessageMapperTest extends MessageMapperTest {
             cassandra.getConf()
                 .registerScenario(fail()
                     .times(5)
-                    .whenQueryStartsWith("INSERT INTO messageIdTable (mailboxId,uid,threadId,modSeq,messageId,flagAnswered,flagDeleted,flagDraft,flagFlagged,flagRecent,flagSeen,flagUser,userFlags)"));
+                    .whenQueryStartsWith("INSERT INTO messageidtable"));
 
             messageMapper.add(benwaInboxMailbox, message1);
 

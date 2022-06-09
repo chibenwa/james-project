@@ -174,7 +174,7 @@ class CassandraMailboxMapperTest {
                 cassandra.getConf()
                     .registerScenario(fail()
                         .times(1)
-                        .whenQueryStartsWith("DELETE FROM mailboxPathV2 WHERE namespace=:namespace AND user=:user AND mailboxName=:mailboxName IF EXISTS;"));
+                        .whenQueryStartsWith("DELETE FROM mailboxpathv2"));
 
                 testee.rename(inboxRenamed).block();
 
@@ -202,7 +202,7 @@ class CassandraMailboxMapperTest {
                 cassandra.getConf()
                     .registerScenario(fail()
                         .times(1)
-                        .whenQueryStartsWith("INSERT INTO mailbox (id,name,uidvalidity,mailboxbase) VALUES (:id,:name,:uidvalidity,:mailboxbase);"));
+                        .whenQueryStartsWith("INSERT INTO mailbox (id,name,uidvalidity,mailboxbase)"));
 
                 testee.rename(inboxRenamed).block();
 
@@ -226,7 +226,7 @@ class CassandraMailboxMapperTest {
                 cassandra.getConf()
                     .registerScenario(fail()
                         .times(1)
-                        .whenQueryStartsWith("INSERT INTO mailbox (id,name,uidvalidity,mailboxbase) VALUES (:id,:name,:uidvalidity,:mailboxbase);"));
+                        .whenQueryStartsWith("INSERT INTO mailbox (id,name,uidvalidity,mailboxbase)"));
 
                 Mailbox inbox = testee.create(inboxPath, UID_VALIDITY).block();
 
@@ -252,7 +252,7 @@ class CassandraMailboxMapperTest {
                 cassandra.getConf()
                     .registerScenario(fail()
                         .times(1)
-                        .whenQueryStartsWith("DELETE FROM mailbox WHERE id=:id;"));
+                        .whenQueryStartsWith("DELETE FROM mailbox"));
 
                 testee.delete(inbox).block();
 
@@ -363,7 +363,7 @@ class CassandraMailboxMapperTest {
             cassandra.getConf()
                 .registerScenario(fail()
                     .times(10)
-                    .whenQueryStartsWith("INSERT INTO mailbox (id,name,uidvalidity,mailboxbase) VALUES (:id,:name,:uidvalidity,:mailboxbase);"));
+                    .whenQueryStartsWith("INSERT INTO mailbox (id,name,uidvalidity,mailboxbase)"));
 
             doQuietly(() -> testee.create(inboxPath, UID_VALIDITY).block());
 
@@ -388,7 +388,7 @@ class CassandraMailboxMapperTest {
             cassandra.getConf()
                 .registerScenario(fail()
                     .times(TRY_COUNT_BEFORE_FAILURE)
-                    .whenQueryStartsWith("SELECT id,mailboxbase,uidvalidity,name FROM mailbox WHERE id=:id;"));
+                    .whenQueryStartsWith("SELECT id,mailboxbase,uidvalidity,name FROM mailbox"));
 
             doQuietly(() -> testee.rename(inboxRenamed));
 
@@ -419,7 +419,7 @@ class CassandraMailboxMapperTest {
             cassandra.getConf()
                 .registerScenario(fail()
                     .times(TRY_COUNT_BEFORE_FAILURE)
-                    .whenQueryStartsWith("SELECT id,mailboxbase,uidvalidity,name FROM mailbox WHERE id=:id;"));
+                    .whenQueryStartsWith("SELECT id,mailboxbase,uidvalidity,name FROM mailbox"));
 
             doQuietly(() -> testee.rename(inboxRenamed).block());
 
@@ -442,7 +442,7 @@ class CassandraMailboxMapperTest {
             cassandra.getConf()
                 .registerScenario(fail()
                     .times(TRY_COUNT_BEFORE_FAILURE)
-                    .whenQueryStartsWith("SELECT id,mailboxbase,uidvalidity,name FROM mailbox WHERE id=:id;"));
+                    .whenQueryStartsWith("SELECT id,mailboxbase,uidvalidity,name FROM mailbox WHERE id=:id"));
 
             doQuietly(() -> testee.rename(inboxRenamed).block());
 
@@ -464,7 +464,7 @@ class CassandraMailboxMapperTest {
             cassandra.getConf()
                 .registerScenario(fail()
                     .times(TRY_COUNT_BEFORE_FAILURE)
-                    .whenQueryStartsWith("DELETE FROM mailboxPathV3 WHERE namespace=:namespace AND user=:user AND mailboxName=:mailboxName IF EXISTS;"));
+                    .whenQueryStartsWith("DELETE FROM mailboxpathv3 WHERE namespace=:namespace AND user=:user AND mailboxname=:mailboxname IF EXISTS"));
 
             doQuietly(() -> testee.rename(inboxRenamed).block());
 
@@ -493,7 +493,7 @@ class CassandraMailboxMapperTest {
             cassandra.getConf()
                 .registerScenario(fail()
                     .times(TRY_COUNT_BEFORE_FAILURE)
-                    .whenQueryStartsWith("DELETE FROM mailboxPathV3 WHERE namespace=:namespace AND user=:user AND mailboxName=:mailboxName IF EXISTS;"));
+                    .whenQueryStartsWith("DELETE FROM mailboxpathv3 WHERE namespace=:namespace AND user=:user AND mailboxname=:mailboxname IF EXISTS"));
 
             doQuietly(() -> testee.rename(inboxRenamed).block());
 
@@ -515,7 +515,7 @@ class CassandraMailboxMapperTest {
             cassandra.getConf()
                 .registerScenario(fail()
                     .times(TRY_COUNT_BEFORE_FAILURE)
-                    .whenQueryStartsWith("DELETE FROM mailboxPathV3 WHERE namespace=:namespace AND user=:user AND mailboxName=:mailboxName IF EXISTS;"));
+                    .whenQueryStartsWith("DELETE FROM mailboxpathv3 WHERE namespace=:namespace AND user=:user AND mailboxname=:mailboxname IF EXISTS"));
 
             doQuietly(() -> testee.rename(inboxRenamed).block());
 
@@ -537,7 +537,7 @@ class CassandraMailboxMapperTest {
             cassandra.getConf()
                 .registerScenario(fail()
                     .times(TRY_COUNT_BEFORE_FAILURE)
-                    .whenQueryStartsWith("DELETE FROM mailbox WHERE id=:id;"));
+                    .whenQueryStartsWith("DELETE FROM mailbox WHERE id=:id"));
 
             doQuietly(() -> testee.delete(inbox).block());
 
@@ -565,7 +565,7 @@ class CassandraMailboxMapperTest {
             cassandra.getConf()
                 .registerScenario(fail()
                     .times(TRY_COUNT_BEFORE_FAILURE)
-                    .whenQueryStartsWith("INSERT INTO mailbox (id,name,uidvalidity,mailboxbase) VALUES (:id,:name,:uidvalidity,:mailboxbase);"));
+                    .whenQueryStartsWith("INSERT INTO mailbox (id,name,uidvalidity,mailboxbase) VALUES (:id,:name,:uidvalidity,:mailboxbase)"));
 
             doQuietly(() -> testee.create(inboxPath, UID_VALIDITY).block());
 
@@ -601,7 +601,7 @@ class CassandraMailboxMapperTest {
             cassandra.getConf()
                 .registerScenario(fail()
                     .times(TRY_COUNT_BEFORE_FAILURE)
-                    .whenQueryStartsWith("INSERT INTO mailbox (id,name,uidvalidity,mailboxbase) VALUES (:id,:name,:uidvalidity,:mailboxbase);"));
+                    .whenQueryStartsWith("INSERT INTO mailbox (id,name,uidvalidity,mailboxbase) VALUES (:id,:name,:uidvalidity,:mailboxbase)"));
 
             doQuietly(() -> testee.create(inboxPath, UID_VALIDITY).block());
             doQuietly(() -> testee.delete(new Mailbox(inboxPath, UID_VALIDITY, CassandraId.timeBased())).block());
@@ -633,7 +633,7 @@ class CassandraMailboxMapperTest {
             cassandra.getConf()
                 .registerScenario(fail()
                     .times(TRY_COUNT_BEFORE_FAILURE)
-                    .whenQueryStartsWith("DELETE FROM mailbox WHERE id=:id;"));
+                    .whenQueryStartsWith("DELETE FROM mailbox WHERE id=:id"));
 
             doQuietly(() -> testee.delete(inbox).block());
 
@@ -664,7 +664,7 @@ class CassandraMailboxMapperTest {
             cassandra.getConf()
                 .registerScenario(fail()
                     .times(TRY_COUNT_BEFORE_FAILURE)
-                    .whenQueryStartsWith("SELECT id,mailboxbase,uidvalidity,name FROM mailbox WHERE id=:id;"));
+                    .whenQueryStartsWith("SELECT id,mailboxbase,uidvalidity,name FROM mailbox WHERE id=:id"));
 
             doQuietly(() -> testee.rename(inboxRenamed).block());
 
@@ -703,7 +703,7 @@ class CassandraMailboxMapperTest {
             cassandra.getConf()
                 .registerScenario(fail()
                     .times(TRY_COUNT_BEFORE_FAILURE)
-                    .whenQueryStartsWith("DELETE FROM mailboxPathV3 WHERE namespace=:namespace AND user=:user AND mailboxName=:mailboxName IF EXISTS;"));
+                    .whenQueryStartsWith("DELETE FROM mailboxpathv3 WHERE namespace=:namespace AND user=:user AND mailboxname=:mailboxname IF EXISTS"));
 
             doQuietly(() -> testee.rename(inboxRenamed).block());
 

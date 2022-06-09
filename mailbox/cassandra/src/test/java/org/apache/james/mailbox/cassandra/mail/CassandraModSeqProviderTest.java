@@ -106,15 +106,15 @@ class CassandraModSeqProviderTest {
             .registerScenario(
                 executeNormally()
                     .times(2)
-                    .whenQueryStartsWith("SELECT nextModseq FROM modseq WHERE mailboxId=:mailboxId;"),
+                    .whenQueryStartsWith("SELECT nextmodseq FROM modseq WHERE mailboxid=:mailboxid"),
                 awaitOn(insertBarrier)
                     .thenExecuteNormally()
                     .times(2)
-                    .whenQueryStartsWith("INSERT INTO modseq (nextModseq,mailboxId) VALUES (:nextModseq,:mailboxId) IF NOT EXISTS;"),
+                    .whenQueryStartsWith("INSERT INTO modseq (nextmodseq,mailboxid)"),
                 awaitOn(retryBarrier)
                     .thenExecuteNormally()
                     .times(1)
-                    .whenQueryStartsWith("SELECT nextModseq FROM modseq WHERE mailboxId=:mailboxId;"));
+                    .whenQueryStartsWith("SELECT nextmodseq FROM modseq WHERE mailboxid=:mailboxid"));
 
         CompletableFuture<ModSeq> operation1 = modSeqProvider.nextModSeqReactive(CASSANDRA_ID)
             .subscribeOn(Schedulers.elastic())

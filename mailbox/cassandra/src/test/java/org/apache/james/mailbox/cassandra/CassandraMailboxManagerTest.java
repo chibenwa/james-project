@@ -220,7 +220,7 @@ public class CassandraMailboxManagerTest extends MailboxManagerTest<CassandraMai
 
             cassandraCluster.getConf().registerScenario(fail()
                 .times(1)
-                .whenQueryStartsWith("DELETE FROM attachmentV2 WHERE idAsUUID=:idAsUUID;"));
+                .whenQueryStartsWith("DELETE FROM attachmentv2 WHERE idAsUUID=:idAsUUID"));
 
             mailboxManager.deleteMailbox(inbox, session);
 
@@ -259,7 +259,7 @@ public class CassandraMailboxManagerTest extends MailboxManagerTest<CassandraMai
 
             cassandraCluster.getConf().registerScenario(fail()
                 .times(1)
-                .whenQueryStartsWith("DELETE FROM messageV2 WHERE messageId=:messageId;"));
+                .whenQueryStartsWith("DELETE FROM messagev2 WHERE messageId=:messageId"));
 
             mailboxManager.deleteMailbox(inbox, session);
 
@@ -337,7 +337,7 @@ public class CassandraMailboxManagerTest extends MailboxManagerTest<CassandraMai
 
             cassandraCluster.getConf().registerScenario(fail()
                 .times(1)
-                .whenQueryStartsWith("DELETE FROM imapUidTable"));
+                .whenQueryStartsWith("DELETE FROM imapuidtable"));
 
             mailboxManager.deleteMailbox(inbox, session);
 
@@ -404,7 +404,7 @@ public class CassandraMailboxManagerTest extends MailboxManagerTest<CassandraMai
 
             cassandraCluster.getConf().registerScenario(fail()
                 .times(1)
-                .whenQueryStartsWith("DELETE FROM messageV2 WHERE messageId=:messageId;"));
+                .whenQueryStartsWith("DELETE FROM messagev2 WHERE messageid=:messageid"));
 
             inboxManager.delete(ImmutableList.of(appendResult.getId().getUid()), session);
 
@@ -436,7 +436,7 @@ public class CassandraMailboxManagerTest extends MailboxManagerTest<CassandraMai
 
             cassandraCluster.getConf().registerScenario(fail()
                 .times(1)
-                .whenQueryStartsWith("DELETE FROM attachmentV2 WHERE idAsUUID=:idAsUUID;"));
+                .whenQueryStartsWith("DELETE FROM attachmentv2 WHERE idasuuid=:idasuuid"));
 
             inboxManager.delete(ImmutableList.of(appendResult.getId().getUid()), session);
 
@@ -477,7 +477,7 @@ public class CassandraMailboxManagerTest extends MailboxManagerTest<CassandraMai
 
             cassandraCluster.getConf().registerScenario(fail()
                 .times(1)
-                .whenQueryStartsWith("DELETE FROM UserMailboxACL WHERE userName=:userName AND mailboxid=:mailboxid;"));
+                .whenQueryStartsWith("DELETE FROM usermailboxacl WHERE username=:username AND mailboxid=:mailboxid"));
 
             mailboxManager.deleteMailbox(inbox, session);
 
@@ -497,7 +497,7 @@ public class CassandraMailboxManagerTest extends MailboxManagerTest<CassandraMai
 
             cassandraCluster.getConf().registerScenario(fail()
                 .times(1)
-                .whenQueryStartsWith("DELETE FROM acl WHERE id=:id IF EXISTS;"));
+                .whenQueryStartsWith("DELETE FROM acl WHERE id=:id IF EXISTS"));
 
             mailboxManager.deleteMailbox(inbox, session);
 
@@ -530,7 +530,7 @@ public class CassandraMailboxManagerTest extends MailboxManagerTest<CassandraMai
 
             cassandraCluster.getConf().registerScenario(fail()
                 .times(1)
-                .whenQueryStartsWith("DELETE FROM applicableFlag WHERE mailboxId=:mailboxId;"));
+                .whenQueryStartsWith("DELETE FROM applicableflag WHERE mailboxid=:mailboxid"));
 
             mailboxManager.deleteMailbox(inbox, session);
 
@@ -558,7 +558,7 @@ public class CassandraMailboxManagerTest extends MailboxManagerTest<CassandraMai
 
             cassandraCluster.getConf().registerScenario(fail()
                 .times(1)
-                .whenQueryStartsWith("DELETE FROM firstUnseen WHERE mailboxId=:mailboxId;"));
+                .whenQueryStartsWith("DELETE FROM firstunseen WHERE mailboxid=:mailboxid"));
 
             mailboxManager.deleteMailbox(inbox, session);
 
@@ -588,7 +588,7 @@ public class CassandraMailboxManagerTest extends MailboxManagerTest<CassandraMai
 
             cassandraCluster.getConf().registerScenario(fail()
                 .times(1)
-                .whenQueryStartsWith("DELETE FROM messageDeleted WHERE mailboxId=:mailboxId;"));
+                .whenQueryStartsWith("DELETE FROM messagedeleted WHERE mailboxid=:mailboxid"));
 
             mailboxManager.deleteMailbox(inbox, session);
 
@@ -617,7 +617,7 @@ public class CassandraMailboxManagerTest extends MailboxManagerTest<CassandraMai
 
             cassandraCluster.getConf().registerScenario(fail()
                 .times(1)
-                .whenQueryStartsWith("DELETE FROM mailboxCounters WHERE mailboxId=:mailboxId;"));
+                .whenQueryStartsWith("DELETE FROM mailboxcounters WHERE mailboxid=:mailboxid"));
 
             mailboxManager.deleteMailbox(inbox, session);
 
@@ -649,7 +649,7 @@ public class CassandraMailboxManagerTest extends MailboxManagerTest<CassandraMai
 
             cassandraCluster.getConf().registerScenario(fail()
                 .times(1)
-                .whenQueryStartsWith("DELETE FROM mailboxRecents WHERE mailboxId=:mailboxId;"));
+                .whenQueryStartsWith("DELETE FROM mailboxrecents WHERE mailboxid=:mailboxid"));
 
             mailboxManager.deleteMailbox(inbox, session);
 
@@ -712,10 +712,10 @@ public class CassandraMailboxManagerTest extends MailboxManagerTest<CassandraMai
 
             cassandraCluster.getConf().registerScenario(fail()
                 .times(1)
-                .whenQueryStartsWith("DELETE FROM threadTable"));
+                .whenQueryStartsWith("DELETE FROM threadtable"));
             cassandraCluster.getConf().registerScenario(fail()
                 .times(1)
-                .whenQueryStartsWith("DELETE FROM threadLookupTable"));
+                .whenQueryStartsWith("DELETE FROM threadlookuptable"));
 
             mailboxManager.deleteMailbox(inbox, session);
 
@@ -783,10 +783,10 @@ public class CassandraMailboxManagerTest extends MailboxManagerTest<CassandraMai
 
             cassandraCluster.getConf().registerScenario(fail()
                 .times(1)
-                .whenQueryStartsWith("DELETE FROM threadTable"));
+                .whenQueryStartsWith("DELETE FROM threadtable"));
             cassandraCluster.getConf().registerScenario(fail()
                 .times(1)
-                .whenQueryStartsWith("DELETE FROM threadLookupTable"));
+                .whenQueryStartsWith("DELETE FROM threadlookuptable"));
 
             inboxManager.delete(ImmutableList.of(message.getId().getUid()), session);
 

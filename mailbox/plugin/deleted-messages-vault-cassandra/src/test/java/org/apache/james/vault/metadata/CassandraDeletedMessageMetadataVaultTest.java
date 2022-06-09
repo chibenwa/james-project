@@ -262,7 +262,7 @@ public class CassandraDeletedMessageMetadataVaultTest implements DeletedMessageM
             cassandra.getConf()
                 .registerScenario(fail()
                     .times(1)
-                    .whenQueryStartsWith("DELETE FROM userperbucket WHERE bucketName=:bucketname"));
+                    .whenQueryStartsWith("DELETE FROM userperbucket WHERE bucketname=:bucketname"));
             Mono.from(testee.store(DELETED_MESSAGE)).block();
 
             try {
