@@ -538,16 +538,16 @@ class DistributedTaskManagerTest implements TaskManagerContract {
         cassandra.getConf().registerScenario(Scenario.combine(
             executeNormally()
                 .times(2) // submit + inProgress
-                .whenQueryStartsWith("INSERT INTO eventStore"),
+                .whenQueryStartsWith("INSERT INTO eventstore"),
             executeNormally()
                 .times(2) // submit + inProgress
-                .whenQueryStartsWith("INSERT INTO taskExecutionDetailsProjection"),
+                .whenQueryStartsWith("INSERT INTO taskexecutiondetailsprojection"),
             fail()
                 .forever()
-                .whenQueryStartsWith("INSERT INTO eventStore"),
+                .whenQueryStartsWith("INSERT INTO eventstore"),
             fail()
                 .forever()
-                .whenQueryStartsWith("INSERT INTO taskExecutionDetailsProjection")));
+                .whenQueryStartsWith("INSERT INTO taskexecutiondetailsprojection")));
         taskManager.submit(new FailedTask());
 
         Thread.sleep(1000);

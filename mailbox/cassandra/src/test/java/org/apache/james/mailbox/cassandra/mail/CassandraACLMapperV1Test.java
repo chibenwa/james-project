@@ -116,7 +116,7 @@ class CassandraACLMapperV1Test extends CassandraACLMapperContract {
             .registerScenario(awaitOn(barrier)
                 .thenExecuteNormally()
                 .times(2)
-                .whenQueryStartsWith("SELECT acl,version FROM acl WHERE id=:id;"));
+                .whenQueryStartsWith("SELECT acl,version FROM acl"));
 
         MailboxACL.EntryKey keyBob = new MailboxACL.EntryKey("bob", MailboxACL.NameType.user, false);
         MailboxACL.Rfc4314Rights rights = new MailboxACL.Rfc4314Rights(MailboxACL.Right.Read);
@@ -144,7 +144,7 @@ class CassandraACLMapperV1Test extends CassandraACLMapperContract {
             .registerScenario(awaitOn(barrier)
                 .thenExecuteNormally()
                 .times(2)
-                .whenQueryStartsWith("SELECT acl,version FROM acl WHERE id=:id;"));
+                .whenQueryStartsWith("SELECT acl,version FROM acl"));
 
         MailboxACL.EntryKey keyBob = new MailboxACL.EntryKey("bob", MailboxACL.NameType.user, false);
         MailboxACL.EntryKey keyAlice = new MailboxACL.EntryKey("alice", MailboxACL.NameType.user, false);

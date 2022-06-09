@@ -134,7 +134,7 @@ class CassandraMessageIdMapperTest extends MessageIdMapperTest {
             cassandra.getConf()
                 .registerScenario(fail()
                     .forever()
-                    .whenQueryStartsWith("UPDATE messageV3"));
+                    .whenQueryStartsWith("UPDATE messagev3"));
 
             try {
                 message1.setUid(mapperProvider.generateMessageUid());
@@ -158,7 +158,7 @@ class CassandraMessageIdMapperTest extends MessageIdMapperTest {
             cassandra.getConf()
                 .registerScenario(fail()
                     .forever()
-                    .whenQueryStartsWith("INSERT INTO blobParts (id,chunkNumber,data) VALUES (:id,:chunkNumber,:data);"));
+                    .whenQueryStartsWith("INSERT INTO blobparts (id,chunknumber,data)"));
 
             try {
                 message1.setUid(mapperProvider.generateMessageUid());
@@ -182,7 +182,7 @@ class CassandraMessageIdMapperTest extends MessageIdMapperTest {
             cassandra.getConf()
                 .registerScenario(fail()
                     .forever()
-                    .whenQueryStartsWith("INSERT INTO blobs (id,position) VALUES (:id,:position);"));
+                    .whenQueryStartsWith("INSERT INTO blobs (id,position) VALUES (:id,:position)"));
 
             try {
                 message1.setUid(mapperProvider.generateMessageUid());
@@ -206,7 +206,7 @@ class CassandraMessageIdMapperTest extends MessageIdMapperTest {
             cassandra.getConf()
                 .registerScenario(fail()
                     .forever()
-                    .whenQueryStartsWith("INSERT INTO imapUidTable"));
+                    .whenQueryStartsWith("INSERT INTO imapuidtable"));
 
             try {
                 message1.setUid(mapperProvider.generateMessageUid());
@@ -230,7 +230,7 @@ class CassandraMessageIdMapperTest extends MessageIdMapperTest {
             cassandra.getConf()
                 .registerScenario(fail()
                     .forever()
-                    .whenQueryStartsWith("INSERT INTO messageIdTable (mailboxId,uid,modSeq,messageId,flagAnswered,flagDeleted,flagDraft,flagFlagged,flagRecent,flagSeen,flagUser,userFlags)"));
+                    .whenQueryStartsWith("INSERT INTO messageidtable"));
 
             try {
                 message1.setUid(mapperProvider.generateMessageUid());
@@ -258,7 +258,7 @@ class CassandraMessageIdMapperTest extends MessageIdMapperTest {
             cassandra.getConf()
                 .registerScenario(fail()
                     .times(5)
-                    .whenQueryStartsWith("INSERT INTO messageIdTable (mailboxId,uid,modSeq,messageId,flagAnswered,flagDeleted,flagDraft,flagFlagged,flagRecent,flagSeen,flagUser,userFlags)"));
+                    .whenQueryStartsWith("INSERT INTO messageidtable"));
 
             message1.setUid(mapperProvider.generateMessageUid());
             message1.setModSeq(mapperProvider.generateModSeq(benwaInboxMailbox));
