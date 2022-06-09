@@ -123,7 +123,7 @@ class CassandraMessageIdMapperTest extends MessageIdMapperTest {
             .block();
 
         assertThat(statementRecorder.listExecutedStatements(
-            StatementRecorder.Selector.preparedStatementStartingWith("SELECT * FROM imapUidTable")))
+            StatementRecorder.Selector.preparedStatementStartingWith("SELECT * FROM imapuidtable")))
             .hasSize(1);
     }
 
