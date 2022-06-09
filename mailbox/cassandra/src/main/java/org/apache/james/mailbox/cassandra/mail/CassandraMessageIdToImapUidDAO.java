@@ -303,7 +303,11 @@ public class CassandraMessageIdToImapUidDAO {
     }
 
     public Mono<Boolean> updateMetadata(ComposedMessageId id, UpdatedFlags updatedFlags, ModSeq previousModeq) {
-        return cassandraAsyncExecutor.executeReturnApplied(updateBoundStatement(id, updatedFlags, previousModeq));
+        if (cassandraConfiguration.isMessageWriteStrongConsistency()) {
+            return cassandraAsyncExecutor.executeReturnApplied(updateBoundStatement(id, updatedFlags, previousModeq));
+        } else {
+            return cassandraAsyncExecutor.executeVoid(updateBoundStatement(id, updatedFlags, previousModeq)).thenReturn(true);
+        }
     }
 
     private BoundStatement updateBoundStatement(ComposedMessageId id, UpdatedFlags updatedFlags, ModSeq previousModeq) {
