@@ -23,7 +23,6 @@ package org.apache.james.user.cassandra;
 import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.bindMarker;
 import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.deleteFrom;
 import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.insertInto;
-import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.literal;
 import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.selectFrom;
 import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.update;
 import static org.apache.james.user.cassandra.tables.CassandraUserTable.ALGORITHM;
@@ -53,6 +52,7 @@ import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.primitives.Ints;
 
 import reactor.core.publisher.Flux;
@@ -69,6 +69,8 @@ public class CassandraUsersDAO implements UsersDAO {
     private final PreparedStatement insertStatement;
     private final PreparedStatement removeAllAuthorizedUsersStatement;
     private final PreparedStatement getAuthorizedUsersStatement;
+    private final PreparedStatement addAuthorizedUsersStatement;
+    private final PreparedStatement removeAuthorizedUsersStatement;
 
     private final Algorithm preferredAlgorithm;
     private final HashingMode fallbackHashingMode;
@@ -122,6 +124,16 @@ public class CassandraUsersDAO implements UsersDAO {
             .columns(AUTHORIZED_USERS)
             .whereColumn(NAME).isEqualTo(bindMarker(NAME))
             .build());
+
+        this.addAuthorizedUsersStatement = session.prepare(update(TABLE_NAME)
+            .append(AUTHORIZED_USERS, bindMarker(AUTHORIZED_USERS))
+            .whereColumn(NAME).isEqualTo(bindMarker(NAME))
+            .build());
+
+        this.removeAuthorizedUsersStatement = session.prepare(update(TABLE_NAME)
+            .remove(AUTHORIZED_USERS, bindMarker(AUTHORIZED_USERS))
+            .whereColumn(NAME).isEqualTo(bindMarker(NAME))
+            .build());
     }
 
     @VisibleForTesting
@@ -161,19 +173,15 @@ public class CassandraUsersDAO implements UsersDAO {
     }
 
     public Mono<Void> addAuthorizedUsers(Username baseUser, Username userWithAccess) {
-        return executor.executeVoid(
-            update(TABLE_NAME)
-                .appendSetElement(AUTHORIZED_USERS, literal(userWithAccess.asString()))
-                .whereColumn(NAME).isEqualTo(literal(baseUser.asString()))
-                .build());
+        return executor.executeVoid(addAuthorizedUsersStatement.bind()
+            .setString(NAME, baseUser.asString())
+            .setSet(AUTHORIZED_USERS, ImmutableSet.of(userWithAccess.asString()), String.class));
     }
 
     public Mono<Void> removeAuthorizedUser(Username baseUser, Username userWithAccess) {
-        return executor.executeVoid(
-            update(TABLE_NAME)
-                .removeSetElement(AUTHORIZED_USERS, literal(userWithAccess.asString()))
-                .whereColumn(NAME).isEqualTo(literal(baseUser.asString()))
-                .build());
+        return executor.executeVoid(removeAuthorizedUsersStatement.bind()
+            .setString(NAME, baseUser.asString())
+            .setSet(AUTHORIZED_USERS, ImmutableSet.of(userWithAccess.asString()), String.class));
     }
 
     public Mono<Void> removeAllAuthorizedUsers(Username baseUser) {
