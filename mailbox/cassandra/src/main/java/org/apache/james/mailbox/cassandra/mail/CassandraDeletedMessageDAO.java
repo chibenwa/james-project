@@ -40,6 +40,7 @@ import org.apache.james.mailbox.model.MessageRange;
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.BatchStatement;
+import com.datastax.oss.driver.api.core.cql.BatchStatementBuilder;
 import com.datastax.oss.driver.api.core.cql.BatchType;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 import com.datastax.oss.driver.api.core.cql.Row;
@@ -144,11 +145,11 @@ public class CassandraDeletedMessageDAO {
             Stream<BatchStatement> batches = Lists.partition(uids, BATCH_STATEMENT_WINDOW)
                 .stream()
                 .map(uidBatch -> {
-                    BatchStatement batch = BatchStatement.newInstance(BatchType.UNLOGGED);
-                    uidBatch.forEach(uid -> batch.add(addStatement.bind()
+                    BatchStatementBuilder batch = new BatchStatementBuilder(BatchType.UNLOGGED);
+                    uidBatch.forEach(uid -> batch.addStatement(addStatement.bind()
                         .setUuid(MAILBOX_ID, cassandraId.asUuid())
                         .setLong(UID, uid.asLong())));
-                    return batch;
+                    return batch.build();
                 });
             return Flux.fromStream(batches)
                 .flatMap(cassandraAsyncExecutor::executeVoid, LOW_CONCURRENCY)
@@ -171,11 +172,11 @@ public class CassandraDeletedMessageDAO {
             Stream<BatchStatement> batches = Lists.partition(uids, BATCH_STATEMENT_WINDOW)
                 .stream()
                 .map(uidBatch -> {
-                    BatchStatement batch = BatchStatement.newInstance(BatchType.UNLOGGED);
-                    uidBatch.forEach(uid -> batch.add(deleteStatement.bind()
+                    BatchStatementBuilder batch = new BatchStatementBuilder(BatchType.UNLOGGED);
+                    uidBatch.forEach(uid -> batch.addStatement(deleteStatement.bind()
                         .setUuid(MAILBOX_ID, cassandraId.asUuid())
                         .setLong(UID, uid.asLong())));
-                    return batch;
+                    return batch.build();
                 });
             return Flux.fromStream(batches)
                 .flatMap(cassandraAsyncExecutor::executeVoid, LOW_CONCURRENCY)

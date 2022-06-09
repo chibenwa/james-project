@@ -37,6 +37,7 @@ import org.apache.james.mailbox.cassandra.table.CassandraMailboxRecentsTable;
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.BatchStatement;
+import com.datastax.oss.driver.api.core.cql.BatchStatementBuilder;
 import com.datastax.oss.driver.api.core.cql.BatchType;
 import com.datastax.oss.driver.api.core.cql.BoundStatement;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
@@ -68,27 +69,31 @@ public class CassandraMailboxRecentsDAO {
         return session.prepare(
             selectFrom(CassandraMailboxRecentsTable.TABLE_NAME)
                 .column(CassandraMailboxRecentsTable.RECENT_MESSAGE_UID)
-                .where(column(CassandraMailboxRecentsTable.MAILBOX_ID).isEqualTo(bindMarker(CassandraMailboxRecentsTable.MAILBOX_ID))).build());
+                .where(column(CassandraMailboxRecentsTable.MAILBOX_ID).isEqualTo(bindMarker(CassandraMailboxRecentsTable.MAILBOX_ID)))
+                .build());
     }
 
     private PreparedStatement createDeleteStatement(CqlSession session) {
         return session.prepare(
             deleteFrom(CassandraMailboxRecentsTable.TABLE_NAME)
-                .where(column(CassandraMailboxRecentsTable.MAILBOX_ID).isEqualTo(bindMarker(CassandraMailboxRecentsTable.MAILBOX_ID)),
-                    column(CassandraMailboxRecentsTable.RECENT_MESSAGE_UID).isEqualTo(bindMarker(CassandraMailboxRecentsTable.RECENT_MESSAGE_UID))).build());
+                .whereColumn(CassandraMailboxRecentsTable.MAILBOX_ID).isEqualTo(bindMarker(CassandraMailboxRecentsTable.MAILBOX_ID))
+                .whereColumn(CassandraMailboxRecentsTable.RECENT_MESSAGE_UID).isEqualTo(bindMarker(CassandraMailboxRecentsTable.RECENT_MESSAGE_UID))
+                .build());
     }
 
     private PreparedStatement createDeleteAllStatement(CqlSession session) {
         return session.prepare(
             deleteFrom(CassandraMailboxRecentsTable.TABLE_NAME)
-                .where(column(CassandraMailboxRecentsTable.MAILBOX_ID).isEqualTo(bindMarker(CassandraMailboxRecentsTable.MAILBOX_ID))).build());
+                .where(column(CassandraMailboxRecentsTable.MAILBOX_ID).isEqualTo(bindMarker(CassandraMailboxRecentsTable.MAILBOX_ID)))
+                .build());
     }
 
     private PreparedStatement createAddStatement(CqlSession session) {
         return session.prepare(
             insertInto(CassandraMailboxRecentsTable.TABLE_NAME)
                 .value(CassandraMailboxRecentsTable.MAILBOX_ID, bindMarker(CassandraMailboxRecentsTable.MAILBOX_ID))
-                .value(CassandraMailboxRecentsTable.RECENT_MESSAGE_UID, bindMarker(CassandraMailboxRecentsTable.RECENT_MESSAGE_UID)).build());
+                .value(CassandraMailboxRecentsTable.RECENT_MESSAGE_UID, bindMarker(CassandraMailboxRecentsTable.RECENT_MESSAGE_UID))
+                .build());
     }
 
     public Flux<MessageUid> getRecentMessageUidsInMailbox(CassandraId mailboxId) {
@@ -117,11 +122,11 @@ public class CassandraMailboxRecentsDAO {
             Stream<BatchStatement> batches = Lists.partition(uids, BATCH_STATEMENT_WINDOW)
                 .stream()
                 .map(uidBatch -> {
-                    BatchStatement batch = BatchStatement.newInstance(BatchType.UNLOGGED);
-                    uidBatch.forEach(uid -> batch.add(deleteStatement.bind()
+                    BatchStatementBuilder batch = new BatchStatementBuilder(BatchType.UNLOGGED);
+                    uidBatch.forEach(uid -> batch.addStatement(deleteStatement.bind()
                         .setUuid(CassandraMailboxRecentsTable.MAILBOX_ID, mailboxId.asUuid())
                         .setLong(CassandraMailboxRecentsTable.RECENT_MESSAGE_UID, uid.asLong())));
-                    return batch;
+                    return batch.build();
                 });
             return Flux.fromStream(batches)
                 .flatMap(cassandraAsyncExecutor::executeVoid, LOW_CONCURRENCY)
@@ -149,11 +154,11 @@ public class CassandraMailboxRecentsDAO {
             Stream<BatchStatement> batches = Lists.partition(uids, BATCH_STATEMENT_WINDOW)
                 .stream()
                 .map(uidBatch -> {
-                    BatchStatement batch = BatchStatement.newInstance(BatchType.UNLOGGED);
-                    uidBatch.forEach(uid -> batch.add(addStatement.bind()
+                    BatchStatementBuilder batch = new BatchStatementBuilder(BatchType.UNLOGGED);
+                    uidBatch.forEach(uid -> batch.addStatement(addStatement.bind()
                         .setUuid(CassandraMailboxRecentsTable.MAILBOX_ID, mailboxId.asUuid())
                         .setLong(CassandraMailboxRecentsTable.RECENT_MESSAGE_UID, uid.asLong())));
-                    return batch;
+                    return batch.build();
                 });
             return Flux.fromStream(batches)
                 .flatMap(cassandraAsyncExecutor::executeVoid, LOW_CONCURRENCY)
