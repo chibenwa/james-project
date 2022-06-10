@@ -26,6 +26,7 @@ import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 
 import com.datastax.dse.driver.api.core.cql.reactive.ReactiveResultSet;
 import com.datastax.dse.driver.api.core.cql.reactive.ReactiveRow;
@@ -101,7 +102,17 @@ public class Scenario {
             } catch (InterruptedException e) {
                 //DO NOTHING
             }
-            throw new InjectedFailureException();
+            s.onSubscribe(new Subscription() {
+                @Override
+                public void request(long n) {
+                    s.onError(new InjectedFailureException());
+                }
+
+                @Override
+                public void cancel() {
+
+                }
+            });
         }
     }
 
