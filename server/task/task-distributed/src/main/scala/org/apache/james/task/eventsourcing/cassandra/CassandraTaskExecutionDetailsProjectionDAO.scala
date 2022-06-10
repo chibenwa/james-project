@@ -30,7 +30,9 @@ import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor
 import org.apache.james.server.task.json.JsonTaskAdditionalInformationSerializer
 import org.apache.james.task._
 import org.apache.james.task.eventsourcing.cassandra.CassandraTaskExecutionDetailsProjectionTable._
+import org.apache.james.util.ReactorUtils
 import reactor.core.publisher.{Flux, Mono}
+import reactor.core.scala.publisher.SMono
 
 import scala.compat.java8.OptionConverters._
 
@@ -60,7 +62,9 @@ class CassandraTaskExecutionDetailsProjectionDAO @Inject()(session: CqlSession, 
 
   private val listStatement = session.prepare(selectFrom(TABLE_NAME).all().build())
 
-  def saveDetails(details: TaskExecutionDetails): Mono[Void] = {
+  def saveDetails(details: TaskExecutionDetails): Mono[Void] =
+    Mono.from(serializeAdditionalInformation(details)
+      .flatMap(serializeAdditionalInformation => {
     val boundStatement =  insertStatement.bind()
       .setUuid(TASK_ID, details.getTaskId.getValue)
       .setString(TYPE, details.getType.asString())
@@ -75,15 +79,15 @@ class CassandraTaskExecutionDetailsProjectionDAO @Inject()(session: CqlSession, 
       (statement: BoundStatement) => bindOptionalUDTValue(statement, CANCELED_DATE, CassandraZonedDateTimeModule.toUDT(dateType, details.getCanceledDate)),
       (statement: BoundStatement) => bindOptionalStringValue(statement, CANCEL_REQUESTED_NODE, details.getCancelRequestedNode.map[String](_.asString)),
       (statement: BoundStatement) => bindOptionalUDTValue(statement, FAILED_DATE, CassandraZonedDateTimeModule.toUDT(dateType, details.getFailedDate)),
-      (statement: BoundStatement) => bindOptionalStringValue(statement, ADDITIONAL_INFORMATION, serializeAdditionalInformation(details)),
+      (statement: BoundStatement) => bindOptionalStringValue(statement, ADDITIONAL_INFORMATION, serializeAdditionalInformation),
     )
 
     val fullyBoundStatement = bindOptionalFieldOperations.foldLeft(boundStatement)((statement, bindFieldOperation) => {
       bindFieldOperation(statement)
     })
 
-    cassandraAsyncExecutor.executeVoid(fullyBoundStatement);
-  }
+    SMono(cassandraAsyncExecutor.executeVoid(fullyBoundStatement))
+  }))
 
   private def bindOptionalStringValue(statement: BoundStatement, fieldName: String, fieldValue: Optional[String]) =
     fieldValue.asScala match {
@@ -97,9 +101,10 @@ class CassandraTaskExecutionDetailsProjectionDAO @Inject()(session: CqlSession, 
       case None => statement
     }
 
-  private def serializeAdditionalInformation(details: TaskExecutionDetails): Optional[String] = details
+  private def serializeAdditionalInformation(details: TaskExecutionDetails): SMono[Optional[String]] = SMono.fromCallable(() =>details
     .getAdditionalInformation
-    .map(jsonTaskAdditionalInformationSerializer.serialize(_))
+    .map(jsonTaskAdditionalInformationSerializer.serialize(_)))
+    .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
 
   def readDetails(taskId: TaskId): Mono[TaskExecutionDetails] = cassandraAsyncExecutor
     .executeSingleRow(selectStatement.bind().setUuid(TASK_ID, taskId.getValue))
