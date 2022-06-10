@@ -29,7 +29,9 @@ trait Subscriber {
 trait ReactiveSubscriber extends Subscriber {
   def handleReactive(event: Event): Publisher[Void]
 
-  override def handle(event: Event) : Unit = SMono(handleReactive(event)).block()
+  override def handle(event: Event) : Unit = SMono(handleReactive(event))
+    .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
+    .block()
 }
 
 object ReactiveSubscriber {

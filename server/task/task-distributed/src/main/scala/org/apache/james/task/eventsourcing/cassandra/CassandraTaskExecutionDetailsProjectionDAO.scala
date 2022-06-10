@@ -18,21 +18,24 @@
  ****************************************************************/
 package org.apache.james.task.eventsourcing.cassandra
 
-import java.util.Optional
-
 import com.datastax.oss.driver.api.core.CqlSession
 import com.datastax.oss.driver.api.core.cql.{BoundStatement, Row}
 import com.datastax.oss.driver.api.core.data.UdtValue
 import com.datastax.oss.driver.api.querybuilder.QueryBuilder.{bindMarker, insertInto, selectFrom}
-import javax.inject.Inject
+import com.google.common.collect.ImmutableList
 import org.apache.james.backends.cassandra.init.{CassandraTypesProvider, CassandraZonedDateTimeModule}
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor
 import org.apache.james.server.task.json.JsonTaskAdditionalInformationSerializer
 import org.apache.james.task._
 import org.apache.james.task.eventsourcing.cassandra.CassandraTaskExecutionDetailsProjectionTable._
 import reactor.core.publisher.{Flux, Mono}
+import reactor.core.scala.publisher.SMono
+import reactor.core.scheduler.Schedulers
 
+import java.util.Optional
+import javax.inject.Inject
 import scala.compat.java8.OptionConverters._
+import scala.jdk.CollectionConverters._
 
 class CassandraTaskExecutionDetailsProjectionDAO @Inject()(session: CqlSession, typesProvider: CassandraTypesProvider, jsonTaskAdditionalInformationSerializer: JsonTaskAdditionalInformationSerializer) {
   private val cassandraAsyncExecutor = new CassandraAsyncExecutor(session)
@@ -68,21 +71,22 @@ class CassandraTaskExecutionDetailsProjectionDAO @Inject()(session: CqlSession, 
       .setUdtValue(SUBMITTED_DATE, CassandraZonedDateTimeModule.toUDT(dateType, details.getSubmittedDate))
       .setString(SUBMITTED_NODE, details.getSubmittedNode.asString)
 
-    val bindOptionalFieldOperations = List(
-      (statement: BoundStatement) => bindOptionalUDTValue(statement, STARTED_DATE, CassandraZonedDateTimeModule.toUDT(dateType, details.getStartedDate)),
-      (statement: BoundStatement) => bindOptionalStringValue(statement, RAN_NODE, details.getRanNode.map[String](_.asString)),
-      (statement: BoundStatement) => bindOptionalUDTValue(statement, COMPLETED_DATE, CassandraZonedDateTimeModule.toUDT(dateType, details.getCompletedDate)),
-      (statement: BoundStatement) => bindOptionalUDTValue(statement, CANCELED_DATE, CassandraZonedDateTimeModule.toUDT(dateType, details.getCanceledDate)),
-      (statement: BoundStatement) => bindOptionalStringValue(statement, CANCEL_REQUESTED_NODE, details.getCancelRequestedNode.map[String](_.asString)),
-      (statement: BoundStatement) => bindOptionalUDTValue(statement, FAILED_DATE, CassandraZonedDateTimeModule.toUDT(dateType, details.getFailedDate)),
-      (statement: BoundStatement) => bindOptionalStringValue(statement, ADDITIONAL_INFORMATION, serializeAdditionalInformation(details)),
-    )
-
-    val fullyBoundStatement = bindOptionalFieldOperations.foldLeft(boundStatement)((statement, bindFieldOperation) => {
-      bindFieldOperation(statement)
-    })
-
-    cassandraAsyncExecutor.executeVoid(fullyBoundStatement);
+    SMono.fromCallable(() => serializeAdditionalInformation(details))
+      .map(serializeAdditionalInformationResult => ImmutableList.builder()
+        .add((statement: BoundStatement) => bindOptionalUDTValue(statement, STARTED_DATE, CassandraZonedDateTimeModule.toUDT(dateType, details.getStartedDate)))
+        .add((statement: BoundStatement) => bindOptionalStringValue(statement, RAN_NODE, details.getRanNode.map[String](_.asString)))
+        .add((statement: BoundStatement) => bindOptionalUDTValue(statement, COMPLETED_DATE, CassandraZonedDateTimeModule.toUDT(dateType, details.getCompletedDate)))
+        .add((statement: BoundStatement) => bindOptionalUDTValue(statement, CANCELED_DATE, CassandraZonedDateTimeModule.toUDT(dateType, details.getCanceledDate)))
+        .add((statement: BoundStatement) => bindOptionalStringValue(statement, CANCEL_REQUESTED_NODE, details.getCancelRequestedNode.map[String](_.asString)))
+        .add((statement: BoundStatement) => bindOptionalUDTValue(statement, FAILED_DATE, CassandraZonedDateTimeModule.toUDT(dateType, details.getFailedDate)))
+        .add((statement: BoundStatement) => bindOptionalStringValue(statement, ADDITIONAL_INFORMATION, serializeAdditionalInformationResult))
+        .build)
+      .subscribeOn(Schedulers.elastic())
+      .map(list => list.asScala.foldLeft(boundStatement)((statement, bindFieldOperation) => {
+        bindFieldOperation(statement)
+      }))
+      .flatMap(fullyBoundStatement => SMono.fromPublisher(cassandraAsyncExecutor.executeVoid(fullyBoundStatement)))
+      .asJava()
   }
 
   private def bindOptionalStringValue(statement: BoundStatement, fieldName: String, fieldValue: Optional[String]) =
