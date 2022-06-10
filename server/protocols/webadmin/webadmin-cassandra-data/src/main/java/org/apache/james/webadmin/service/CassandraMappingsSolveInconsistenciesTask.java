@@ -35,6 +35,7 @@ import org.apache.james.task.TaskType;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 public class CassandraMappingsSolveInconsistenciesTask implements Task {
     public static final TaskType TYPE = TaskType.of("cassandra-mappings-solve-inconsistencies");
@@ -78,7 +79,8 @@ public class CassandraMappingsSolveInconsistenciesTask implements Task {
     public Result run() {
         return cassandraMappingsSourcesDAO.removeAllData()
             .doOnError(e -> LOGGER.error("Error while cleaning up data in mappings sources projection table"))
-            .then(Mono.fromCallable(mappingsSourcesMigration::run))
+            .then(Mono.fromCallable(mappingsSourcesMigration::run)
+                .subscribeOn(Schedulers.elastic()))
             .onErrorResume(e -> Mono.just(Result.PARTIAL))
             .block();
     }
