@@ -38,7 +38,9 @@ import org.apache.james.mailrepository.api.MailRepositoryUrl;
 import org.apache.james.mailrepository.cassandra.CassandraMailRepositoryMailDaoV2.MailDTO;
 import org.apache.james.server.core.MailImpl;
 import org.apache.james.server.core.MimeMessageWrapper;
+import org.apache.james.util.ReactorUtils;
 import org.apache.mailet.Mail;
+import org.reactivestreams.Publisher;
 
 import com.github.fge.lambdas.Throwing;
 
@@ -153,7 +155,14 @@ public class CassandraMailRepository implements MailRepository {
 
     @Override
     public long size() {
-        return countDAO.getCount(url).block();
+        return countDAO.getCount(url)
+            .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
+            .block();
+    }
+
+    @Override
+    public Publisher<Long> sizeAsReactive() {
+        return countDAO.getCount(url);
     }
 
     @Override

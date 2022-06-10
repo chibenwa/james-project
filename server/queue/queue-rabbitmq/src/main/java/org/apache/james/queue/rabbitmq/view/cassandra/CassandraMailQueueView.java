@@ -36,6 +36,7 @@ import org.apache.james.queue.rabbitmq.MailQueueName;
 import org.apache.james.queue.rabbitmq.view.api.DeleteCondition;
 import org.apache.james.queue.rabbitmq.view.api.MailQueueView;
 import org.apache.james.queue.rabbitmq.view.cassandra.model.EnqueuedItemWithSlicingContext;
+import org.apache.james.util.ReactorUtils;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -119,6 +120,7 @@ public class CassandraMailQueueView implements MailQueueView<CassandraMailQueueB
     public long getSize() {
         return cassandraMailQueueBrowser.browseReferences(mailQueueName)
             .count()
+            .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
             .block();
     }
 

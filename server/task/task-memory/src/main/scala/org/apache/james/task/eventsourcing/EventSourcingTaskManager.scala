@@ -102,7 +102,7 @@ class EventSourcingTaskManager @Inject @VisibleForTesting private[eventsourcing]
   @throws(classOf[ReachedTimeoutException])
   override def await(id: TaskId, timeout: Duration): TaskExecutionDetails = {
     try {
-      val details = Mono.fromSupplier[TaskExecutionDetails](() => getExecutionDetails(id))
+      val details = Mono.from(executionDetailsProjection.loadReactive(id))
         .filter(_.getStatus.isFinished)
 
       val findEvent = Flux.from(terminationSubscriber.listenEvents)
