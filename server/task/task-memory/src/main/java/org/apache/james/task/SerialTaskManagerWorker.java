@@ -69,7 +69,7 @@ public class SerialTaskManagerWorker implements TaskManagerWorker {
     @Override
     public Mono<Task.Result> executeTask(TaskWithId taskWithId) {
         if (!cancelledTasks.remove(taskWithId.getId())) {
-            Mono<Task.Result> taskMono = Mono.fromCallable(() -> runWithMdc(taskWithId, listener)).subscribeOn(taskExecutor);
+            Mono<Task.Result> taskMono = runWithMdc(taskWithId, listener).subscribeOn(taskExecutor);
             CompletableFuture<Task.Result> future = taskMono.toFuture();
             runningTask.set(Tuples.of(taskWithId.getId(), future));
 
@@ -109,12 +109,12 @@ public class SerialTaskManagerWorker implements TaskManagerWorker {
     }
 
 
-    private Task.Result runWithMdc(TaskWithId taskWithId, Listener listener) {
-        return MDCBuilder.withMdc(
-            MDCBuilder.create()
-                .addToContext(Task.TASK_ID, taskWithId.getId().asString())
-                .addToContext(Task.TASK_TYPE, taskWithId.getTask().type().asString()),
-            () -> run(taskWithId, listener).block());
+    private Mono<Task.Result> runWithMdc(TaskWithId taskWithId, Listener listener) {
+        return run(taskWithId, listener)
+            .contextWrite(ReactorUtils.context("task",
+                MDCBuilder.create()
+                    .addToContext(Task.TASK_ID, taskWithId.getId().asString())
+                    .addToContext(Task.TASK_TYPE, taskWithId.getTask().type().asString())));
     }
 
     private Mono<Task.Result> run(TaskWithId taskWithId, Listener listener) {
