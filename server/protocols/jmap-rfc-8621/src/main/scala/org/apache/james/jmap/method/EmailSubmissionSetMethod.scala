@@ -47,6 +47,7 @@ import org.apache.james.queue.api.MailQueueFactory.SPOOL
 import org.apache.james.queue.api.{MailQueue, MailQueueFactory}
 import org.apache.james.rrt.api.CanSendFrom
 import org.apache.james.server.core.{MailImpl, MimeMessageSource, MimeMessageWrapper}
+import org.apache.james.util.ReactorUtils
 import org.apache.mailet.{Attribute, AttributeName, AttributeValue}
 import org.slf4j.{Logger, LoggerFactory}
 import play.api.libs.json._
@@ -254,7 +255,8 @@ class EmailSubmissionSetMethod @Inject()(serializer: EmailSubmissionSetSerialize
       submissionId = EmailSubmissionId.generate
       message <- SMono.fromTry(toMimeMessage(submissionId.value, message))
       envelope <- SMono.fromTry(resolveEnvelope(message, request.envelope))
-      _ <- SMono.fromTry(validate(mailboxSession)(message, envelope))
+      _ <- SMono.fromCallable(() => SMono.fromTry(validate(mailboxSession)(message, envelope))).flatMap(a => a)
+        .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
       mail = {
         val mailImpl = MailImpl.builder()
           .name(submissionId.value)

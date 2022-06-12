@@ -130,11 +130,12 @@ class DefaultIdentitySupplier @Inject()(canSendFrom: CanSendFrom, usersRepositor
 // Using the custom identities we can stores deltas of the default (server-set) identities allowing to modify them.
 class IdentityRepository @Inject()(customIdentityDao: CustomIdentityDAO, identityFactory: DefaultIdentitySupplier) {
   def save(user: Username, creationRequest: IdentityCreationRequest): Publisher[Identity] =
-    if (identityFactory.userCanSendFrom(user, creationRequest.email)) {
-      customIdentityDao.save(user, creationRequest)
-    } else {
-      SMono.error(ForbiddenSendFromException(creationRequest.email))
-    }
+    SMono.fromCallable(() => identityFactory.userCanSendFrom(user, creationRequest.email))
+      .flatMap(canSend => if (canSend) {
+        SMono(customIdentityDao.save(user, creationRequest))
+      } else {
+        SMono.error(ForbiddenSendFromException(creationRequest.email))
+      })
 
   def list(user: Username): Publisher[Identity] =
     listServerSetIdentity(user)

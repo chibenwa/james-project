@@ -90,6 +90,7 @@ public class BlobManagerImpl implements BlobManager {
             .collect(ImmutableList.toImmutableList());
 
         Flux<Blob> attachmentOrMessage = Mono.fromCallable(() -> attachmentManager.getAttachments(notEncodingUploadsAsAttachmentIds, session))
+            .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
             .flatMapIterable(Function.identity())
             .map(attachment -> loadAttachmentContent(attachment, session))
             .collect(ImmutableList.toImmutableList())
@@ -113,6 +114,7 @@ public class BlobManagerImpl implements BlobManager {
         try {
             return getBlobFromUpload(blobId, mailboxSession)
                 .switchIfEmpty(Mono.fromCallable(() -> getBlobFromAttachment(blobId, mailboxSession))
+                    .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
                     .handle(ReactorUtils.publishIfPresent()))
                 .switchIfEmpty(getBlobFromMessage(blobId, mailboxSession))
                 .switchIfEmpty(Mono.error(() -> new BlobNotFoundException(blobId)))
