@@ -267,7 +267,7 @@ class ConsistencyTasksIntegrationTest {
         server.getProbe(TestingSessionProbe.class)
             .getTestingSession().registerScenario(fail()
             .forever()
-            .whenQueryStartsWith("UPDATE mailboxcounters SET count=count+1,unseen=unseen+1"));
+            .whenQueryStartsWith("UPDATE mailboxcounters SET count=count+1, unseen=unseen+"));
 
         smtpMessageSender.connect(LOCALHOST_IP, server.getProbe(SmtpGuiceProbe.class).getSmtpPort())
             .sendMessageWithHeaders(ALICE.asString(), BOB.asString(), MESSAGE);
@@ -277,9 +277,8 @@ class ConsistencyTasksIntegrationTest {
                 .getRepositoryMailCount(MailRepositoryUrl.from("cassandra://var/mail/error/"))).isGreaterThanOrEqualTo(1));
 
         server.getProbe(TestingSessionProbe.class)
-            .getTestingSession().registerScenario(executeNormally()
-            .forever()
-            .whenQueryStartsWith("UPDATE mailboxcounters SET count=count+1,unseen=unseen+1"));
+            .getTestingSession()
+            .resetInstrumentation();
 
         String taskId = with()
             .basePath("/mailboxes")
