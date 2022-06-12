@@ -324,8 +324,10 @@ public interface DockerElasticSearch {
     }
 
     default void flushIndices() {
-        if (esAPI().flush().status() != HttpStatus.SC_OK) {
-            throw new IllegalStateException("Failed to flush ElasticSearch");
+        try {
+            Thread.sleep(10000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
     }
 
@@ -336,6 +338,12 @@ public interface DockerElasticSearch {
 
     default ElasticSearchConfiguration.Builder configurationBuilder(Optional<Duration> requestTimeout) {
         return ElasticSearchConfiguration.builder()
+            .credential(Optional.of(Credential.of("admin", "admin")))
+            .hostScheme(Optional.of(HostScheme.HTTPS))
+            .sslTrustConfiguration(ElasticSearchConfiguration.SSLConfiguration.builder()
+                .sslStrategy(ElasticSearchConfiguration.SSLConfiguration.SSLValidationStrategy.IGNORE, Optional.empty())
+                .hostNameVerifier(ElasticSearchConfiguration.SSLConfiguration.HostNameVerifier.ACCEPT_ANY_HOSTNAME)
+                .build())
             .addHost(getHttpHost())
             .requestTimeout(requestTimeout);
     }

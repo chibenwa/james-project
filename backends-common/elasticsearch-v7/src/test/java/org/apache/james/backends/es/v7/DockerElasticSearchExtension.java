@@ -26,13 +26,14 @@ import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.api.extension.ParameterResolver;
 
-public class DockerElasticSearchExtension implements AfterEachCallback, BeforeEachCallback, ParameterResolver {
+public class DockerElasticSearchExtension implements BeforeEachCallback, AfterEachCallback, ParameterResolver {
 
     private final DockerElasticSearch elasticSearch = DockerElasticSearchSingleton.INSTANCE;
 
     @Override
     public void afterEach(ExtensionContext context) {
-        elasticSearch.cleanUpData();
+        elasticSearch.stop();
+        elasticSearch.start();
     }
 
     @Override

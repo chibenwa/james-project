@@ -24,7 +24,7 @@ public interface Images {
     String RABBITMQ = "rabbitmq:3.9.18-management";
     String ELASTICSEARCH_2 = "elasticsearch:2.4.6";
     String ELASTICSEARCH_6 = "docker.elastic.co/elasticsearch/elasticsearch:6.3.2";
-    String ELASTICSEARCH_7 = "docker.elastic.co/elasticsearch/elasticsearch:7.10.2";
+    String ELASTICSEARCH_7 = "opensearchproject/opensearch:1.3.3";
     String NGINX = "nginx:1.22";
     String TIKA = "apache/tika:1.28.2";
     String SPAMASSASSIN = "instantlinux/spamassassin:3.4.6-1";
