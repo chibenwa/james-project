@@ -20,6 +20,7 @@
 package org.apache.james.queue.rabbitmq;
 
 import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.selectFrom;
+import static java.time.temporal.ChronoUnit.DAYS;
 import static java.time.temporal.ChronoUnit.HOURS;
 import static org.apache.james.backends.cassandra.Scenario.Builder.executeNormally;
 import static org.apache.james.backends.cassandra.Scenario.Builder.fail;
@@ -104,7 +105,7 @@ class RabbitMQMailQueueTest {
     private static final int UPDATE_BROWSE_START_PACE = 2;
     private static final Duration ONE_HOUR_SLICE_WINDOW = Duration.ofHours(1);
     private static final org.apache.james.queue.api.MailQueueName SPOOL = org.apache.james.queue.api.MailQueueName.of("spool");
-    private static final Instant IN_SLICE_1 = Instant.parse("2007-12-03T10:15:30.00Z");
+    private static final Instant IN_SLICE_1 = Instant.now().minus(60, DAYS);
     private static final Instant IN_SLICE_2 = IN_SLICE_1.plus(1, HOURS);
     private static final Instant IN_SLICE_3 = IN_SLICE_1.plus(2, HOURS);
     private static final Instant IN_SLICE_5 = IN_SLICE_1.plus(4, HOURS);
