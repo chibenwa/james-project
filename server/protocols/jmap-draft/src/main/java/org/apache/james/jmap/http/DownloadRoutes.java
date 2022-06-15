@@ -218,6 +218,7 @@ public class DownloadRoutes implements JMAPRoutes {
                 Mono.fromCallable(blob::getStream),
                 stream -> downloadBlob(downloadPath.getName(), response, blob.getSize(), blob.getContentType(), stream),
                 stream -> Mono.fromRunnable(Throwing.runnable(stream::close).sneakyThrow())))
+            .switchIfEmpty(Mono.error(() -> new BlobNotFoundException(BlobId.of(blobId))))
             .onErrorResume(BlobNotFoundException.class, e -> {
                 LOGGER.info("Attachment '{}' not found", blobId, e);
                 return response.status(NOT_FOUND).send();

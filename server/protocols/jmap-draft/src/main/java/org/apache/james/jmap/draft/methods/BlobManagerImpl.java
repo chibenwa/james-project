@@ -92,7 +92,8 @@ public class BlobManagerImpl implements BlobManager {
         Flux<Blob> attachmentOrMessage = Mono.fromCallable(() -> attachmentManager.getAttachments(notEncodingUploadsAsAttachmentIds, session))
             .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
             .flatMapIterable(Function.identity())
-            .map(attachment -> loadAttachmentContent(attachment, session))
+            .flatMap(attachment -> Mono.fromCallable(() -> loadAttachmentContent(attachment, session))
+                .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER))
             .collect(ImmutableList.toImmutableList())
             .flatMapMany(attachmentsBlobs -> {
                 Set<BlobId> attachmentBlobIds = attachmentsBlobs
