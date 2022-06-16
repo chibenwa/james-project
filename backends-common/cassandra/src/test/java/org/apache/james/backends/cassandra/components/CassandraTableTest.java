@@ -36,8 +36,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 
 import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.config.DriverConfig;
+import com.datastax.oss.driver.api.core.config.DriverExecutionProfile;
+import com.datastax.oss.driver.api.core.context.DriverContext;
 import com.datastax.oss.driver.api.core.metadata.schema.KeyspaceMetadata;
 import com.datastax.oss.driver.api.core.metadata.schema.TableMetadata;
 import com.datastax.oss.driver.api.core.type.DataTypes;
@@ -66,6 +70,12 @@ class CassandraTableTest {
         KeyspaceMetadata keyspace = mock(KeyspaceMetadata.class);
         when(keyspace.getTable(NAME)).thenReturn(Optional.empty());
         CqlSession session = mock(CqlSession.class);
+        DriverContext context = mock(DriverContext.class);
+        DriverConfig config = mock(DriverConfig.class);
+        when(session.getContext()).thenReturn(context);
+        when(context.getConfig()).thenReturn(config);
+        when(config.getProfiles()).thenReturn(ImmutableMap.of());
+        when(config.getDefaultProfile()).thenReturn(mock(DriverExecutionProfile.class));
 
         assertThat(TABLE.initialize(keyspace, session, new CassandraTypesProvider(session)))
                 .isEqualByComparingTo(FULL);

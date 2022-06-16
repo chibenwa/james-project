@@ -38,6 +38,9 @@ import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 
 import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.config.DriverConfig;
+import com.datastax.oss.driver.api.core.config.DriverExecutionProfile;
+import com.datastax.oss.driver.api.core.context.DriverContext;
 import com.datastax.oss.driver.api.core.metadata.schema.KeyspaceMetadata;
 import com.datastax.oss.driver.api.core.type.DataTypes;
 import com.datastax.oss.driver.api.core.type.UserDefinedType;
@@ -67,6 +70,12 @@ class CassandraTypeTest {
         KeyspaceMetadata keyspace = mock(KeyspaceMetadata.class);
         when(keyspace.getUserDefinedTypes()).thenReturn(ImmutableMap.of());
         CqlSession session = mock(CqlSession.class);
+        DriverContext context = mock(DriverContext.class);
+        DriverConfig config = mock(DriverConfig.class);
+        when(session.getContext()).thenReturn(context);
+        when(context.getConfig()).thenReturn(config);
+        when(config.getProfiles()).thenReturn(ImmutableMap.of());
+        when(config.getDefaultProfile()).thenReturn(mock(DriverExecutionProfile.class));
 
         assertThat(TYPE.initialize(keyspace, session))
                 .isEqualByComparingTo(FULL);

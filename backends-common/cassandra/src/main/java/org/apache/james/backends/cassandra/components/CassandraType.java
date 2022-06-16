@@ -21,6 +21,8 @@ package org.apache.james.backends.cassandra.components;
 
 import java.util.Objects;
 
+import org.apache.james.backends.cassandra.init.configuration.JamesExecutionProfiles;
+
 import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.metadata.schema.KeyspaceMetadata;
@@ -59,7 +61,8 @@ public class CassandraType {
             return InitializationStatus.ALREADY_DONE;
         }
 
-        session.execute(createStatement.build());
+        session.execute(createStatement.build()
+            .setExecutionProfile(JamesExecutionProfiles.getTableCreationProfile(session)));
         return InitializationStatus.FULL;
     }
 

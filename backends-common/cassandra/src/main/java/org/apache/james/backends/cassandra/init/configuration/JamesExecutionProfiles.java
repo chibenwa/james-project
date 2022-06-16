@@ -105,4 +105,18 @@ public interface JamesExecutionProfiles {
         return session.getContext().getConfig().getDefaultProfile()
             .withLong(DefaultDriverOption.REQUEST_TIMEOUT, 3600000);
     }
+
+    /**
+     * Table creation
+     */
+    static DriverExecutionProfile getTableCreationProfile(CqlSession session) {
+        DriverExecutionProfile executionProfile = session.getContext().getConfig().getProfiles().get("TABLE_CREATION");
+        return Optional.ofNullable(executionProfile)
+            .orElseGet(() -> defaultTableCreationProfile(session));
+    }
+
+    private static DriverExecutionProfile defaultTableCreationProfile(CqlSession session) {
+        return session.getContext().getConfig().getDefaultProfile()
+            .withLong(DefaultDriverOption.REQUEST_TIMEOUT, 10000);
+    }
 }
