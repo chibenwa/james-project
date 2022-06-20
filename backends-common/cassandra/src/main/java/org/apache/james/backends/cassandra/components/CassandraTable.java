@@ -24,11 +24,14 @@ import java.util.function.Function;
 
 import org.apache.james.backends.cassandra.init.CassandraTypesProvider;
 import org.apache.james.backends.cassandra.init.configuration.JamesExecutionProfiles;
+import org.apache.james.util.FunctionalUtils;
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.metadata.schema.KeyspaceMetadata;
 import com.datastax.oss.driver.api.querybuilder.schema.CreateTableWithOptions;
 import com.google.common.base.MoreObjects;
+
+import reactor.core.publisher.Mono;
 
 public class CassandraTable {
     public enum InitializationStatus {
@@ -57,15 +60,13 @@ public class CassandraTable {
         return name;
     }
 
-    public InitializationStatus initialize(KeyspaceMetadata keyspaceMetadata, CqlSession session, CassandraTypesProvider typesProvider) {
-        if (keyspaceMetadata.getTable(name).isPresent()) {
-            return InitializationStatus.ALREADY_DONE;
-        }
-
-        session.execute(createStatement.apply(typesProvider).build()
-            .setExecutionProfile(JamesExecutionProfiles.getTableCreationProfile(session)));
-
-        return InitializationStatus.FULL;
+    public Mono<InitializationStatus> initialize(KeyspaceMetadata keyspaceMetadata, CqlSession session, CassandraTypesProvider typesProvider) {
+        return Mono.fromCallable(() -> keyspaceMetadata.getTable(name).isPresent())
+            .filter(FunctionalUtils.identityPredicate())
+            .map(exists -> InitializationStatus.ALREADY_DONE)
+            .switchIfEmpty(Mono.defer(() -> Mono.from(session.executeReactive(createStatement.apply(typesProvider).build()
+                    .setExecutionProfile(JamesExecutionProfiles.getTableCreationProfile(session)))))
+                .then(Mono.just(InitializationStatus.FULL)));
     }
 
     @Override

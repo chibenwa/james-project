@@ -51,11 +51,11 @@ public class CassandraTableManager {
     public InitializationStatus initializeTables(CassandraTypesProvider typesProvider) {
         KeyspaceMetadata keyspaceMetadata = session.getMetadata().getKeyspaces().get(session.getKeyspace().get());
 
-        return module.moduleTables()
-                .stream()
-                .map(table -> table.initialize(keyspaceMetadata, session, typesProvider))
-                .reduce((left, right) -> left.reduce(right))
-                .orElse(InitializationStatus.ALREADY_DONE);
+        return Flux.fromIterable(module.moduleTables())
+            .flatMap(table -> table.initialize(keyspaceMetadata, session, typesProvider), DEFAULT_CONCURRENCY)
+            .reduce(InitializationStatus::reduce)
+            .blockOptional()
+            .orElse(InitializationStatus.ALREADY_DONE);
     }
 
     public void clearAllTables() {

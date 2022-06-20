@@ -18,30 +18,31 @@
  ****************************************************************/
 package org.apache.james.backends.cassandra.components;
 
+import static org.apache.james.backends.cassandra.components.CassandraModule.EMPTY_MODULE;
 import static org.apache.james.backends.cassandra.components.CassandraTable.InitializationStatus.ALREADY_DONE;
 import static org.apache.james.backends.cassandra.components.CassandraTable.InitializationStatus.FULL;
 import static org.apache.james.backends.cassandra.components.CassandraTable.InitializationStatus.PARTIAL;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.Optional;
 import java.util.stream.Stream;
 
+import org.apache.james.backends.cassandra.CassandraClusterExtension;
+import org.apache.james.backends.cassandra.StatementRecorder;
+import org.apache.james.backends.cassandra.TestingSession;
 import org.apache.james.backends.cassandra.components.CassandraTable.InitializationStatus;
 import org.apache.james.backends.cassandra.init.CassandraTypesProvider;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 
-import com.datastax.oss.driver.api.core.CqlSession;
-import com.datastax.oss.driver.api.core.config.DriverConfig;
-import com.datastax.oss.driver.api.core.config.DriverExecutionProfile;
-import com.datastax.oss.driver.api.core.context.DriverContext;
+import com.datastax.oss.driver.api.core.cql.SimpleStatement;
 import com.datastax.oss.driver.api.core.metadata.schema.KeyspaceMetadata;
 import com.datastax.oss.driver.api.core.metadata.schema.TableMetadata;
 import com.datastax.oss.driver.api.core.type.DataTypes;
@@ -54,6 +55,19 @@ class CassandraTableTest {
     private static final String NAME = "tableName";
     private static final CreateTable STATEMENT = SchemaBuilder.createTable(NAME).withPartitionKey("a", DataTypes.TEXT);
     private static final CassandraTable TABLE = new CassandraTable(NAME, any -> STATEMENT);
+
+    @RegisterExtension
+    static CassandraClusterExtension cassandraCluster = new CassandraClusterExtension(EMPTY_MODULE);
+
+    private TestingSession session;
+    private StatementRecorder statementRecorder;
+
+    @BeforeEach
+    void setup() {
+        session = cassandraCluster.getCassandraCluster().getConf();
+        statementRecorder = new StatementRecorder();
+        session.recordStatements(statementRecorder);
+    }
 
     @Test
     void shouldRespectBeanContract() {
@@ -69,32 +83,29 @@ class CassandraTableTest {
     void initializeShouldExecuteCreateStatementAndReturnFullWhenTableDoesNotExist() {
         KeyspaceMetadata keyspace = mock(KeyspaceMetadata.class);
         when(keyspace.getTable(NAME)).thenReturn(Optional.empty());
-        CqlSession session = mock(CqlSession.class);
-        DriverContext context = mock(DriverContext.class);
-        DriverConfig config = mock(DriverConfig.class);
-        when(session.getContext()).thenReturn(context);
-        when(context.getConfig()).thenReturn(config);
-        when(config.getProfiles()).thenReturn(ImmutableMap.of());
-        when(config.getDefaultProfile()).thenReturn(mock(DriverExecutionProfile.class));
 
-        assertThat(TABLE.initialize(keyspace, session, new CassandraTypesProvider(session)))
-                .isEqualByComparingTo(FULL);
+        session.recordStatements(statementRecorder);
+        assertThat(TABLE.initialize(keyspace, session, new CassandraTypesProvider(session)).block())
+            .isEqualByComparingTo(FULL);
 
-        verify(keyspace).getTable(NAME);
-        verify(session).execute(STATEMENT.build());
+        assertThat(statementRecorder.listExecutedStatements().stream().map(statement -> ((SimpleStatement) statement).getQuery()))
+            .containsExactlyInAnyOrder(STATEMENT.build().getQuery());
     }
 
     @Test
     void initializeShouldExecuteReturnAlreadyDoneWhenTableExists() {
         KeyspaceMetadata keyspace = mock(KeyspaceMetadata.class);
         when(keyspace.getTable(NAME)).thenReturn(Optional.of(mock(TableMetadata.class)));
-        CqlSession session = mock(CqlSession.class);
 
-        assertThat(TABLE.initialize(keyspace, session, new CassandraTypesProvider(session)))
-                .isEqualByComparingTo(ALREADY_DONE);
+        session.recordStatements(statementRecorder);
+
+        assertThat(TABLE.initialize(keyspace, session, new CassandraTypesProvider(session)).block())
+            .isEqualByComparingTo(ALREADY_DONE);
 
         verify(keyspace).getTable(NAME);
-        verify(session, never()).execute(STATEMENT.build());
+
+        assertThat(statementRecorder.listExecutedStatements())
+            .isEmpty();
     }
 
     @ParameterizedTest
@@ -105,15 +116,15 @@ class CassandraTableTest {
 
     private static Stream<Arguments> initializationStatusReduceShouldFallIntoTheRightState() {
         return Stream.of(
-                Arguments.of(ALREADY_DONE, ALREADY_DONE, ALREADY_DONE),
-                Arguments.of(ALREADY_DONE, PARTIAL, PARTIAL),
-                Arguments.of(ALREADY_DONE, FULL, PARTIAL),
-                Arguments.of(PARTIAL, PARTIAL, PARTIAL),
-                Arguments.of(PARTIAL, PARTIAL, PARTIAL),
-                Arguments.of(PARTIAL, FULL, PARTIAL),
-                Arguments.of(FULL, ALREADY_DONE, PARTIAL),
-                Arguments.of(FULL, PARTIAL, PARTIAL),
-                Arguments.of(FULL, FULL, FULL)
+            Arguments.of(ALREADY_DONE, ALREADY_DONE, ALREADY_DONE),
+            Arguments.of(ALREADY_DONE, PARTIAL, PARTIAL),
+            Arguments.of(ALREADY_DONE, FULL, PARTIAL),
+            Arguments.of(PARTIAL, PARTIAL, PARTIAL),
+            Arguments.of(PARTIAL, PARTIAL, PARTIAL),
+            Arguments.of(PARTIAL, FULL, PARTIAL),
+            Arguments.of(FULL, ALREADY_DONE, PARTIAL),
+            Arguments.of(FULL, PARTIAL, PARTIAL),
+            Arguments.of(FULL, FULL, FULL)
         );
     }
 }
