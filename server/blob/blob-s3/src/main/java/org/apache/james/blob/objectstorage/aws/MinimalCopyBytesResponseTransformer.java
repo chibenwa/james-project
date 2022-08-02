@@ -22,6 +22,7 @@ package org.apache.james.blob.objectstorage.aws;
 import java.nio.ByteBuffer;
 import java.util.concurrent.CompletableFuture;
 
+import org.apache.james.blob.api.BlobId;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
@@ -40,11 +41,12 @@ import software.amazon.awssdk.services.s3.model.GetObjectResponse;
  * A defensive copy upon returning the result is also removed (responsibility transfered to the caller, no other usages)
  */
 public class MinimalCopyBytesResponseTransformer implements AsyncResponseTransformer<GetObjectResponse, ResponseBytes<GetObjectResponse>> {
+    private final BlobId blobId;
     private volatile CompletableFuture<byte[]> cf;
     private volatile GetObjectResponse response;
 
-    public MinimalCopyBytesResponseTransformer() {
-
+    public MinimalCopyBytesResponseTransformer(BlobId blobId) {
+        this.blobId = blobId;
     }
 
     public CompletableFuture<ResponseBytes<GetObjectResponse>> prepare() {
@@ -55,6 +57,10 @@ public class MinimalCopyBytesResponseTransformer implements AsyncResponseTransfo
 
     public void onResponse(GetObjectResponse response) {
         this.response = response;
+
+        if (response.contentLength() > 50 * 1024 * 1024) {
+            throw new RuntimeException("S3 response exceeding 50 MBs (" + response.contentLength() + ") for " + blobId + ", we fail here to protect our system from loading too big objects...");
+        }
     }
 
     public void onStream(SdkPublisher<ByteBuffer> publisher) {
