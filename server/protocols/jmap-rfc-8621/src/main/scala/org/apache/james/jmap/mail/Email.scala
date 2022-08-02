@@ -466,6 +466,9 @@ private class EmailHeaderViewFactory @Inject()(zoneIdProvider: ZoneIdProvider) e
 }
 
 private class EmailFullViewFactory @Inject()(zoneIdProvider: ZoneIdProvider, previewFactory: Preview.Factory) extends EmailViewFactory[EmailFullView] {
+  def toEmailJava(htmlTextExtractor: HtmlTextExtractor, request: EmailGetRequest, message: MessageResult): Try[EmailFullView] =
+    toEmail(htmlTextExtractor, request)(message.getMessageId, Seq(message))
+
   override def toEmail(htmlTextExtractor: HtmlTextExtractor, request: EmailGetRequest)(message: (MessageId, Seq[MessageResult])): Try[EmailFullView] = {
     val messageId: MessageId = message._1
     val mailboxIds: MailboxIds = MailboxIds(message._2

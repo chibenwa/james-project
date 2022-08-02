@@ -25,8 +25,9 @@ import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.NonNegative
 import eu.timepit.refined.types.string.NonEmptyString
+import org.apache.james.core.Username
 import org.apache.james.jmap.api.change.Limit
-import org.apache.james.jmap.core.{AccountId, Properties, UuidState}
+import org.apache.james.jmap.core.{AccountId, Id, Properties, UuidState}
 import org.apache.james.jmap.mail.EmailGetRequest.MaxBodyValueBytes
 import org.apache.james.jmap.mail.EmailHeaders.SPECIFIC_HEADER_PREFIX
 import org.apache.james.jmap.method.WithAccountId
@@ -46,6 +47,13 @@ object EmailGetRequest {
   type MaxBodyValueBytes = Int Refined NonNegative
 
   val ZERO: MaxBodyValueBytes = 0
+
+  def javaStuff(accountId: String, emailId: MessageId): EmailGetRequest = {
+    val accId = AccountId.from(Username.of(accountId))
+
+    val someEmailIds = Some(EmailIds(List(UnparsedEmailId(Id.validate(emailId.serialize()).toOption.get))))
+    EmailGetRequest(accId.toOption.get, someEmailIds, Some(FetchAllBodyValues(true)), Some(FetchTextBodyValues(true)), Some(FetchHTMLBodyValues(true)), None, None, None)
+  }
 }
 
 object SpecificHeaderRequest {
