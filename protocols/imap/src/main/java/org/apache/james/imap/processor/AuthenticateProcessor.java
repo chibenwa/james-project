@@ -127,14 +127,20 @@ public class AuthenticateProcessor extends AbstractAuthProcessor<AuthenticateReq
     }
 
     private AuthenticationAttempt parseDelegationAttempt(String initialClientResponse) {
+        System.out.println("BASE 64: " + initialClientResponse);
         String token2;
         try {
             String userpass = new String(Base64.getDecoder().decode(initialClientResponse));
+            System.out.println("DECODED: " + initialClientResponse);
             StringTokenizer authTokenizer = new StringTokenizer(userpass, "\0");
             String token1 = authTokenizer.nextToken();  // Authorization Identity
+            System.out.println("TOKEN 1: " + token1);
             token2 = authTokenizer.nextToken();                 // Authentication Identity
+            System.out.println("TOKEN 2: " + token2);
             try {
-                return delegation(Username.of(token1), Username.of(token2), authTokenizer.nextToken());
+                final String token3 = authTokenizer.nextToken();
+                System.out.println("TOKEN 3: " + token3);
+                return delegation(Username.of(token1), Username.of(token2), token3);
             } catch (java.util.NoSuchElementException ignored) {
                 // If we got here, this is what happened.  RFC 2595
                 // says that "the client may leave the authorization
