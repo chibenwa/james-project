@@ -82,8 +82,6 @@ public class ImapResponseComposerImpl implements ImapConstants, ImapResponseComp
     @Override
     public ImapResponseComposer continuationResponse(String message) throws IOException {
         buffer.write(CONTINUATION);
-        buffer.write(SP);
-        writeASCII(message);
         end();
         return this;
     }
