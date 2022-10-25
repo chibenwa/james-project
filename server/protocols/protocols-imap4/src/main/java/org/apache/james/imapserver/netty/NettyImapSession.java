@@ -43,6 +43,8 @@ import org.apache.james.protocols.netty.LineHandlerAware;
 import org.bouncycastle.asn1.x500.style.BCStyle;
 import org.bouncycastle.asn1.x500.style.IETFUtils;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateHolder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.github.fge.lambdas.Throwing;
 
@@ -57,6 +59,8 @@ import io.netty.handler.ssl.SslHandler;
 import reactor.core.publisher.Mono;
 
 public class NettyImapSession implements ImapSession, NettyConstants {
+    private static final Logger LOGGER = LoggerFactory.getLogger(NettyImapSession.class);
+
     private final Map<String, Object> attributesByKey = new HashMap<>();
     private final Encryption secure;
     private final boolean compress;
@@ -202,6 +206,10 @@ public class NettyImapSession implements ImapSession, NettyConstants {
             .flatMap(Arrays::stream)
             .filter(X509Certificate.class::isInstance)
             .map(X509Certificate.class::cast)
+            .peek(c -> LOGGER.info("Client certificate subject DN:'{}', X509 PRINCIPAL '{}', SERIAL NUMBER {}",
+                c.getSubjectDN().getName(),
+                c.getSubjectX500Principal().getName(),
+                c.getSerialNumber()))
             .map(Throwing.function(certificate -> IETFUtils.valueToString(
                 new JcaX509CertificateHolder(certificate)
                     .getSubject()
