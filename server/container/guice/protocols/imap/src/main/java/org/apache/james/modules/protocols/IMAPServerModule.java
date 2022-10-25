@@ -26,6 +26,7 @@ import org.apache.james.imap.encode.main.DefaultImapEncoderFactory;
 import org.apache.james.imap.main.DefaultImapDecoderFactory;
 import org.apache.james.imap.processor.main.DefaultImapProcessorFactory;
 import org.apache.james.imapserver.netty.IMAPServerFactory;
+import org.apache.james.mailbox.Authorizator;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.SubscriptionManager;
 import org.apache.james.mailbox.quota.QuotaManager;
@@ -59,6 +60,7 @@ public class IMAPServerModule extends AbstractModule {
             SubscriptionManager subscriptionManager,
             QuotaManager quotaManager,
             QuotaRootResolver quotaRootResolver,
+            Authorizator authorizator,
             MetricFactory metricFactory) {
         return DefaultImapProcessorFactory.createXListSupportingProcessor(
                 mailboxManager,
@@ -67,6 +69,7 @@ public class IMAPServerModule extends AbstractModule {
                 null,
                 quotaManager,
                 quotaRootResolver,
+                authorizator,
                 metricFactory);
     }
 

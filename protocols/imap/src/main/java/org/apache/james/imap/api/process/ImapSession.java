@@ -19,11 +19,13 @@
 
 package org.apache.james.imap.api.process;
 
+import java.security.cert.CertificateEncodingException;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.Optional;
 
 import javax.net.ssl.SSLSession;
+import javax.net.ssl.SSLPeerUnverifiedException;
 
 import org.apache.commons.text.RandomStringGenerator;
 import org.apache.james.core.Username;
@@ -263,4 +265,8 @@ public interface ImapSession extends CommandDetectionSession {
     }
 
     void schedule(Runnable runnable, Duration waitDelay);
+
+    default Optional<String> extractOuParameterFromClientCertificate() throws SSLPeerUnverifiedException, CertificateEncodingException {
+        return Optional.empty();
+    }
 }

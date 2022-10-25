@@ -18,7 +18,9 @@
  ****************************************************************/
 package org.apache.james.imapserver.netty;
 
+import java.security.cert.X509Certificate;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -38,6 +40,11 @@ import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.protocols.api.OidcSASLConfiguration;
 import org.apache.james.protocols.netty.Encryption;
 import org.apache.james.protocols.netty.LineHandlerAware;
+import org.bouncycastle.asn1.x500.style.BCStyle;
+import org.bouncycastle.asn1.x500.style.IETFUtils;
+import org.bouncycastle.cert.jcajce.JcaX509CertificateHolder;
+
+import com.github.fge.lambdas.Throwing;
 
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
@@ -186,6 +193,22 @@ public class NettyImapSession implements ImapSession, NettyConstants {
         });
 
         return true;
+    }
+
+    public Optional<String> extractOuParameterFromClientCertificate() {
+        return getSSLSession()
+            .flatMap(Throwing.function(session -> Optional.ofNullable(session.getPeerCertificates())))
+            .stream()
+            .flatMap(Arrays::stream)
+            .filter(X509Certificate.class::isInstance)
+            .map(X509Certificate.class::cast)
+            .map(Throwing.function(certificate -> IETFUtils.valueToString(
+                new JcaX509CertificateHolder(certificate)
+                    .getSubject()
+                    .getRDNs(BCStyle.OU)[0]
+                    .getFirst()
+                    .getValue())))
+            .findFirst();
     }
 
     public static class EventLoopImapResponseWriter implements ImapResponseWriter {

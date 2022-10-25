@@ -33,6 +33,7 @@ import org.apache.james.imap.message.request.IRAuthenticateRequest;
 import org.apache.james.imap.processor.base.AbstractProcessor;
 import org.apache.james.imap.processor.base.ImapResponseMessageProcessor;
 import org.apache.james.imap.processor.fetch.FetchProcessor;
+import org.apache.james.mailbox.Authorizator;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.SubscriptionManager;
 import org.apache.james.mailbox.quota.QuotaManager;
@@ -54,6 +55,7 @@ public class DefaultProcessor implements ImapProcessor {
                                                        MailboxTyper mailboxTyper,
                                                        QuotaManager quotaManager,
                                                        QuotaRootResolver quotaRootResolver,
+                                                       Authorizator authorizator,
                                                        MetricFactory metricFactory) {
 
         ImmutableList.Builder<AbstractProcessor> builder = ImmutableList.builder();
@@ -70,7 +72,7 @@ public class DefaultProcessor implements ImapProcessor {
         builder.add(new UnsubscribeProcessor(mailboxManager, subscriptionManager, statusResponseFactory, metricFactory));
         builder.add(new SubscribeProcessor(mailboxManager, subscriptionManager, statusResponseFactory, metricFactory));
         builder.add(new CopyProcessor(mailboxManager, statusResponseFactory, metricFactory));
-        AuthenticateProcessor authenticateProcessor = new AuthenticateProcessor(mailboxManager, statusResponseFactory, metricFactory);
+        AuthenticateProcessor authenticateProcessor = new AuthenticateProcessor(mailboxManager, statusResponseFactory, authorizator, metricFactory);
         builder.add(authenticateProcessor);
         builder.add(new ExpungeProcessor(mailboxManager, statusResponseFactory, metricFactory));
         builder.add(new ExamineProcessor(mailboxManager, eventBus, statusResponseFactory, metricFactory));

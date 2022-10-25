@@ -41,7 +41,9 @@ import org.apache.james.imap.message.request.IRAuthenticateRequest;
 import org.apache.james.imap.message.response.AuthenticateResponse;
 import org.apache.james.jwt.OidcJwtTokenVerifier;
 import org.apache.james.jwt.introspection.IntrospectionEndpoint;
+import org.apache.james.mailbox.Authorizator;
 import org.apache.james.mailbox.MailboxManager;
+import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.protocols.api.OIDCSASLParser;
 import org.apache.james.protocols.api.OidcSASLConfiguration;
@@ -66,9 +68,12 @@ public class AuthenticateProcessor extends AbstractAuthProcessor<AuthenticateReq
     private static final List<Capability> OAUTH_CAPABILITIES = ImmutableList.of(Capability.of("AUTH=" + AUTH_TYPE_OAUTHBEARER), Capability.of("AUTH=" + AUTH_TYPE_XOAUTH2));
     public static final Capability SASL_CAPABILITY = Capability.of("SASL-IR");
 
+    private final Authorizator authorizator;
+
     public AuthenticateProcessor(MailboxManager mailboxManager, StatusResponseFactory factory,
-                                 MetricFactory metricFactory) {
+                                 Authorizator authorizator, MetricFactory metricFactory) {
         super(AuthenticateRequest.class, mailboxManager, factory, metricFactory);
+        this.authorizator = authorizator;
     }
 
     @Override
@@ -117,55 +122,33 @@ public class AuthenticateProcessor extends AbstractAuthProcessor<AuthenticateReq
      * Parse the initialClientResponse and do a PLAIN AUTH with it
      */
     protected void doPlainAuth(String initialClientResponse, ImapSession session, ImapRequest request, Responder responder) {
-        AuthenticationAttempt authenticationAttempt = parseDelegationAttempt(initialClientResponse);
-        if (authenticationAttempt.isDelegation()) {
-            doAuthWithDelegation(authenticationAttempt, session, request, responder);
-        } else {
-            doAuth(authenticationAttempt, session, request, responder, HumanReadableText.AUTHENTICATION_FAILED);
-        }
-        session.stopDetectingCommandInjection();
-    }
-
-    private AuthenticationAttempt parseDelegationAttempt(String initialClientResponse) {
-        System.out.println("BASE 64: " + initialClientResponse);
-        String token2;
+        LOGGER.debug("BASE 64: {}", initialClientResponse);
         try {
             String userpass = new String(Base64.getDecoder().decode(initialClientResponse));
-            System.out.println("DECODED: " + initialClientResponse);
+            LOGGER.debug("DECODED: {}", initialClientResponse);
             StringTokenizer authTokenizer = new StringTokenizer(userpass, "\0");
-            String token1 = authTokenizer.nextToken();  // Authorization Identity
-            System.out.println("TOKEN 1: " + token1);
-            token2 = authTokenizer.nextToken();                 // Authentication Identity
-            System.out.println("TOKEN 2: " + token2);
-            try {
-                final String token3 = authTokenizer.nextToken();
-                System.out.println("TOKEN 3: " + token3);
-                return delegation(Username.of(token1), Username.of(token2), token3);
-            } catch (java.util.NoSuchElementException ignored) {
-                // If we got here, this is what happened.  RFC 2595
-                // says that "the client may leave the authorization
-                // identity empty to indicate that it is the same as
-                // the authentication identity."  As noted above,
-                // that would be represented as a decoded string of
-                // the form: "\0authenticate-id\0password".  The
-                // first call to nextToken will skip the empty
-                // authorize-id, and give us the authenticate-id,
-                // which we would store as the authorize-id.  The
-                // second call will give us the password, which we
-                // think is the authenticate-id (user).  Then when
-                // we ask for the password, there are no more
-                // elements, leading to the exception we just
-                // caught.  So we need to move the user to the
-                // password, and the authorize_id to the user.
-                return noDelegation(Username.of(token1), token2);
-            } finally {
-                authTokenizer = null;
+            Username target = Username.of(authTokenizer.nextToken());  // Authorization Identity
+            LOGGER.debug("TARGET: {}", target.asString());
+            Username origin = Username.of(session.extractOuParameterFromClientCertificate()
+                .orElseThrow(() -> new RuntimeException("No OU field in the certificate DN provided by the client")));
+            LOGGER.debug("ORIGIN: {}", origin.asString());
+
+            if (authorizator.canLoginAsOtherUser(origin, target).equals(Authorizator.AuthorizationState.ALLOWED)) {
+                MailboxSession mailboxSession = getMailboxManager().createSystemSession(target);
+                session.authenticated();
+                session.setMailboxSession(mailboxSession);
+                provisionInbox(session, getMailboxManager(), mailboxSession);
+                okComplete(request, responder);
+                session.stopDetectingCommandInjection();
+            } else {
+                LOGGER.info("Delegation issue: {} cannot connect as {}", origin.asString(), target.asString());
+                manageFailureCount(session, request, responder);
             }
         } catch (Exception e) {
             // Ignored - this exception in parsing will be dealt
             // with in the if clause below
             LOGGER.info("Invalid syntax in AUTHENTICATE initial client response", e);
-            return noDelegation(null, null);
+            manageFailureCount(session, request, responder);
         }
     }
 
