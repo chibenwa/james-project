@@ -59,6 +59,18 @@ import reactor.core.publisher.Mono;
  * Processor which handles the AUTHENTICATE command. Only authtype of PLAIN is supported ATM.
  */
 public class AuthenticateProcessor extends AbstractAuthProcessor<AuthenticateRequest> implements CapabilityImplementingProcessor {
+    @FunctionalInterface
+    public interface DomainPartResolver {
+        DomainPartResolver DEFAULT = username -> {
+            if (username.hasDomainPart()) {
+                return username;
+            }
+            throw new IllegalArgumentException("No domain part");
+        };
+
+        Username resolve(Username username);
+    }
+    
     public static final String AUTH_PLAIN = "AUTH=PLAIN";
     public static final Capability AUTH_PLAIN_CAPABILITY = Capability.of(AUTH_PLAIN);
     private static final Logger LOGGER = LoggerFactory.getLogger(AuthenticateProcessor.class);
@@ -69,11 +81,13 @@ public class AuthenticateProcessor extends AbstractAuthProcessor<AuthenticateReq
     public static final Capability SASL_CAPABILITY = Capability.of("SASL-IR");
 
     private final Authorizator authorizator;
+    private final DomainPartResolver domainPartResolver;
 
     public AuthenticateProcessor(MailboxManager mailboxManager, StatusResponseFactory factory,
-                                 Authorizator authorizator, MetricFactory metricFactory) {
+                                 Authorizator authorizator, DomainPartResolver domainPartResolver, MetricFactory metricFactory) {
         super(AuthenticateRequest.class, mailboxManager, factory, metricFactory);
         this.authorizator = authorizator;
+        this.domainPartResolver = domainPartResolver;
     }
 
     @Override
@@ -132,8 +146,10 @@ public class AuthenticateProcessor extends AbstractAuthProcessor<AuthenticateReq
             Username origin = Username.of(session.extractOuParameterFromClientCertificate()
                 .orElseThrow(() -> new RuntimeException("No OU field in the certificate DN provided by the client")));
             LOGGER.debug("ORIGIN: {}", origin.asString());
+            Username fullyQualifiedOrigin = domainPartResolver.resolve(origin);
+            LOGGER.debug("RESOLVED ORIGIN: {}", fullyQualifiedOrigin.asString());
 
-            if (authorizator.canLoginAsOtherUser(origin, target).equals(Authorizator.AuthorizationState.ALLOWED)) {
+            if (authorizator.canLoginAsOtherUser(fullyQualifiedOrigin, target).equals(Authorizator.AuthorizationState.ALLOWED)) {
                 MailboxSession mailboxSession = getMailboxManager().createSystemSession(target);
                 session.authenticated();
                 session.setMailboxSession(mailboxSession);
@@ -141,7 +157,7 @@ public class AuthenticateProcessor extends AbstractAuthProcessor<AuthenticateReq
                 okComplete(request, responder);
                 session.stopDetectingCommandInjection();
             } else {
-                LOGGER.info("Delegation issue: {} cannot connect as {}", origin.asString(), target.asString());
+                LOGGER.info("Delegation issue: {} cannot connect as {}", fullyQualifiedOrigin.asString(), target.asString());
                 manageFailureCount(session, request, responder);
             }
         } catch (Exception e) {

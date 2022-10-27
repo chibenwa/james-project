@@ -38,6 +38,7 @@ import org.apache.james.events.RoutingKeyConverter;
 import org.apache.james.imap.api.process.ImapProcessor;
 import org.apache.james.imap.encode.main.DefaultImapEncoderFactory;
 import org.apache.james.imap.main.DefaultImapDecoderFactory;
+import org.apache.james.imap.processor.AuthenticateProcessor;
 import org.apache.james.imap.processor.main.DefaultImapProcessorFactory;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.events.MailboxIdRegistrationKey;
@@ -104,6 +105,7 @@ public class RabbitMQEventBusHostSystem extends JamesImapHostSystem {
                 new StoreSubscriptionManager(resources.getMailboxManager().getMapperFactory()),
                 resources.getQuotaManager(),
                 resources.getDefaultUserQuotaRootResolver(),
+                AuthenticateProcessor.DomainPartResolver.DEFAULT,
                 new DefaultMetricFactory());
 
         configure(new DefaultImapDecoderFactory().buildImapDecoder(),

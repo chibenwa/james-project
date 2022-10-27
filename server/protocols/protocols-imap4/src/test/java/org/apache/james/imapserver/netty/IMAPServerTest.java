@@ -70,6 +70,7 @@ import org.apache.commons.net.imap.IMAPSClient;
 import org.apache.james.core.Username;
 import org.apache.james.imap.encode.main.DefaultImapEncoderFactory;
 import org.apache.james.imap.main.DefaultImapDecoderFactory;
+import org.apache.james.imap.processor.AuthenticateProcessor;
 import org.apache.james.imap.processor.base.AbstractProcessor;
 import org.apache.james.imap.processor.main.DefaultImapProcessorFactory;
 import org.apache.james.jwt.OidcTokenFixture;
@@ -165,6 +166,7 @@ class IMAPServerTest {
                         return AuthorizationState.FORBIDDEN;
                     }
                 },
+                AuthenticateProcessor.DomainPartResolver.DEFAULT,
                 metricFactory),
             new ImapMetrics(metricFactory),
             new NoopGaugeRegistry());

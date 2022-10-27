@@ -31,6 +31,7 @@ import org.apache.james.events.delivery.InVmEventDelivery;
 import org.apache.james.imap.api.process.ImapProcessor;
 import org.apache.james.imap.encode.main.DefaultImapEncoderFactory;
 import org.apache.james.imap.main.DefaultImapDecoderFactory;
+import org.apache.james.imap.processor.AuthenticateProcessor;
 import org.apache.james.imap.processor.main.DefaultImapProcessorFactory;
 import org.apache.james.mailbox.AttachmentContentLoader;
 import org.apache.james.mailbox.MailboxManager;
@@ -130,6 +131,7 @@ public class JPAHostSystem extends JamesImapHostSystem {
                         subscriptionManager, 
                         storeQuotaManager,
                         quotaRootResolver,
+                        AuthenticateProcessor.DomainPartResolver.DEFAULT,
                         new DefaultMetricFactory());
 
         configure(new DefaultImapDecoderFactory().buildImapDecoder(),

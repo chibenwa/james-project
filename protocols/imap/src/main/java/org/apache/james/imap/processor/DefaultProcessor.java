@@ -56,6 +56,7 @@ public class DefaultProcessor implements ImapProcessor {
                                                        QuotaManager quotaManager,
                                                        QuotaRootResolver quotaRootResolver,
                                                        Authorizator authorizator,
+                                                       AuthenticateProcessor.DomainPartResolver domainPartResolver,
                                                        MetricFactory metricFactory) {
 
         ImmutableList.Builder<AbstractProcessor> builder = ImmutableList.builder();
@@ -72,7 +73,7 @@ public class DefaultProcessor implements ImapProcessor {
         builder.add(new UnsubscribeProcessor(mailboxManager, subscriptionManager, statusResponseFactory, metricFactory));
         builder.add(new SubscribeProcessor(mailboxManager, subscriptionManager, statusResponseFactory, metricFactory));
         builder.add(new CopyProcessor(mailboxManager, statusResponseFactory, metricFactory));
-        AuthenticateProcessor authenticateProcessor = new AuthenticateProcessor(mailboxManager, statusResponseFactory, authorizator, metricFactory);
+        AuthenticateProcessor authenticateProcessor = new AuthenticateProcessor(mailboxManager, statusResponseFactory, authorizator, domainPartResolver, metricFactory);
         builder.add(authenticateProcessor);
         builder.add(new ExpungeProcessor(mailboxManager, statusResponseFactory, metricFactory));
         builder.add(new ExamineProcessor(mailboxManager, eventBus, statusResponseFactory, metricFactory));

@@ -33,6 +33,7 @@ import org.apache.james.core.quota.QuotaSizeLimit;
 import org.apache.james.imap.api.process.ImapProcessor;
 import org.apache.james.imap.encode.main.DefaultImapEncoderFactory;
 import org.apache.james.imap.main.DefaultImapDecoderFactory;
+import org.apache.james.imap.processor.AuthenticateProcessor;
 import org.apache.james.imap.processor.main.DefaultImapProcessorFactory;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.inmemory.InMemoryMessageId;
@@ -117,6 +118,7 @@ public class OpenSearchHostSystem extends JamesImapHostSystem {
                 new StoreSubscriptionManager(mailboxManager.getMapperFactory()),
                 new NoQuotaManager(),
                 resources.getDefaultUserQuotaRootResolver(),
+                AuthenticateProcessor.DomainPartResolver.DEFAULT,
                 new DefaultMetricFactory());
         configure(new DefaultImapDecoderFactory().buildImapDecoder(),
             new DefaultImapEncoderFactory().buildImapEncoder(),

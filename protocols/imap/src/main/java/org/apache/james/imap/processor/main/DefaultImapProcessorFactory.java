@@ -25,6 +25,7 @@ import org.apache.james.imap.api.message.response.StatusResponseFactory;
 import org.apache.james.imap.api.process.ImapProcessor;
 import org.apache.james.imap.api.process.MailboxTyper;
 import org.apache.james.imap.message.response.UnpooledStatusResponseFactory;
+import org.apache.james.imap.processor.AuthenticateProcessor;
 import org.apache.james.imap.processor.DefaultProcessor;
 import org.apache.james.imap.processor.base.UnknownRequestProcessor;
 import org.apache.james.mailbox.Authorizator;
@@ -38,29 +39,35 @@ import org.apache.james.metrics.api.MetricFactory;
 public class DefaultImapProcessorFactory {
 
     public static ImapProcessor createDefaultProcessor(MailboxManager mailboxManager, EventBus eventBus, SubscriptionManager subscriptionManager, QuotaManager quotaManager, QuotaRootResolver quotaRootResolver,
-                                                       MetricFactory metricFactory) {
+                                                       AuthenticateProcessor.DomainPartResolver domainPartResolver, MetricFactory metricFactory) {
         return createXListSupportingProcessor(mailboxManager, eventBus, subscriptionManager, null, quotaManager, quotaRootResolver, new Authorizator() {
             @Override
             public AuthorizationState canLoginAsOtherUser(Username userId, Username otherUserId) throws MailboxException {
                 return AuthorizationState.FORBIDDEN;
             }
-        }, metricFactory);
+        }, domainPartResolver, metricFactory);
     }
 
     public static ImapProcessor createDefaultProcessor(MailboxManager mailboxManager, EventBus eventBus, SubscriptionManager subscriptionManager, QuotaManager quotaManager, QuotaRootResolver quotaRootResolver,
-                                                       Authorizator authorizator, MetricFactory metricFactory) {
-        return createXListSupportingProcessor(mailboxManager, eventBus, subscriptionManager, null, quotaManager, quotaRootResolver, authorizator, metricFactory);
+                                                       Authorizator authorizator,
+                                                       AuthenticateProcessor.DomainPartResolver domainPartResolver,
+                                                       MetricFactory metricFactory) {
+        return createXListSupportingProcessor(mailboxManager, eventBus, subscriptionManager, null, quotaManager, quotaRootResolver, authorizator, domainPartResolver, metricFactory);
     }
 
     public static ImapProcessor createXListSupportingProcessor(MailboxManager mailboxManager,
                                                                EventBus eventBus, SubscriptionManager subscriptionManager,
-                                                               MailboxTyper mailboxTyper, QuotaManager quotaManager, QuotaRootResolver quotaRootResolver, Authorizator authorizator, MetricFactory metricFactory) {
+                                                               MailboxTyper mailboxTyper, QuotaManager quotaManager,
+                                                               QuotaRootResolver quotaRootResolver, Authorizator authorizator,
+                                                               AuthenticateProcessor.DomainPartResolver domainPartResolver,
+                                                               MetricFactory metricFactory) {
 
         StatusResponseFactory statusResponseFactory = new UnpooledStatusResponseFactory();
         UnknownRequestProcessor unknownRequestImapProcessor = new UnknownRequestProcessor(statusResponseFactory);
 
         return DefaultProcessor.createDefaultProcessor(unknownRequestImapProcessor, mailboxManager,
-            eventBus, subscriptionManager, statusResponseFactory, mailboxTyper, quotaManager, quotaRootResolver, authorizator, metricFactory);
+            eventBus, subscriptionManager, statusResponseFactory, mailboxTyper, quotaManager, quotaRootResolver, authorizator,
+            domainPartResolver, metricFactory);
     }
 
 }

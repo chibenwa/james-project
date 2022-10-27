@@ -24,6 +24,7 @@ import org.apache.james.imap.decode.ImapDecoder;
 import org.apache.james.imap.encode.ImapEncoder;
 import org.apache.james.imap.encode.main.DefaultImapEncoderFactory;
 import org.apache.james.imap.main.DefaultImapDecoderFactory;
+import org.apache.james.imap.processor.AuthenticateProcessor;
 import org.apache.james.imap.processor.main.DefaultImapProcessorFactory;
 import org.apache.james.imapserver.netty.IMAPServerFactory;
 import org.apache.james.mailbox.Authorizator;
@@ -33,6 +34,7 @@ import org.apache.james.mailbox.quota.QuotaManager;
 import org.apache.james.mailbox.quota.QuotaRootResolver;
 import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.server.core.configuration.ConfigurationProvider;
+import org.apache.james.user.api.UsersRepository;
 import org.apache.james.utils.GuiceProbe;
 import org.apache.james.utils.InitializationOperation;
 import org.apache.james.utils.InitilizationOperationBuilder;
@@ -43,6 +45,8 @@ import com.google.inject.Scopes;
 import com.google.inject.Singleton;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
+
+import reactor.core.publisher.Flux;
 
 public class IMAPServerModule extends AbstractModule {
 
@@ -61,6 +65,7 @@ public class IMAPServerModule extends AbstractModule {
             QuotaManager quotaManager,
             QuotaRootResolver quotaRootResolver,
             Authorizator authorizator,
+            AuthenticateProcessor.DomainPartResolver domainPartResolver,
             MetricFactory metricFactory) {
         return DefaultImapProcessorFactory.createXListSupportingProcessor(
                 mailboxManager,
@@ -70,7 +75,21 @@ public class IMAPServerModule extends AbstractModule {
                 quotaManager,
                 quotaRootResolver,
                 authorizator,
+                domainPartResolver,
                 metricFactory);
+    }
+
+    @Provides
+    AuthenticateProcessor.DomainPartResolver provideDomainPartResolver(UsersRepository usersRepository) {
+        return username -> {
+            if (username.hasDomainPart()) {
+                return username;
+            }
+            return Flux.from(usersRepository.listReactive())
+                .filter(user -> user.getLocalPart().equals(username.getLocalPart()))
+                .single()
+                .block();
+        };
     }
 
     @Provides
