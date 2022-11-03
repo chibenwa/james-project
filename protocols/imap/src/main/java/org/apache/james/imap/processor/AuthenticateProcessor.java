@@ -63,12 +63,12 @@ public class AuthenticateProcessor extends AbstractAuthProcessor<AuthenticateReq
     public interface DomainPartResolver {
         DomainPartResolver DEFAULT = username -> {
             if (username.hasDomainPart()) {
-                return username;
+                return Optional.of(username);
             }
-            throw new IllegalArgumentException("No domain part");
+            return Optional.empty();
         };
 
-        Username resolve(Username username);
+        Optional<Username> resolve(Username username);
     }
     
     public static final String AUTH_PLAIN = "AUTH=PLAIN";
@@ -146,7 +146,8 @@ public class AuthenticateProcessor extends AbstractAuthProcessor<AuthenticateReq
             Username origin = Username.of(session.extractOuParameterFromClientCertificate()
                 .orElseThrow(() -> new RuntimeException("No OU field in the certificate DN provided by the client")));
             LOGGER.debug("ORIGIN: {}", origin.asString());
-            Username fullyQualifiedOrigin = domainPartResolver.resolve(origin);
+            Username fullyQualifiedOrigin = domainPartResolver.resolve(origin)
+                .orElseThrow(() -> new Exception("No user correspond to localpart " + origin));
             LOGGER.debug("RESOLVED ORIGIN: {}", fullyQualifiedOrigin.asString());
 
             if (authorizator.canLoginAsOtherUser(fullyQualifiedOrigin, target).equals(Authorizator.AuthorizationState.ALLOWED)) {
@@ -193,8 +194,10 @@ public class AuthenticateProcessor extends AbstractAuthProcessor<AuthenticateReq
 
     private void doOAuth(String initialResponse, ImapSession session, ImapRequest request, Responder responder) {
         if (!session.supportsOAuth()) {
+            LOGGER.info("Received OUAUTH AUTHENTICATE while not supported at the session level");
             no(request, responder, HumanReadableText.UNSUPPORTED_AUTHENTICATION_MECHANISM);
         } else {
+            LOGGER.info("OAUTH initial response {}", initialResponse); // EVIL
             OIDCSASLParser.parse(initialResponse)
                 .flatMap(oidcInitialResponseValue -> session.oidcSaslConfiguration().map(configure -> Pair.of(oidcInitialResponseValue, configure)))
                 .ifPresentOrElse(pair -> doOAuth(pair.getLeft(), pair.getRight(), session, request, responder),
@@ -206,8 +209,10 @@ public class AuthenticateProcessor extends AbstractAuthProcessor<AuthenticateReq
     private void doOAuth(OIDCSASLParser.OIDCInitialResponse oidcInitialResponse, OidcSASLConfiguration oidcSASLConfiguration,
                          ImapSession session, ImapRequest request, Responder responder) {
         validateToken(oidcSASLConfiguration, oidcInitialResponse.getToken())
+            .flatMap(domainPartResolver::resolve)
             .ifPresentOrElse(authenticatedUser -> {
                 Username associatedUser = Username.of(oidcInitialResponse.getAssociatedUser());
+                LOGGER.info("authenticatedUser {} associatedUser {}", authenticatedUser, associatedUser);
                 if (!associatedUser.equals(authenticatedUser)) {
                     doAuthWithDelegation(() -> getMailboxManager()
                             .authenticate(authenticatedUser)

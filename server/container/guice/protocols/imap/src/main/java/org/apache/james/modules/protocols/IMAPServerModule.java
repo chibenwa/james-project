@@ -18,6 +18,9 @@
  ****************************************************************/
 package org.apache.james.modules.protocols;
 
+import java.util.Optional;
+
+import org.apache.james.core.Username;
 import org.apache.james.events.EventBus;
 import org.apache.james.imap.api.process.ImapProcessor;
 import org.apache.james.imap.decode.ImapDecoder;
@@ -38,7 +41,9 @@ import org.apache.james.user.api.UsersRepository;
 import org.apache.james.utils.GuiceProbe;
 import org.apache.james.utils.InitializationOperation;
 import org.apache.james.utils.InitilizationOperationBuilder;
+import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.ImmutableList;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Scopes;
@@ -83,12 +88,19 @@ public class IMAPServerModule extends AbstractModule {
     AuthenticateProcessor.DomainPartResolver provideDomainPartResolver(UsersRepository usersRepository) {
         return username -> {
             if (username.hasDomainPart()) {
-                return username;
+                return Optional.of(username);
             }
             return Flux.from(usersRepository.listReactive())
                 .filter(user -> user.getLocalPart().equals(username.getLocalPart()))
-                .single()
-                .block();
+                .collectList()
+                .<Username>handle((res, sink) -> {
+                    LoggerFactory.getLogger(IMAPServerModule.class)
+                        .info("Users corresponding to {}: {}", username, ImmutableList.copyOf(res));
+                    if (res.size() == 1) {
+                        sink.next(res.get(0));
+                    }
+                })
+                .blockOptional();
         };
     }
 

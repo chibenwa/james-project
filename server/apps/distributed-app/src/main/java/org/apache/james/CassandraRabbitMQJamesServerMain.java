@@ -183,6 +183,8 @@ public class CassandraRabbitMQJamesServerMain implements JamesServerMain {
     }
 
     public static GuiceJamesServer createServer(CassandraRabbitMQJamesConfiguration configuration) {
+        LOGGER.info("Starting ");
+
         BlobStoreConfiguration blobStoreConfiguration = configuration.blobStoreConfiguration();
         SearchConfiguration searchConfiguration = configuration.searchConfiguration();
 

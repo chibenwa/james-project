@@ -27,6 +27,7 @@ import org.apache.james.jwt.introspection.IntrospectionClient;
 import org.apache.james.jwt.introspection.IntrospectionEndpoint;
 import org.apache.james.jwt.introspection.TokenIntrospectionResponse;
 import org.reactivestreams.Publisher;
+import org.slf4j.LoggerFactory;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Header;
@@ -44,7 +45,9 @@ public class OidcJwtTokenVerifier {
         PublicKeyProvider jwksPublicKeyProvider = unverifiedClaim
             .map(kidValue -> JwksPublicKeyProvider.of(jwksURL, kidValue))
             .orElse(JwksPublicKeyProvider.of(jwksURL));
-        return new JwtTokenVerifier(jwksPublicKeyProvider).verifyAndExtractClaim(jwtToken, claimName, String.class);
+        final Optional<String> claim = new JwtTokenVerifier(jwksPublicKeyProvider).verifyAndExtractClaim(jwtToken, claimName, String.class);
+        LoggerFactory.getLogger(OidcJwtTokenVerifier.class).info("JWT claim {}", claim);
+        return claim;
     }
 
     public static <T> Optional<T> getClaimWithoutSignatureVerification(String token, String claimName) {

@@ -128,4 +128,23 @@ public class TokenIntrospectionResponse {
     public Optional<String> jti() {
         return jti;
     }
+
+    @Override
+    public String toString() {
+        return "TokenIntrospectionResponse{" +
+            "active=" + active +
+            ", scope=" + scope +
+            ", clientId=" + clientId +
+            ", username=" + username +
+            ", tokenType=" + tokenType +
+            ", exp=" + exp +
+            ", iat=" + iat +
+            ", nbf=" + nbf +
+            ", sub=" + sub +
+            ", aud=" + aud +
+            ", iss=" + iss +
+            ", jti=" + jti +
+            ", json=" + json +
+            '}';
+    }
 }

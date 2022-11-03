@@ -25,6 +25,8 @@ import java.util.Optional;
 import java.util.StringTokenizer;
 
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * https://datatracker.ietf.org/doc/rfc7628/
@@ -36,6 +38,7 @@ public class OIDCSASLParser {
     public static final String USER_PART_PREFIX = "user=";
     public static final int TOKEN_PART_INDEX = TOKEN_PART_PREFIX.length();
     public static final int USER_PART_INDEX = USER_PART_PREFIX.length();
+    private static final Logger LOGGER = LoggerFactory.getLogger(OIDCSASLParser.class);
 
     public static class OIDCInitialResponse {
         private final String associatedUser;
@@ -57,6 +60,7 @@ public class OIDCSASLParser {
 
     public static Optional<OIDCInitialResponse> parse(String initialResponse) {
         Optional<String> decodeResult = decodeBase64(initialResponse);
+        LOGGER.info("Decoded OIDC initial response {}", decodeResult);
 
         if (decodeResult.isPresent()) {
             String decodeValueWithoutDanglingPart = decodeResult.filter(value -> value.startsWith("n,"))
@@ -73,9 +77,11 @@ public class OIDCSASLParser {
                 String stringToken = stringTokenizer.nextToken();
                 if (stringToken.startsWith(TOKEN_PART_PREFIX)) {
                     tokenPart = StringUtils.replace(stringToken.substring(TOKEN_PART_INDEX), PREFIX_TOKEN, "");
+                    LOGGER.info("auth part of the OIDC token {}", tokenPart);
                     tokenPartCounter++;
                 } else if (stringToken.startsWith(USER_PART_PREFIX)) {
                     userPart = stringToken.substring(USER_PART_INDEX);
+                    LOGGER.info("user part of the OIDC token {}", userPart);
                     userPartCounter++;
                 }
             }
@@ -84,6 +90,7 @@ public class OIDCSASLParser {
                 return Optional.of(new OIDCInitialResponse(userPart, tokenPart));
             }
         }
+        LOGGER.info("OIDC oops");
         return Optional.empty();
     }
 
