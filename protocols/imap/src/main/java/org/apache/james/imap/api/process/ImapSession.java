@@ -24,8 +24,8 @@ import java.time.Duration;
 import java.util.Objects;
 import java.util.Optional;
 
-import javax.net.ssl.SSLSession;
 import javax.net.ssl.SSLPeerUnverifiedException;
+import javax.net.ssl.SSLSession;
 
 import org.apache.commons.text.RandomStringGenerator;
 import org.apache.james.core.Username;
