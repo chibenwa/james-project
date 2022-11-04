@@ -70,16 +70,13 @@ import org.apache.commons.net.imap.IMAPSClient;
 import org.apache.james.core.Username;
 import org.apache.james.imap.encode.main.DefaultImapEncoderFactory;
 import org.apache.james.imap.main.DefaultImapDecoderFactory;
-import org.apache.james.imap.processor.AuthenticateProcessor;
 import org.apache.james.imap.processor.base.AbstractProcessor;
 import org.apache.james.imap.processor.main.DefaultImapProcessorFactory;
 import org.apache.james.jwt.OidcTokenFixture;
-import org.apache.james.mailbox.Authorizator;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageManager;
 import org.apache.james.mailbox.MessageUid;
 import org.apache.james.mailbox.ModSeq;
-import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.inmemory.InMemoryMailboxManager;
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources;
 import org.apache.james.mailbox.model.MailboxPath;
@@ -160,13 +157,6 @@ class IMAPServerTest {
                 null,
                 memoryIntegrationResources.getQuotaManager(),
                 memoryIntegrationResources.getQuotaRootResolver(),
-                new Authorizator() {
-                    @Override
-                    public AuthorizationState canLoginAsOtherUser(Username userId, Username otherUserId) throws MailboxException {
-                        return AuthorizationState.FORBIDDEN;
-                    }
-                },
-                AuthenticateProcessor.DomainPartResolver.DEFAULT,
                 metricFactory),
             new ImapMetrics(metricFactory),
             new NoopGaugeRegistry());

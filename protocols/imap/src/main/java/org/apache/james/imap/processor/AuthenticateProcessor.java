@@ -41,7 +41,6 @@ import org.apache.james.imap.message.request.IRAuthenticateRequest;
 import org.apache.james.imap.message.response.AuthenticateResponse;
 import org.apache.james.jwt.OidcJwtTokenVerifier;
 import org.apache.james.jwt.introspection.IntrospectionEndpoint;
-import org.apache.james.mailbox.Authorizator;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.metrics.api.MetricFactory;
@@ -59,18 +58,6 @@ import reactor.core.publisher.Mono;
  * Processor which handles the AUTHENTICATE command. Only authtype of PLAIN is supported ATM.
  */
 public class AuthenticateProcessor extends AbstractAuthProcessor<AuthenticateRequest> implements CapabilityImplementingProcessor {
-    @FunctionalInterface
-    public interface DomainPartResolver {
-        DomainPartResolver DEFAULT = username -> {
-            if (username.hasDomainPart()) {
-                return Optional.of(username);
-            }
-            return Optional.empty();
-        };
-
-        Optional<Username> resolve(Username username);
-    }
-    
     public static final String AUTH_PLAIN = "AUTH=PLAIN";
     public static final Capability AUTH_PLAIN_CAPABILITY = Capability.of(AUTH_PLAIN);
     private static final Logger LOGGER = LoggerFactory.getLogger(AuthenticateProcessor.class);
@@ -80,14 +67,10 @@ public class AuthenticateProcessor extends AbstractAuthProcessor<AuthenticateReq
     private static final List<Capability> OAUTH_CAPABILITIES = ImmutableList.of(Capability.of("AUTH=" + AUTH_TYPE_OAUTHBEARER), Capability.of("AUTH=" + AUTH_TYPE_XOAUTH2));
     public static final Capability SASL_CAPABILITY = Capability.of("SASL-IR");
 
-    private final Authorizator authorizator;
-    private final DomainPartResolver domainPartResolver;
 
     public AuthenticateProcessor(MailboxManager mailboxManager, StatusResponseFactory factory,
-                                 Authorizator authorizator, DomainPartResolver domainPartResolver, MetricFactory metricFactory) {
+                                 MetricFactory metricFactory) {
         super(AuthenticateRequest.class, mailboxManager, factory, metricFactory);
-        this.authorizator = authorizator;
-        this.domainPartResolver = domainPartResolver;
     }
 
     @Override
@@ -146,21 +129,15 @@ public class AuthenticateProcessor extends AbstractAuthProcessor<AuthenticateReq
             Username origin = Username.of(session.extractOuParameterFromClientCertificate()
                 .orElseThrow(() -> new RuntimeException("No OU field in the certificate DN provided by the client")));
             LOGGER.debug("ORIGIN: {}", origin.asString());
-            Username fullyQualifiedOrigin = domainPartResolver.resolve(origin)
-                .orElseThrow(() -> new Exception("No user correspond to localpart " + origin));
-            LOGGER.debug("RESOLVED ORIGIN: {}", fullyQualifiedOrigin.asString());
 
-            if (authorizator.canLoginAsOtherUser(fullyQualifiedOrigin, target).equals(Authorizator.AuthorizationState.ALLOWED)) {
-                MailboxSession mailboxSession = getMailboxManager().createSystemSession(target);
-                session.authenticated();
-                session.setMailboxSession(mailboxSession);
-                provisionInbox(session, getMailboxManager(), mailboxSession);
-                okComplete(request, responder);
-                session.stopDetectingCommandInjection();
-            } else {
-                LOGGER.info("Delegation issue: {} cannot connect as {}", fullyQualifiedOrigin.asString(), target.asString());
-                manageFailureCount(session, request, responder);
-            }
+            MailboxSession mailboxSession = getMailboxManager()
+                .authenticate(origin)
+                .as(target);
+            session.authenticated();
+            session.setMailboxSession(mailboxSession);
+            provisionInbox(session, getMailboxManager(), mailboxSession);
+            okComplete(request, responder);
+            session.stopDetectingCommandInjection();
         } catch (Exception e) {
             // Ignored - this exception in parsing will be dealt
             // with in the if clause below
@@ -209,7 +186,6 @@ public class AuthenticateProcessor extends AbstractAuthProcessor<AuthenticateReq
     private void doOAuth(OIDCSASLParser.OIDCInitialResponse oidcInitialResponse, OidcSASLConfiguration oidcSASLConfiguration,
                          ImapSession session, ImapRequest request, Responder responder) {
         validateToken(oidcSASLConfiguration, oidcInitialResponse.getToken())
-            .flatMap(domainPartResolver::resolve)
             .ifPresentOrElse(authenticatedUser -> {
                 Username associatedUser = Username.of(oidcInitialResponse.getAssociatedUser());
                 LOGGER.info("authenticatedUser {} associatedUser {}", authenticatedUser, associatedUser);
