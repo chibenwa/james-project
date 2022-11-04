@@ -37,9 +37,7 @@ public interface Authorizator {
         UNKNOWN_USER
     }
 
-    default AuthorizationState canLoginAsOtherUser(Username userId, Username otherUserId) throws MailboxException {
-        return user(userId).canLoginAs(otherUserId);
-    }
+    AuthorizationState canLoginAsOtherUser(Username userId, Username otherUserId) throws MailboxException;
 
     default FluentAuthorizator user(Username userId) {
         return otherUserId -> canLoginAsOtherUser(userId, otherUserId);
