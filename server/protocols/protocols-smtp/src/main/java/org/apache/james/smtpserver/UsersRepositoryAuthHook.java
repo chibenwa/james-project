@@ -18,10 +18,12 @@
  ****************************************************************/
 package org.apache.james.smtpserver;
 
+import java.security.cert.CertificateEncodingException;
 import java.util.Optional;
 
 import javax.inject.Inject;
 import javax.mail.internet.AddressException;
+import javax.net.ssl.SSLPeerUnverifiedException;
 
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.Username;
@@ -89,6 +91,31 @@ public class UsersRepositoryAuthHook implements AuthHook {
                 })
             )
             .orElse(HookResult.DECLINED);
+    }
+
+    @Override
+    public HookResult doDelegation(SMTPSession session, Username target) {
+        try {
+            Optional<String> baseUser = session.extractOuParameterFromClientCertificate();
+            LOGGER.info("SMTP Auth base User {} tries to connect as {}", baseUser, target);
+
+            Authorizator.AuthorizationState authorizationState = authorizator.user(Username.of(baseUser.orElseThrow())).canLoginAs(target);
+
+            switch (authorizationState) {
+                case ALLOWED:
+                    LOGGER.info("Allowed");
+                    return saslSuccess(session, target);
+                case FORBIDDEN:
+                    LOGGER.info("Forbidden");
+                    return HookResult.DECLINED;
+                case UNKNOWN_USER:
+                    LOGGER.info("Unknown user");
+                    return HookResult.DECLINED;
+            }
+        } catch (SSLPeerUnverifiedException | CertificateEncodingException | MailboxException e) {
+            throw new RuntimeException(e);
+        }
+        return HookResult.DECLINED;
     }
 
     private HookResult doAuthWithDelegation(SMTPSession session, Username authenticatedUser, Username associatedUser) {

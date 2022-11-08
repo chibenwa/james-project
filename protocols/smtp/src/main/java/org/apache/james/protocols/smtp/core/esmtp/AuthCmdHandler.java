@@ -151,6 +151,7 @@ public class AuthCmdHandler
      * @param argument the argument passed in with the command by the SMTP client
      */
     private Response doAUTH(SMTPSession session, String argument) {
+        LOGGER.info("SMTP login argument {}", argument);
         if (session.getUsername() != null) {
             return ALREADY_AUTH;
         } else if (argument == null) {
@@ -162,6 +163,8 @@ public class AuthCmdHandler
                 argument = argument.substring(0,argument.indexOf(" "));
             }
             String authType = argument.toUpperCase(Locale.US);
+            LOGGER.info("SMTP login authType {}", authType);
+            LOGGER.info("SMTP login initialResponse {}", initialResponse);
             if (authType.equals(AUTH_TYPE_PLAIN) && session.getConfiguration().isPlainAuthEnabled()) {
                 String userpass;
                 if (initialResponse == null) {
@@ -244,6 +247,7 @@ public class AuthCmdHandler
         String user = null;
         String pass = null;
         try {
+            LOGGER.info("SMTP authentication line {}", line);
             String userpass = decodeBase64(line);
             if (userpass != null) {
                 /*  See: RFC 2595, Section 6
@@ -263,8 +267,11 @@ public class AuthCmdHandler
                 StringTokenizer authTokenizer = new StringTokenizer(userpass, "\0");
                 String authorizeId = authTokenizer.nextToken();  // Authorization Identity
                 user = authTokenizer.nextToken();                 // Authentication Identity
+                LOGGER.info("SMTP AUTH authorizeId {}", authorizeId);
+                LOGGER.info("SMTP AUTH user {}", user);
                 try {
                     pass = authTokenizer.nextToken();             // Password
+                    LOGGER.info("SMTP AUTH pass {}", pass);
                 } catch (java.util.NoSuchElementException ignored) {
                     // If we got here, this is what happened.  RFC 2595
                     // says that "the client may leave the authorization
@@ -283,6 +290,7 @@ public class AuthCmdHandler
                     // password, and the authorize_id to the user.
                     pass = user;
                     user = authorizeId;
+                    LOGGER.info("SMTP AUTH NO pass");
                 }
 
                 authTokenizer = null;
@@ -371,7 +379,7 @@ public class AuthCmdHandler
 
         if (hooks != null) {
             for (AuthHook rawHook : hooks) {
-                res = executeHook(session, rawHook, hook -> hook.doAuth(session, username, pass));
+                res = executeHook(session, rawHook, hook -> hook.doDelegation(session, username));
 
                 if (res != null) {
                     if (SMTPRetCode.AUTH_FAILED.equals(res.getRetCode())) {

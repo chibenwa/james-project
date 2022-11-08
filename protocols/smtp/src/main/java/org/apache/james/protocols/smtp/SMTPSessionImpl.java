@@ -18,17 +18,27 @@
  ****************************************************************/
 package org.apache.james.protocols.smtp;
 
+import java.security.cert.X509Certificate;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
 import org.apache.james.protocols.api.ProtocolSessionImpl;
 import org.apache.james.protocols.api.ProtocolTransport;
 import org.apache.james.protocols.api.Response;
+import org.bouncycastle.asn1.x500.style.BCStyle;
+import org.bouncycastle.asn1.x500.style.IETFUtils;
+import org.bouncycastle.cert.jcajce.JcaX509CertificateHolder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.github.fge.lambdas.Throwing;
 
 /**
  * {@link SMTPSession} implementation
  */
 public class SMTPSessionImpl extends ProtocolSessionImpl implements SMTPSession {
+    private static final Logger LOGGER = LoggerFactory.getLogger(SMTPSessionImpl.class);
 
     private static final Response LINE_LENGTH_EXCEEDED = new SMTPResponse(SMTPRetCode.SYNTAX_ERROR_COMMAND_UNRECOGNIZED, "Line length exceeded. See RFC 2821 #4.5.3.1.").immutable();
     private static final Response FATAL_ERROR = new SMTPResponse(SMTPRetCode.LOCAL_ERROR, "Unable to process request").immutable();
@@ -134,5 +144,25 @@ public class SMTPSessionImpl extends ProtocolSessionImpl implements SMTPSession 
     @Override
     public void setMessageFailed(boolean value) {
         messageFailed = value;
+    }
+
+    public Optional<String> extractOuParameterFromClientCertificate() {
+        return getSSLSession()
+            .flatMap(Throwing.function(session -> Optional.ofNullable(session.getPeerCertificates())))
+            .stream()
+            .flatMap(Arrays::stream)
+            .filter(X509Certificate.class::isInstance)
+            .map(X509Certificate.class::cast)
+            .peek(c -> LOGGER.info("Client certificate subject DN:'{}', X509 PRINCIPAL '{}', SERIAL NUMBER {}",
+                c.getSubjectDN().getName(),
+                c.getSubjectX500Principal().getName(),
+                c.getSerialNumber()))
+            .map(Throwing.function(certificate -> IETFUtils.valueToString(
+                new JcaX509CertificateHolder(certificate)
+                    .getSubject()
+                    .getRDNs(BCStyle.OU)[0]
+                    .getFirst()
+                    .getValue())))
+            .findFirst();
     }
 }

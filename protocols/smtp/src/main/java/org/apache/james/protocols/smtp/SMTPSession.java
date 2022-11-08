@@ -19,7 +19,11 @@
 
 package org.apache.james.protocols.smtp;
 
+import java.security.cert.CertificateEncodingException;
 import java.util.List;
+import java.util.Optional;
+
+import javax.net.ssl.SSLPeerUnverifiedException;
 
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.MaybeSender;
@@ -92,6 +96,10 @@ public interface SMTPSession extends ProtocolSession {
     boolean messageFailed();
 
     void setMessageFailed(boolean value);
+
+    default Optional<String> extractOuParameterFromClientCertificate() throws SSLPeerUnverifiedException, CertificateEncodingException {
+        return Optional.empty();
+    }
 
 }
 
