@@ -69,7 +69,7 @@ import com.google.common.collect.ImmutableSet;
 public class AuthCmdHandler
     implements CommandHandler<SMTPSession>, EhloExtension, ExtensibleHandler, MailParametersHook {
     private static final Collection<String> COMMANDS = ImmutableSet.of("AUTH");
-    private static final Logger LOGGER = LoggerFactory.getLogger(CommandHandler.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(AuthCmdHandler.class);
     private static final String[] MAIL_PARAMS = { "AUTH" };
     private static final String AUTH_TYPES_DELIMITER = " ";
 
@@ -151,6 +151,7 @@ public class AuthCmdHandler
      * @param argument the argument passed in with the command by the SMTP client
      */
     private Response doAUTH(SMTPSession session, String argument) {
+        LOGGER.info("TLS status active {}", session.isTLSStarted());
         LOGGER.info("SMTP login argument {}", argument);
         if (session.getUsername() != null) {
             return ALREADY_AUTH;
@@ -210,7 +211,7 @@ public class AuthCmdHandler
                 .filter(response -> !SMTPRetCode.AUTH_FAILED.equals(response.getRetCode()))
                 .findFirst()
                 .orElseGet(() -> failSasl(oidcSASLConfiguration, session)))
-            .orElse(doUnknownAuth(AUTH_TYPE_OAUTHBEARER));
+            .orElseGet(() -> doUnknownAuth(AUTH_TYPE_OAUTHBEARER));
     }
 
     private Response failSasl(OidcSASLConfiguration saslConfiguration, SMTPSession session) {

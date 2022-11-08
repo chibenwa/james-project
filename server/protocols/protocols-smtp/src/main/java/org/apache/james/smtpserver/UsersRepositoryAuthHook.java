@@ -22,10 +22,8 @@ import java.security.cert.CertificateEncodingException;
 import java.util.Optional;
 
 import javax.inject.Inject;
-import javax.mail.internet.AddressException;
 import javax.net.ssl.SSLPeerUnverifiedException;
 
-import org.apache.james.core.MailAddress;
 import org.apache.james.core.Username;
 import org.apache.james.jwt.OidcJwtTokenVerifier;
 import org.apache.james.jwt.introspection.IntrospectionEndpoint;
@@ -151,14 +149,6 @@ public class UsersRepositoryAuthHook implements AuthHook {
                 oidcSASLConfiguration.getIntrospectionEndpoint()
                     .map(endpoint -> new IntrospectionEndpoint(endpoint, oidcSASLConfiguration.getIntrospectionEndpointAuthorization()))))
             .blockOptional()
-            .flatMap(this::extractUserFromClaim);
-    }
-
-    private Optional<Username> extractUserFromClaim(String claimValue) {
-        try {
-            return Optional.of(Username.fromMailAddress(new MailAddress(claimValue)));
-        } catch (AddressException e) {
-            return Optional.empty();
-        }
+            .map(Username::of); // TODO contrib
     }
 }
