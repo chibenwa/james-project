@@ -53,6 +53,7 @@ public class JwtTokenVerifier {
         this.jwtParsers = pubKeyProvider.get()
             .stream()
             .map(this::toImmutableJwtParser)
+            .peek(jwtParser -> LOGGER.info("Loaded JWT parser {}", jwtParser))
             .collect(ImmutableList.toImmutableList());
     }
 
@@ -74,6 +75,7 @@ public class JwtTokenVerifier {
                 .getBody()
                 .get(claimName, returnType);
             if (claim == null) {
+                LOGGER.info("'{}' field in token is mandatory", claimName);
                 throw new MalformedJwtException("'" + claimName + "' field in token is mandatory");
             }
             return Optional.of(claim);

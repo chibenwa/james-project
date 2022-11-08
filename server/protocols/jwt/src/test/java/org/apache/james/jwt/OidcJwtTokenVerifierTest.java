@@ -58,6 +58,16 @@ class OidcJwtTokenVerifierTest {
     }
 
     @Test
+    void test() throws Exception {
+        Optional<String> email_address = OidcJwtTokenVerifier
+            .verifySignatureAndExtractClaim("eyJraWQiOiI4TmhGTjluNVVfT3pSNjFjM3JUUzdJS1dnRnF5ZC1MNUpnVDYxMnBNRkVFIiwidHlwIjoiSldUIiwiYWxnIjoiUlMyNTYifQ.eyJzdWIiOiJmOjg1MzNiY2I3LWIyMmMtNDllZS1hNDVjLTk0NDAwODdkZDkxMjo4MTAwMDIwMDAyMDIiLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsImlzcyI6Imh0dHBzOlwvXC90ZXN0cy1vcGVyYXRldXIuZXNwYWNlZGVjb25maWFuY2UubXNzYW50ZS5mclwvYXV0aFwvcmVhbG1zXC9tc3NhbnRlIiwidHlwIjoiQmVhcmVyIiwicHJlZmVycmVkX3VzZXJuYW1lIjoiODEwMDAyMDAwMjAyIiwibm9uY2UiOiJGRjNMd2JGdlQzOHJHTHdqek5OYnlPRDBxMlBWU3NlUmpxbzd1RWJjdEs0Iiwic2lkIjoiNDVjZWJiYTktZGEzYy00ZDIxLTlmMDYtNDkxMTNkNjIzNjI2IiwiYWNyIjoiZWlkYXMxIiwiYXpwIjoib3BlcmF0ZXVyLWFwaWxwcyIsImF1dGhfdGltZSI6MTY2Nzg5NzgxMywic2NvcGUiOiJvcGVuaWQgcHJvZmlsZSBlbWFpbCBzY29wZV9hbGwiLCJleHAiOjE2Njc4OTc5MzMsInNlc3Npb25fc3RhdGUiOiI0NWNlYmJhOS1kYTNjLTRkMjEtOWYwNi00OTExM2Q2MjM2MjYiLCJpYXQiOjE2Njc4OTc4MTMsImp0aSI6IjgxNTcyYWUyLTg1NmEtNDg4Yi05N2E4LWQ0N2Q2ZWY0ZDA3YyJ9.c2-dP3EcQSa6rYVHstr2gvqzo3F8oJ1jgOikE6Q640oWp_hq5klWopHCTfbZPP3k0LpaUt8r8mOEOliVKqFVrSRA8AzvtqzNbKiCtjVfflsfPbtjCrahwqkyvzZO6tkW-Lo-3PPiNpNt5MWQEGdR5kggM0q338wfZ2doJmHPOd3fCkhUUJxEtBbXPD5IlJzAgOgeZ_Q84lfD4sFVcvfeZKZRxR6fHHW5bR7wtrOlA31bYcJH8EXDdNHcsg0gl9Ldai1h7b4FgFtBVZ3oys3ic0GyrV_82y88KgSPHu2au0BtVgmKnpIPAFbUMeiLPCcB7Yc4micuK9aXUrzF7azNrUw3EjUCpnOcW6UvcW2ynFRIydKlbttsVyLFWmj4anPXap8kwodtDeqVLMcC4Szlvm6iaNeprxDcf1e6YU15TCRXbEawsKXdUf5ElXzVZILrzPnr202Nwo2dV6i9_6gBxbGYRdFJJ7ur3os9oX2rkKXVXQI9Q_NYDzCxZUNsCp9gKMHcZ6RPpYPH8pY56ecXm2fH2zn6hqQQMIdkW_Rn1UeAdmLs8gTTzPNx9rneTJs9cojwv3ceWYh8UGQV8fyDoO3p_HGv_NjGuN_xe53ITxI2foKQOqCzegz-DiOvMWyrsVjycFPEl7FenL17Elfpk8RTWUQCC7f21xox6POI7P4",
+                new URL("https://auth.bas.psc.esante.gouv.fr/auth/realms/esante-wallet/protocol/openid-connect/certs"),
+                "preferred_username");
+
+        assertThat(email_address).contains("810002000202");
+    }
+
+    @Test
     void verifyAndClaimShouldReturnClaimValueWhenValidTokenHasNotKid() {
         Optional<String> email_address = OidcJwtTokenVerifier.verifySignatureAndExtractClaim(OidcTokenFixture.VALID_TOKEN_HAS_NOT_KID, getJwksURL(), "email_address");
         SoftAssertions.assertSoftly(softly -> {
