@@ -20,6 +20,7 @@
 package org.apache.james.jwt;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Optional;
 
@@ -45,16 +46,11 @@ public class OidcJwtTokenVerifier {
     public static Optional<String> verifySignatureAndExtractClaim(String jwtToken, URL jwksURL, String claimName) {
         Optional<String> unverifiedClaim = getClaimWithoutSignatureVerification(jwtToken, "kid");
         LOGGER.info("kid {}", unverifiedClaim);
-        Optional<String> claim = getClaimWithoutSignatureVerification(jwtToken, claimName); // EVIL
-        LOGGER.info("JWT claim {} -> {}", claimName, claim);
-        return claim;
-    }
-
-    public static Optional<String> verifySignatureAndExtractClaim(String jwtToken, String claimName) {
-        Optional<String> unverifiedClaim = getClaimWithoutSignatureVerification(jwtToken, "kid");
-        LOGGER.info("kid {}", unverifiedClaim);
-        Optional<String> claim = getClaimWithoutSignatureVerification(jwtToken, claimName); // EVIL
-        LOGGER.info("JWT claim {} -> {}", claimName, claim);
+        PublicKeyProvider jwksPublicKeyProvider = unverifiedClaim
+            .map(kidValue -> JwksPublicKeyProvider.of(jwksURL, kidValue))
+            .orElse(JwksPublicKeyProvider.of(jwksURL));
+        Optional<String> claim = new JwtTokenVerifier(jwksPublicKeyProvider).verifyAndExtractClaim(jwtToken, claimName, String.class);
+        LOGGER.info("JWT claim {}", claim);
         return claim;
     }
 
@@ -84,7 +80,7 @@ public class OidcJwtTokenVerifier {
         }
         String nonSignedToken = token.substring(0, signatureIndex + 1);
         try {
-            Jwt<Header, Claims> headerClaims = Jwts.parserBuilder().setAllowedClockSkewSeconds(1000000000000000L).build().parseClaimsJwt(nonSignedToken);
+            Jwt<Header, Claims> headerClaims = Jwts.parserBuilder().build().parseClaimsJwt(nonSignedToken);
             String claim = headerClaims.getBody().get(claimName, String.class);
             if (claim == null) {
                 return Optional.empty(); // Fix a faire dans James
@@ -113,18 +109,22 @@ public class OidcJwtTokenVerifier {
             });
     }
 
-    public static Publisher<String> verifyWithUserInfo(String jwtToken,  String claimName) {
-        return Mono.fromCallable(() -> verifySignatureAndExtractClaim(jwtToken, claimName))
+    public static Publisher<String> verifyWithUserInfo(String jwtToken, URL jwksURL, String claimName) {
+        return Mono.fromCallable(() -> verifySignatureAndExtractClaim(jwtToken, jwksURL, claimName))
             .flatMap(optional -> optional.map(Mono::just).orElseGet(Mono::empty))
             .flatMap(claimResult -> {
                 LOGGER.info("Calling userinfo endpoint");
-                try {
-                    return Mono.from(INTROSPECTION_CLIENT.userInfo(new URI("https://auth.bas.psc.esante.gouv.fr/auth/realms/esante-wallet/protocol/openid-connect/userinfo"),
-                        jwtToken))
-                        .thenReturn(claimResult);
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
+                return Mono.from(INTROSPECTION_CLIENT.userInfo(userinfoEndpoint(),
+                    jwtToken))
+                    .thenReturn(claimResult);
             });
+    }
+
+    static URI userinfoEndpoint() {
+        try {
+            return new URI(Optional.ofNullable(System.getenv("USER_INFO")).orElse("https://tests-operateur.espacedeconfiance.mssante.fr/auth/realms/mssante/protocol/openid-connect/userinfo"));
+        } catch (URISyntaxException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

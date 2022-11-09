@@ -200,6 +200,7 @@ public class AuthenticateProcessor extends AbstractAuthProcessor<AuthenticateReq
 
     private Optional<Username> validateToken(OidcSASLConfiguration oidcSASLConfiguration, String token) {
         return Mono.from(OidcJwtTokenVerifier.verifyWithUserInfo(token,
+                oidcSASLConfiguration.getJwksURL(),
                 oidcSASLConfiguration.getClaim()))
             .blockOptional()
             .map(Username::of); // TODO contrib james

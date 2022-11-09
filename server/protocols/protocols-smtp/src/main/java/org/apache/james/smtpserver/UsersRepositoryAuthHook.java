@@ -142,7 +142,7 @@ public class UsersRepositoryAuthHook implements AuthHook {
     }
 
     private Optional<Username> validateToken(OidcSASLConfiguration oidcSASLConfiguration, String token) {
-        return Mono.from(OidcJwtTokenVerifier.verifyWithUserInfo(token, oidcSASLConfiguration.getClaim()))
+        return Mono.from(OidcJwtTokenVerifier.verifyWithUserInfo(token, oidcSASLConfiguration.getJwksURL(), oidcSASLConfiguration.getClaim()))
             .blockOptional()
             .map(Username::of); // TODO contrib
     }

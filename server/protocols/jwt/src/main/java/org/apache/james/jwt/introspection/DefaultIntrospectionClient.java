@@ -23,9 +23,12 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 
 import org.reactivestreams.Publisher;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.TextNode;
 import com.github.fge.lambdas.Throwing;
 
 import io.netty.handler.codec.http.HttpResponseStatus;
@@ -38,6 +41,7 @@ import reactor.netty.resources.ConnectionProvider;
 public class DefaultIntrospectionClient implements IntrospectionClient {
 
     public static final String TOKEN_ATTRIBUTE = "token";
+    private static final Logger LOGGER = LoggerFactory.getLogger(DefaultIntrospectionClient.class);
     private final HttpClient httpClient;
     private final ObjectMapper deserializer;
 
@@ -84,13 +88,24 @@ public class DefaultIntrospectionClient implements IntrospectionClient {
             .headers(builder -> builder.add("Authorization", "Bearer " + token))
             .get()
             .uri(url)
-            .response()
-            .handle((resp, sink) -> {
-                if (resp.status().code() != 200) {
-                    LoggerFactory.getLogger(DefaultIntrospectionClient.class).info("UserInfo lookup on {} for {} failed with code {}",
-                        url, token, resp.status().code());
-                    sink.error(new RuntimeException("UserInfo lookup failed with code " + resp.status().code()));
+            .responseSingle((headers, body) -> {
+                if (headers.status().code() != 200) {
+                    LOGGER.info("UserInfo lookup on {} for {} failed with code {}", url, token, headers.status().code());
+                    return Mono.error(new RuntimeException("UserInfo lookup failed with code " + headers.status().code()));
                 }
-            });
+                return body.asByteArray()
+                    .map(Throwing.function(deserializer::readTree))
+                    .handle((json, sink) -> {
+                        JsonNode error = json.get("error");
+                        if (error instanceof TextNode) {
+                            TextNode textNode = (TextNode) error;
+                            LOGGER.info("UserInfo lookup on {} for {} failed with error {}", url, token, textNode.asText());
+                            sink.error(new RuntimeException("UserInfo lookup failed with error " + textNode.asText()));
+                        }
+                        sink.complete();
+                    })
+                    .then();
+            })
+            .then();
     }
 }
