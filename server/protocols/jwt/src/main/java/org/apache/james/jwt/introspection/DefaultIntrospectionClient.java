@@ -19,9 +19,11 @@
 
 package org.apache.james.jwt.introspection;
 
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 
 import org.reactivestreams.Publisher;
+import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.fge.lambdas.Throwing;
@@ -74,5 +76,21 @@ public class DefaultIntrospectionClient implements IntrospectionClient {
                 .flatMap(errorResponse -> Mono.error(new TokenIntrospectionException(
                     String.format("Error when introspecting token. \nResponse Status = %s,\n Response Body = %s",
                         httpClientResponse.status().code(), errorResponse)))));
+    }
+
+    @Override
+    public Publisher<Void> userInfo(URI url, String token) {
+        return httpClient
+            .headers(builder -> builder.add("Authorization", "Bearer " + token))
+            .get()
+            .uri(url)
+            .response()
+            .handle((resp, sink) -> {
+                if (resp.status().code() != 200) {
+                    LoggerFactory.getLogger(DefaultIntrospectionClient.class).info("UserInfo lookup on {} for {} failed with code {}",
+                        url, token, resp.status().code());
+                    sink.error(new RuntimeException("UserInfo lookup failed with code " + resp.status().code()));
+                }
+            });
     }
 }

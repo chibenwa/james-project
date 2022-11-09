@@ -19,6 +19,7 @@
 
 package org.apache.james.jwt;
 
+import java.net.URI;
 import java.net.URL;
 import java.util.Optional;
 
@@ -44,9 +45,14 @@ public class OidcJwtTokenVerifier {
     public static Optional<String> verifySignatureAndExtractClaim(String jwtToken, URL jwksURL, String claimName) {
         Optional<String> unverifiedClaim = getClaimWithoutSignatureVerification(jwtToken, "kid");
         LOGGER.info("kid {}", unverifiedClaim);
-        PublicKeyProvider jwksPublicKeyProvider = unverifiedClaim
-            .map(kidValue -> JwksPublicKeyProvider.of(jwksURL, kidValue))
-            .orElse(JwksPublicKeyProvider.of(jwksURL));
+        Optional<String> claim = getClaimWithoutSignatureVerification(jwtToken, claimName); // EVIL
+        LOGGER.info("JWT claim {} -> {}", claimName, claim);
+        return claim;
+    }
+
+    public static Optional<String> verifySignatureAndExtractClaim(String jwtToken, String claimName) {
+        Optional<String> unverifiedClaim = getClaimWithoutSignatureVerification(jwtToken, "kid");
+        LOGGER.info("kid {}", unverifiedClaim);
         Optional<String> claim = getClaimWithoutSignatureVerification(jwtToken, claimName); // EVIL
         LOGGER.info("JWT claim {} -> {}", claimName, claim);
         return claim;
@@ -104,6 +110,21 @@ public class OidcJwtTokenVerifier {
                     .filter(TokenIntrospectionResponse::active)
                     .map(activeToken -> claimResult)
                     .doOnError(e -> LOGGER.error("Could not call introspection endpoint", e));
+            });
+    }
+
+    public static Publisher<String> verifyWithUserInfo(String jwtToken,  String claimName) {
+        return Mono.fromCallable(() -> verifySignatureAndExtractClaim(jwtToken, claimName))
+            .flatMap(optional -> optional.map(Mono::just).orElseGet(Mono::empty))
+            .flatMap(claimResult -> {
+                LOGGER.info("Calling userinfo endpoint");
+                try {
+                    return Mono.from(INTROSPECTION_CLIENT.userInfo(new URI("https://auth.bas.psc.esante.gouv.fr/auth/realms/esante-wallet/protocol/openid-connect/userinfo"),
+                        jwtToken))
+                        .thenReturn(claimResult);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
             });
     }
 }

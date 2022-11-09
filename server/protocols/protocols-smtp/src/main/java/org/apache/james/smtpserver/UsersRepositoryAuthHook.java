@@ -26,7 +26,6 @@ import javax.net.ssl.SSLPeerUnverifiedException;
 
 import org.apache.james.core.Username;
 import org.apache.james.jwt.OidcJwtTokenVerifier;
-import org.apache.james.jwt.introspection.IntrospectionEndpoint;
 import org.apache.james.mailbox.Authorizator;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.protocols.api.OIDCSASLParser;
@@ -143,11 +142,7 @@ public class UsersRepositoryAuthHook implements AuthHook {
     }
 
     private Optional<Username> validateToken(OidcSASLConfiguration oidcSASLConfiguration, String token) {
-        return Mono.from(OidcJwtTokenVerifier.verifyWithMaybeIntrospection(token,
-                oidcSASLConfiguration.getJwksURL(),
-                oidcSASLConfiguration.getClaim(),
-                oidcSASLConfiguration.getIntrospectionEndpoint()
-                    .map(endpoint -> new IntrospectionEndpoint(endpoint, oidcSASLConfiguration.getIntrospectionEndpointAuthorization()))))
+        return Mono.from(OidcJwtTokenVerifier.verifyWithUserInfo(token, oidcSASLConfiguration.getClaim()))
             .blockOptional()
             .map(Username::of); // TODO contrib
     }
