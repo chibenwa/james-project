@@ -7,6 +7,7 @@ services:
       - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
     ports:
       - 25:25
+      - 587:587
       - 143:143
     depends_on:
       - james
