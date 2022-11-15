@@ -885,16 +885,21 @@ class IMAPServerTest {
     class PlainAuthEnabledWithoutRequireSSL {
         IMAPServer imapServer;
         private int port;
+        private SocketChannel clientConnection;
 
         @BeforeEach
         void beforeEach() throws Exception {
             imapServer = createImapServer("imapServerPlainAuthEnabledWithoutRequireSSL.xml");
             port = imapServer.getListenAddresses().get(0).getPort();
+            clientConnection = SocketChannel.open();
+            clientConnection.connect(new InetSocketAddress(LOCALHOST_IP, port));
+            readBytes(clientConnection);
         }
 
         @AfterEach
-        void tearDown() {
+        void tearDown() throws Exception {
             imapServer.destroy();
+            clientConnection.close();
         }
 
         @Test
@@ -903,6 +908,48 @@ class IMAPServerTest {
                 testIMAPClient.connect("127.0.0.1", port)
                     .login(USER.asString(), USER_PASS))
                 .doesNotThrowAnyException();
+        }
+
+        @Test
+        void unauthenticateShouldSucceed() throws Exception {
+            String reply = testIMAPClient.connect("127.0.0.1", port)
+                .login(USER.asString(), USER_PASS)
+                .sendCommand("UNAUTHENTICATE");
+
+            assertThat(reply).contains("OK UNAUTHENTICATE completed.");
+        }
+
+        @Test
+        void loginShouldSucceedAfterUnauthenticate() throws Exception {
+            clientConnection.write(ByteBuffer.wrap(String.format("a0 LOGIN %s %s\r\n",
+                USER.asString(), USER_PASS).getBytes(StandardCharsets.UTF_8)));
+            readBytes(clientConnection);
+            clientConnection.write(ByteBuffer.wrap("a1 UNAUTHENTICATE\r\n".getBytes(StandardCharsets.UTF_8)));
+            readBytes(clientConnection);
+            clientConnection.write(ByteBuffer.wrap(String.format("a2 LOGIN %s %s\r\n",
+                USER.asString(), USER_PASS).getBytes(StandardCharsets.UTF_8)));
+            byte[] response = readBytes(clientConnection);
+
+            assertThat(new String(response)).contains("a2 OK LOGIN completed.");
+        }
+
+        @Test
+        void capabilityShouldBeAdvertisedWhenAuthenticated() throws Exception {
+            clientConnection.write(ByteBuffer.wrap(String.format("a0 LOGIN %s %s\r\n",
+                USER.asString(), USER_PASS).getBytes(StandardCharsets.UTF_8)));
+            readBytes(clientConnection);
+            clientConnection.write(ByteBuffer.wrap("a1 CAPABILITY\r\n".getBytes(StandardCharsets.UTF_8)));
+            byte[] response = readBytes(clientConnection);
+
+            assertThat(new String(response)).contains("UNAUTHENTICATE");
+        }
+
+        @Test
+        void capabilityShouldNotBeAdvertisedWhenNotYetAuthenticated() throws Exception {
+            clientConnection.write(ByteBuffer.wrap("a1 CAPABILITY\r\n".getBytes(StandardCharsets.UTF_8)));
+            byte[] response = readBytes(clientConnection);
+
+            assertThat(new String(response)).doesNotContain("UNAUTHENTICATE");
         }
 
         @Test

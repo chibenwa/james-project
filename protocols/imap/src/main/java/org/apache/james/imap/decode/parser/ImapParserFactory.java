@@ -51,6 +51,7 @@ public class ImapParserFactory implements ImapCommandParserFactory {
             // AUTHENTICATE and LOGIN
             new AuthenticateCommandParser(statusResponseFactory),
             new LoginCommandParser(statusResponseFactory),
+            new UnauthenticateCommandParser(statusResponseFactory),
 
             // Commands valid in AUTHENTICATED or SELECTED state.
             // RFC2060: SELECT, EXAMINE, CREATE, DELETE, RENAME, SUBSCRIBE,

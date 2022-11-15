@@ -102,6 +102,11 @@ public interface ImapSession extends CommandDetectionSession {
     Mono<Void> logout();
 
     /**
+     * Logs out the session. Marks the connection for closure;
+     */
+    Mono<Void> unauthenticate();
+
+    /**
      * Gets the current client state.
      * 
      * @return Returns the current state of this session.

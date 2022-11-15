@@ -60,6 +60,7 @@ public class DefaultProcessor implements ImapProcessor {
         CapabilityProcessor capabilityProcessor = new CapabilityProcessor(mailboxManager, statusResponseFactory, metricFactory);
         builder.add(new SystemMessageProcessor(mailboxManager));
         builder.add(new LogoutProcessor(mailboxManager, statusResponseFactory, metricFactory));
+        builder.add(new UnautnehticateProcessor(mailboxManager, statusResponseFactory, metricFactory));
         builder.add(capabilityProcessor);
         builder.add(new CheckProcessor(mailboxManager, statusResponseFactory, metricFactory));
         builder.add(new LoginProcessor(mailboxManager, statusResponseFactory, metricFactory));

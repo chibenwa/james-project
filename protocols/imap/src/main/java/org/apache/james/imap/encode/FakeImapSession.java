@@ -82,6 +82,12 @@ public class FakeImapSession implements ImapSession {
     }
 
     @Override
+    public Mono<Void> unauthenticate() {
+        return closeMailbox()
+            .then(Mono.fromRunnable(() -> state = ImapSessionState.NON_AUTHENTICATED));
+    }
+
+    @Override
     public void authenticated() {
         this.state = ImapSessionState.AUTHENTICATED;
     }

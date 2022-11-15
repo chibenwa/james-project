@@ -115,6 +115,15 @@ public class NettyImapSession implements ImapSession, NettyConstants {
     }
 
     @Override
+    public Mono<Void> unauthenticate() {
+        return closeMailbox()
+            .then(Mono.fromRunnable(() -> {
+                state = ImapSessionState.NON_AUTHENTICATED;
+                mailboxSession = null;
+            }));
+    }
+
+    @Override
     public void authenticated() {
         this.state = ImapSessionState.AUTHENTICATED;
     }

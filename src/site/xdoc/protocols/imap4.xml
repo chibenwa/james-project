@@ -58,6 +58,7 @@
        <li>RESYNCH (RFC 5162 http://www.ietf.org/rfc/rfc5162.txt on master)</li>
        <li>MOVE (RFC 6851 https://tools.ietf.org/html/rfc6851 on master). This is enabled only if you use a MailboxManager exposing the Move capability</li>
        <li>METADATA Extension (RFC 5464 http://www.ietf.org/rfc/rfc5464.txt on master). This is enabled only if you use a MailboxManager exposing the Annotation capability</li>
+       <li>IMAP UNAUTHENTICATE (RFC 8437)</li>
      </ul>
      <p>We follow RFC2683 recommendations for our implementations:</p>
      <ul>

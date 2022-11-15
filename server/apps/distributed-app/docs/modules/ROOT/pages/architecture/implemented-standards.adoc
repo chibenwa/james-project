@@ -65,6 +65,7 @@ The following IMAP specifications are implemented:
  - link:https://datatracker.ietf.org/doc/html/rfc5032[RFC-5032] IMAP WITHIN (for relative date search semantic)
  - link:https://datatracker.ietf.org/doc/html/rfc4731[RFC-4731] IMAP ESEARCH: extentions for IMAP search: new options like min, max, count.
  - link:https://datatracker.ietf.org/doc/html/rfc3348.html[RFC-3348] IMAP Child Mailbox Extension
+ - link:https://datatracker.ietf.org/doc/html/rfc8437.html[RFC-8437] IMAP UNAUTHENTICATE Extension
 
 Partially implemented specifications:
 

@@ -155,6 +155,7 @@ public interface ImapConstants {
     ImapCommand CAPABILITY_COMMAND = ImapCommand.anyStateCommand("CAPABILITY");
     ImapCommand COMPRESS_COMMAND = ImapCommand.anyStateCommand("COMPRESS");
     ImapCommand LOGOUT_COMMAND = ImapCommand.anyStateCommand("LOGOUT");
+    ImapCommand UNAUTHENTICATE_COMMAND = ImapCommand.authenticatedStateCommand("UNAUTHENTICATE");
     ImapCommand NOOP_COMMAND = ImapCommand.anyStateCommand("NOOP");
 
     ImapCommand AUTHENTICATE_COMMAND = ImapCommand.nonAuthenticatedStateCommand("AUTHENTICATE");
