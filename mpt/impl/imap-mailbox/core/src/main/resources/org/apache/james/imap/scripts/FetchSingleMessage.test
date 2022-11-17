@@ -167,3 +167,7 @@ S: f17 OK FETCH completed.
 C: f18 FETCH 1 (FAST)
 S: \* 1 FETCH \(FLAGS \(\\Recent \\Seen\) INTERNALDATE \".*\" RFC822.SIZE 254\)
 S: f18 OK FETCH completed.
+
+C: 22 fetch 1 (emailid threadid)
+S: \* 1 FETCH \(EMAILID \(.*\) THREADID \(.*\)\)
+S: 22 OK FETCH completed.
