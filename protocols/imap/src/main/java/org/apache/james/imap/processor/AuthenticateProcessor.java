@@ -69,6 +69,11 @@ public class AuthenticateProcessor extends AbstractAuthProcessor<AuthenticateReq
     }
 
     @Override
+    public List<Class<? extends AuthenticateRequest>> acceptableClasses() {
+        return ImmutableList.of(AuthenticateRequest.class, IRAuthenticateRequest.class);
+    }
+
+    @Override
     protected void processRequest(AuthenticateRequest request, ImapSession session, final Responder responder) {
         final String authType = request.getAuthType();
 

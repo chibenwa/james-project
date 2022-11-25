@@ -22,6 +22,7 @@ package org.apache.james.imap.processor;
 import java.util.Map;
 import java.util.function.Function;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.james.events.EventBus;
 import org.apache.james.imap.api.ImapConfiguration;
 import org.apache.james.imap.api.ImapMessage;
@@ -70,8 +71,7 @@ public class DefaultProcessor implements ImapProcessor {
         builder.add(new UnsubscribeProcessor(mailboxManager, subscriptionManager, statusResponseFactory, metricFactory));
         builder.add(new SubscribeProcessor(mailboxManager, subscriptionManager, statusResponseFactory, metricFactory));
         builder.add(new CopyProcessor(mailboxManager, statusResponseFactory, metricFactory));
-        AuthenticateProcessor authenticateProcessor = new AuthenticateProcessor(mailboxManager, statusResponseFactory, metricFactory);
-        builder.add(authenticateProcessor);
+        builder.add(new AuthenticateProcessor(mailboxManager, statusResponseFactory, metricFactory));
         builder.add(new ExpungeProcessor(mailboxManager, statusResponseFactory, metricFactory));
         builder.add(new ExamineProcessor(mailboxManager, eventBus, statusResponseFactory, metricFactory));
         builder.add(new AppendProcessor(mailboxManager, statusResponseFactory, metricFactory));
@@ -83,8 +83,7 @@ public class DefaultProcessor implements ImapProcessor {
         builder.add(new XListProcessor(mailboxManager, statusResponseFactory, mailboxTyper, metricFactory));
         builder.add(new ListProcessor<>(mailboxManager, statusResponseFactory, metricFactory));
         builder.add(new SearchProcessor(mailboxManager, statusResponseFactory, metricFactory));
-        SelectProcessor selectProcessor = new SelectProcessor(mailboxManager, eventBus, statusResponseFactory, metricFactory);
-        builder.add(selectProcessor);
+        builder.add(new SelectProcessor(mailboxManager, eventBus, statusResponseFactory, metricFactory));
         builder.add(new NamespaceProcessor(mailboxManager, statusResponseFactory, metricFactory));
         builder.add(new FetchProcessor(mailboxManager, statusResponseFactory, metricFactory));
         builder.add(new StartTLSProcessor(statusResponseFactory));
@@ -115,17 +114,18 @@ public class DefaultProcessor implements ImapProcessor {
             .filter(CapabilityImplementingProcessor.class::isInstance)
             .map(CapabilityImplementingProcessor.class::cast)
             .forEach(capabilityProcessor::addProcessor);
-        // add for QRESYNC
-        enableProcessor.addProcessor(selectProcessor);
+        processors.stream()
+            .filter(PermitEnableCapabilityProcessor.class::isInstance)
+            .map(PermitEnableCapabilityProcessor.class::cast)
+            .forEach(enableProcessor::addProcessor);
 
-        ImmutableMap.Builder<Class, ImapProcessor> processorMap = ImmutableMap.<Class, ImapProcessor>builder()
-            .putAll(processors.stream()
-                .collect(ImmutableMap.toImmutableMap(
-                    AbstractProcessor::acceptableClass,
-                    Function.identity())))
-            .put(IRAuthenticateRequest.class, authenticateProcessor);
+        ImmutableMap<Class, ImapProcessor> processorMap = processors.stream()
+            .<Pair<Class, ImapProcessor>>flatMap(p -> p.acceptableClasses().stream().map(clazz -> Pair.of(clazz, p)))
+            .collect(ImmutableMap.toImmutableMap(
+                Pair::getLeft,
+                Pair::getRight));
 
-        return new DefaultProcessor(processorMap.build(), chainEndProcessor);
+        return new DefaultProcessor(processorMap, chainEndProcessor);
     }
 
     private final Map<Class, ImapProcessor> processorMap;

@@ -58,15 +58,24 @@ import com.google.common.collect.ImmutableSortedSet;
  */
 public class GetMetadataProcessor extends AbstractMailboxProcessor<GetMetadataRequest> implements CapabilityImplementingProcessor {
     private static final Logger LOGGER = LoggerFactory.getLogger(GetMetadataProcessor.class);
+    private final ImmutableList<Capability> capabilities;
 
     public GetMetadataProcessor(MailboxManager mailboxManager, StatusResponseFactory factory,
                                 MetricFactory metricFactory) {
         super(GetMetadataRequest.class, mailboxManager, factory, metricFactory);
+        this.capabilities = computeCapabilities();
     }
 
     @Override
     public List<Capability> getImplementedCapabilities(ImapSession session) {
-        return ImmutableList.of(ImapConstants.SUPPORTS_ANNOTATION);
+        return capabilities;
+    }
+
+    private ImmutableList<Capability> computeCapabilities() {
+        if (getMailboxManager().getSupportedMailboxCapabilities().contains(MailboxManager.MailboxCapabilities.Annotation)) {
+            return ImmutableList.of(ImapConstants.SUPPORTS_ANNOTATION);
+        }
+        return ImmutableList.of();
     }
 
     @Override
