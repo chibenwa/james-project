@@ -204,7 +204,7 @@ public class MessageFastViewProjectionCorrector {
     }
 
     private Mono<MessageManager> retrieveMailbox(MailboxSession session, MailboxMetaData mailboxMetadata) {
-        return Mono.from(mailboxManager.getMailboxReactive(mailboxMetadata.getId(), session));
+        return Mono.fromCallable(() -> mailboxManager.getMailbox(mailboxMetadata.getMailbox(), session));
     }
 
     private Flux<ComposedMessageIdWithMetaData> listAllMailboxMessages(MessageManager messageManager, MailboxSession session) {

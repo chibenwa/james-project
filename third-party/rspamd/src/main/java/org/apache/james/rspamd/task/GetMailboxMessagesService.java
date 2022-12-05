@@ -106,7 +106,7 @@ public class GetMailboxMessagesService {
                                                           RunningOptions runningOptions, FeedHamToRspamdTask.Context context) {
         MailboxSession mailboxSession = mailboxManager.createSystemSession(username);
 
-        return Mono.from(mailboxManager.getMailboxReactive(mailboxMetaData.getId(), mailboxSession))
+        return Mono.fromCallable(() -> mailboxManager.getMailbox(mailboxMetaData.getMailbox(), mailboxSession))
             .map(Throwing.function(MessageManager::getMailboxEntity))
             .flatMapMany(Throwing.function(mailbox -> mapperFactory.getMessageMapper(mailboxSession).findInMailboxReactive(mailbox, MessageRange.all(), MessageMapper.FetchType.METADATA, UNLIMITED)))
             .filter(mailboxMessageMetaData -> afterDate.map(date -> mailboxMessageMetaData.getInternalDate().after(date)).orElse(true))
