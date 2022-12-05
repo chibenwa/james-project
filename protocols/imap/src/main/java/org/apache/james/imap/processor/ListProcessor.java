@@ -315,17 +315,10 @@ public class ListProcessor<T extends ListRequest> extends AbstractMailboxProcess
 
     private void respondMyRights(T request, Responder responder, MailboxSession mailboxSession, MailboxMetaData metaData) {
         if (request.getReturnOptions().contains(ListRequest.ListReturnOption.MYRIGHTS)) {
-            MyRightsResponse myRightsResponse = new MyRightsResponse(metaData.getPath().getName(), getRfc4314Rights(mailboxSession, metaData));
+            MyRightsResponse myRightsResponse = new MyRightsResponse(metaData.getPath().getName(),
+                getMailboxManager().myRights(metaData.getMailbox(), mailboxSession));
             responder.respond(myRightsResponse);
         }
-    }
-
-    private MailboxACL.Rfc4314Rights getRfc4314Rights(MailboxSession mailboxSession, MailboxMetaData metaData) {
-        if (metaData.getPath().belongsTo(mailboxSession)) {
-            return MailboxACL.FULL_RIGHTS;
-        }
-        MailboxACL.EntryKey entryKey = MailboxACL.EntryKey.createUserEntryKey(mailboxSession.getUser());
-        return metaData.getResolvedAcls().getEntries().get(entryKey);
     }
 
     private MailboxQuery mailboxQuery(MailboxPath basePath, String mailboxName, MailboxSession mailboxSession) {
