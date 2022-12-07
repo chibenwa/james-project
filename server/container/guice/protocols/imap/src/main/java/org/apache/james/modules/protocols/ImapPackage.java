@@ -2,8 +2,6 @@ package org.apache.james.modules.protocols;
 
 import java.util.Collection;
 
-import org.apache.james.imap.api.process.ImapProcessor;
-import org.apache.james.imap.decode.ImapCommandParser;
 import org.apache.james.imap.decode.parser.AppendCommandParser;
 import org.apache.james.imap.decode.parser.AuthenticateCommandParser;
 import org.apache.james.imap.decode.parser.CapabilityCommandParser;
@@ -54,7 +52,6 @@ import org.apache.james.imap.encode.ExistsResponseEncoder;
 import org.apache.james.imap.encode.ExpungeResponseEncoder;
 import org.apache.james.imap.encode.FetchResponseEncoder;
 import org.apache.james.imap.encode.FlagsResponseEncoder;
-import org.apache.james.imap.encode.ImapResponseEncoder;
 import org.apache.james.imap.encode.LSubResponseEncoder;
 import org.apache.james.imap.encode.ListResponseEncoder;
 import org.apache.james.imap.encode.ListRightsResponseEncoder;
@@ -109,44 +106,44 @@ import org.apache.james.imap.processor.SubscribeProcessor;
 import org.apache.james.imap.processor.UnselectProcessor;
 import org.apache.james.imap.processor.UnsubscribeProcessor;
 import org.apache.james.imap.processor.XListProcessor;
-import org.apache.james.imap.processor.base.AbstractProcessor;
 import org.apache.james.imap.processor.base.ImapResponseMessageProcessor;
 import org.apache.james.imap.processor.fetch.FetchProcessor;
+import org.apache.james.utils.ClassName;
 
 import com.google.common.collect.ImmutableList;
 
 public interface ImapPackage {
-    Collection<Class<? extends AbstractProcessor>> processors();
+    Collection<ClassName> processors();
 
-    Collection<Class<? extends ImapCommandParser>> decoders();
+    Collection<ClassName> decoders();
 
-    Collection<Class<? extends ImapResponseEncoder>> encoders();
+    Collection<ClassName> encoders();
 
     class Impl implements ImapPackage {
-        private final ImmutableList<Class<? extends AbstractProcessor>> processors;
-        private final ImmutableList<Class<? extends ImapCommandParser>> decoders;
-        private final ImmutableList<Class<? extends ImapResponseEncoder>> encoders;
+        private final ImmutableList<ClassName> processors;
+        private final ImmutableList<ClassName> decoders;
+        private final ImmutableList<ClassName> encoders;
 
-        public Impl(ImmutableList<Class<? extends AbstractProcessor>> processors,
-                    ImmutableList<Class<? extends ImapCommandParser>> decoders,
-                    ImmutableList<Class<? extends ImapResponseEncoder>> encoders) {
+        public Impl(ImmutableList<ClassName> processors,
+                    ImmutableList<ClassName> decoders,
+                    ImmutableList<ClassName> encoders) {
             this.processors = processors;
             this.decoders = decoders;
             this.encoders = encoders;
         }
 
         @Override
-        public Collection<Class<? extends AbstractProcessor>> processors() {
+        public Collection<ClassName> processors() {
             return processors;
         }
 
         @Override
-        public Collection<Class<? extends ImapCommandParser>> decoders() {
+        public Collection<ClassName> decoders() {
             return decoders;
         }
 
         @Override
-        public Collection<Class<? extends ImapResponseEncoder>> encoders() {
+        public Collection<ClassName> encoders() {
             return encoders;
         }
     }
@@ -154,21 +151,21 @@ public interface ImapPackage {
     static ImapPackage and(Collection<ImapPackage> packages) {
         return new ImapPackage() {
             @Override
-            public Collection<Class<? extends AbstractProcessor>> processors() {
+            public Collection<ClassName> processors() {
                 return packages.stream()
                     .flatMap(p -> p.processors().stream())
                     .collect(ImmutableList.toImmutableList());
             }
 
             @Override
-            public Collection<Class<? extends ImapCommandParser>> decoders() {
+            public Collection<ClassName> decoders() {
                 return packages.stream()
                     .flatMap(p -> p.decoders().stream())
                     .collect(ImmutableList.toImmutableList());
             }
 
             @Override
-            public Collection<Class<? extends ImapResponseEncoder>> encoders() {
+            public Collection<ClassName> encoders() {
                 return packages.stream()
                     .flatMap(p -> p.encoders().stream())
                     .collect(ImmutableList.toImmutableList());
@@ -179,6 +176,7 @@ public interface ImapPackage {
     ImapPackage DEFAULT = and(ImmutableList.of(new DefaultNoAuth(), new DefaultAuth()));
 
     class DefaultNoAuth extends Impl {
+        // TODO rebase on master and add the IDProcessor
         public DefaultNoAuth() {
             super(
                 ImmutableList.of(
@@ -221,7 +219,10 @@ public interface ImapPackage {
                     MoveProcessor.class,
                     SetMetadataProcessor.class,
                     GetMetadataProcessor.class,
-                    LogoutProcessor.class),
+                    LogoutProcessor.class)
+                    .stream()
+                    .map(clazz -> new ClassName(clazz.getCanonicalName()))
+                    .collect(ImmutableList.toImmutableList()),
                 ImmutableList.of(
                     CapabilityCommandParser.class,
                     NoopCommandParser.class,
@@ -261,7 +262,10 @@ public interface ImapPackage {
                     GetQuotaCommandParser.class,
                     SetQuotaCommandParser.class,
                     SetAnnotationCommandParser.class,
-                    GetMetadataCommandParser.class),
+                    GetMetadataCommandParser.class)
+                    .stream()
+                    .map(clazz -> new ClassName(clazz.getCanonicalName()))
+                    .collect(ImmutableList.toImmutableList()),
                 ImmutableList.of(MetadataResponseEncoder.class,
                     MyRightsResponseEncoder.class,
                     ListRightsResponseEncoder.class,
@@ -284,14 +288,23 @@ public interface ImapPackage {
                     ESearchResponseEncoder.class,
                     VanishedResponseEncoder.class,
                     QuotaResponseEncoder.class,
-                    QuotaRootResponseEncoder.class));
+                    QuotaRootResponseEncoder.class)
+                    .stream()
+                    .map(clazz -> new ClassName(clazz.getCanonicalName()))
+                    .collect(ImmutableList.toImmutableList()));
         }
     }
 
     class DefaultAuth extends Impl {
         public DefaultAuth() {
-            super(ImmutableList.of(AuthenticateProcessor.class, LoginProcessor.class),
-                ImmutableList.of(AuthenticateCommandParser.class, LoginCommandParser.class),
+            super(ImmutableList.of(AuthenticateProcessor.class, LoginProcessor.class)
+                    .stream()
+                    .map(clazz -> new ClassName(clazz.getCanonicalName()))
+                    .collect(ImmutableList.toImmutableList()),
+                ImmutableList.of(AuthenticateCommandParser.class, LoginCommandParser.class)
+                    .stream()
+                    .map(clazz -> new ClassName(clazz.getCanonicalName()))
+                    .collect(ImmutableList.toImmutableList()),
                 ImmutableList.of());
         }
     }

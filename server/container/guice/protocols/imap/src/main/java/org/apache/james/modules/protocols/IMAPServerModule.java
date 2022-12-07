@@ -18,19 +18,28 @@
  ****************************************************************/
 package org.apache.james.modules.protocols;
 
+import java.util.Arrays;
+import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Stream;
 
+import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.james.events.EventBus;
 import org.apache.james.imap.api.display.Localizer;
-import org.apache.james.imap.api.message.Capability;
 import org.apache.james.imap.api.message.response.StatusResponseFactory;
 import org.apache.james.imap.api.process.ImapProcessor;
+import org.apache.james.imap.decode.ImapCommandParser;
+import org.apache.james.imap.decode.ImapCommandParserFactory;
 import org.apache.james.imap.decode.ImapDecoder;
+import org.apache.james.imap.decode.base.AbstractImapCommandParser;
+import org.apache.james.imap.decode.main.DefaultImapDecoder;
+import org.apache.james.imap.decode.parser.ImapParserFactory;
 import org.apache.james.imap.encode.ImapEncoder;
+import org.apache.james.imap.encode.ImapResponseEncoder;
+import org.apache.james.imap.encode.base.EndImapEncoder;
 import org.apache.james.imap.encode.main.DefaultImapEncoderFactory;
 import org.apache.james.imap.encode.main.DefaultLocalizer;
-import org.apache.james.imap.main.DefaultImapDecoderFactory;
 import org.apache.james.imap.message.response.UnpooledStatusResponseFactory;
 import org.apache.james.imap.processor.AuthenticateProcessor;
 import org.apache.james.imap.processor.CapabilityImplementingProcessor;
@@ -41,19 +50,16 @@ import org.apache.james.imap.processor.PermitEnableCapabilityProcessor;
 import org.apache.james.imap.processor.SelectProcessor;
 import org.apache.james.imap.processor.base.AbstractProcessor;
 import org.apache.james.imap.processor.base.UnknownRequestProcessor;
-import org.apache.james.imap.processor.main.DefaultImapProcessorFactory;
 import org.apache.james.imapserver.netty.IMAPServerFactory;
-import org.apache.james.lifecycle.api.Startable;
-import org.apache.james.mailbox.MailboxManager;
-import org.apache.james.mailbox.SubscriptionManager;
-import org.apache.james.mailbox.quota.QuotaManager;
-import org.apache.james.mailbox.quota.QuotaRootResolver;
-import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.server.core.configuration.ConfigurationProvider;
+import org.apache.james.utils.ClassName;
+import org.apache.james.utils.GuiceGenericLoader;
 import org.apache.james.utils.GuiceProbe;
 import org.apache.james.utils.InitializationOperation;
 import org.apache.james.utils.InitilizationOperationBuilder;
 
+import com.github.fge.lambdas.Throwing;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
@@ -68,6 +74,7 @@ public class IMAPServerModule extends AbstractModule {
     protected void configure() {
         bind(IMAPServerFactory.class).in(Scopes.SINGLETON);
         bind(Localizer.class).to(DefaultLocalizer.class);
+        bind(UnpooledStatusResponseFactory.class).in(Scopes.SINGLETON);
         bind(StatusResponseFactory.class).to(UnpooledStatusResponseFactory.class);
 
         bind(CapabilityProcessor.class).in(Scopes.SINGLETON);
@@ -79,9 +86,14 @@ public class IMAPServerModule extends AbstractModule {
     }
 
     @Provides
-    ImapProcessor provideImapProcessor(Set<AbstractProcessor> processors, StatusResponseFactory statusResponseFactory) {
+    ImapProcessor provideImapProcessor(ImapPackage imapPackage, GuiceGenericLoader loader, StatusResponseFactory statusResponseFactory) {
+        Stream<AbstractProcessor> processors = imapPackage.processors()
+            .stream()
+            .map(Throwing.function(loader::instantiate))
+            .map(AbstractProcessor.class::cast);
+
         return new DefaultProcessor(
-            processors.stream()
+            processors
                 .<Pair<Class, ImapProcessor>>flatMap(p -> p.acceptableClasses().stream().map(clazz -> Pair.of(clazz, p)))
                 .collect(ImmutableMap.toImmutableMap(
                     Pair::getLeft,
@@ -89,22 +101,55 @@ public class IMAPServerModule extends AbstractModule {
             new UnknownRequestProcessor(statusResponseFactory));
     }
 
-    // TODO load and aggregate IMAP packages from the configuration
-
-    // TODO instanciate the processors, decoders, encoders from the package
-
     @Provides
     @Singleton
-    ImapDecoder provideImapDecoder() {
-        // TODO load from a "Set"
-        return DefaultImapDecoderFactory.createDecoder();
+    ImapPackage providePackage(ConfigurationProvider configurationProvider, GuiceGenericLoader loader) {
+        try {
+            String[] imapPackages = configurationProvider.getConfiguration("imapserver")
+                .getStringArray("imapPackages");
+
+            ImmutableList<ImapPackage> packages = Optional.ofNullable(imapPackages)
+                .stream()
+                .flatMap(Arrays::stream)
+                .map(ClassName::new)
+                .map(Throwing.function(loader::instantiate))
+                .map(ImapPackage.class::cast)
+                .collect(ImmutableList.toImmutableList());
+
+            if (packages.isEmpty()) {
+                return ImapPackage.DEFAULT;
+            }
+            return ImapPackage.and(packages);
+        } catch (ConfigurationException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Provides
     @Singleton
-    ImapEncoder provideImapEncoder() {
-        // TODO load from a "Set"
-        return new DefaultImapEncoderFactory().buildImapEncoder();
+    ImapDecoder provideImapDecoder(ImapPackage imapPackage, GuiceGenericLoader loader) {
+        ImmutableMap<String, ImapCommandParser> decoders = imapPackage.decoders()
+            .stream()
+            .map(Throwing.function(loader::instantiate))
+            .map(AbstractImapCommandParser.class::cast)
+            .collect(ImmutableMap.toImmutableMap(
+                parser -> parser.getCommand().getName(),
+                Function.identity()));
+
+        UnpooledStatusResponseFactory unpooledStatusResponseFactory = new UnpooledStatusResponseFactory();
+        ImapCommandParserFactory imapCommands = new ImapParserFactory(decoders);
+        return new DefaultImapDecoder(unpooledStatusResponseFactory, imapCommands);
+    }
+
+    @Provides
+    @Singleton
+    ImapEncoder provideImapEncoder(ImapPackage imapPackage, GuiceGenericLoader loader) {
+        Stream<ImapResponseEncoder> encoders = imapPackage.encoders()
+            .stream()
+            .map(Throwing.function(loader::instantiate))
+            .map(ImapResponseEncoder.class::cast);
+
+        return new DefaultImapEncoderFactory.DefaultImapEncoder(encoders, new EndImapEncoder());
     }
 
     @ProvidesIntoSet

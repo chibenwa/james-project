@@ -49,5 +49,9 @@
             <groupId>com.google.inject</groupId>
             <artifactId>guice</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.apache.james</groupId>
+            <artifactId>james-server-guice-utils</artifactId>
+        </dependency>
     </dependencies>
 </project>
