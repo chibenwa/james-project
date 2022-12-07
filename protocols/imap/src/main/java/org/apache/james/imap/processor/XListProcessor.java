@@ -23,6 +23,8 @@ import static org.apache.james.imap.api.ImapConstants.SUPPORTS_XLIST;
 import java.util.Collections;
 import java.util.List;
 
+import javax.inject.Inject;
+
 import org.apache.james.imap.api.message.Capability;
 import org.apache.james.imap.api.message.response.ImapResponseMessage;
 import org.apache.james.imap.api.message.response.StatusResponseFactory;
@@ -45,6 +47,12 @@ public class XListProcessor extends ListProcessor<XListRequest> implements Capab
 
     private static final List<Capability> XLIST_CAPS = ImmutableList.of(SUPPORTS_XLIST);
     private final MailboxTyper mailboxTyper;
+
+    @Inject
+    public XListProcessor(MailboxManager mailboxManager, StatusResponseFactory factory, MetricFactory metricFactory,
+                          SubscriptionManager subscriptionManager) {
+        this(mailboxManager, factory, null, metricFactory, subscriptionManager);
+    }
 
     public XListProcessor(MailboxManager mailboxManager, StatusResponseFactory factory, MailboxTyper mailboxTyper,
             MetricFactory metricFactory) {

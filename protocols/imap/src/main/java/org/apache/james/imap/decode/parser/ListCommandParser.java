@@ -18,6 +18,8 @@
  ****************************************************************/
 package org.apache.james.imap.decode.parser;
 
+import javax.inject.Inject;
+
 import org.apache.james.imap.api.ImapCommand;
 import org.apache.james.imap.api.ImapConstants;
 import org.apache.james.imap.api.ImapMessage;
@@ -45,6 +47,7 @@ public class ListCommandParser extends AbstractUidCommandParser {
         }
     }
 
+    @Inject
     public ListCommandParser(StatusResponseFactory statusResponseFactory) {
         super(ImapConstants.LIST_COMMAND, statusResponseFactory);
     }

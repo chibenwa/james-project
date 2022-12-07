@@ -21,6 +21,8 @@ package org.apache.james.imap.processor;
 
 import java.util.List;
 
+import javax.inject.Inject;
+
 import org.apache.james.imap.api.ImapConstants;
 import org.apache.james.imap.api.display.HumanReadableText;
 import org.apache.james.imap.api.message.Capability;
@@ -51,6 +53,7 @@ public class SetMetadataProcessor extends AbstractMailboxProcessor<SetMetadataRe
     private static final Logger LOGGER = LoggerFactory.getLogger(SetMetadataProcessor.class);
     private final ImmutableList<Capability> capabilities;
 
+    @Inject
     public SetMetadataProcessor(MailboxManager mailboxManager, StatusResponseFactory factory,
                                 MetricFactory metricFactory) {
         super(SetMetadataRequest.class, mailboxManager, factory, metricFactory);

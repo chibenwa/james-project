@@ -25,6 +25,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
 
+import javax.inject.Inject;
+
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.james.imap.api.ImapConstants;
 import org.apache.james.imap.api.display.HumanReadableText;
@@ -60,6 +62,7 @@ public class GetMetadataProcessor extends AbstractMailboxProcessor<GetMetadataRe
     private static final Logger LOGGER = LoggerFactory.getLogger(GetMetadataProcessor.class);
     private final ImmutableList<Capability> capabilities;
 
+    @Inject
     public GetMetadataProcessor(MailboxManager mailboxManager, StatusResponseFactory factory,
                                 MetricFactory metricFactory) {
         super(GetMetadataRequest.class, mailboxManager, factory, metricFactory);
