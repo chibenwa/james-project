@@ -19,12 +19,16 @@
 
 package org.apache.james.mailbox;
 
+import java.util.function.Predicate;
+
 import org.apache.james.core.Username;
 import org.apache.james.mailbox.exception.MailboxException;
 
 public interface SessionProvider {
     interface DelegationLogin {
         MailboxSession as(Username other) throws MailboxException;
+
+        MailboxSession forMatchingUser(Predicate<Username> other) throws MailboxException;
     }
 
     /**
@@ -87,10 +91,7 @@ public interface SessionProvider {
      */
     MailboxSession loginAsOtherUser(Username givenUserid, String passwd, Username otherUserId) throws MailboxException;
 
-    default DelegationLogin authenticate(Username givenUserid, String passwd) {
-        return otherUserId -> loginAsOtherUser(givenUserid, passwd, otherUserId);
-    }
-
+    DelegationLogin authenticate(Username givenUserid, String passwd);
     /**
      * Checking given user can log in as another user
      * When delegated and authorized, a session for the other user will be supplied
@@ -106,9 +107,7 @@ public interface SessionProvider {
      */
     MailboxSession loginAsOtherUser(Username givenUserid, Username otherUserId) throws MailboxException;
 
-    default DelegationLogin authenticate(Username givenUserid) {
-        return otherUserId -> loginAsOtherUser(givenUserid, otherUserId);
-    }
+    DelegationLogin authenticate(Username givenUserid);
 
     /**
      * <p>
