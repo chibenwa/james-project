@@ -1,0 +1,124 @@
+Return-Path: <SRS0=9mf4=75=ccifv.org=sophie.mermaz@ik2.com>
+org.apache.james.rspamd.flag: NO
+org.apache.james.rspamd.status: No, actions=no action score=-3.599999 requiredScore=15.0
+Delivered-To: btellier@linagora.com
+Received: from 172.17.0.1 (EHLO incoming.linagora.com) ([172.17.0.1])
+          by incoming.linagora.com (JAMES SMTP Server ) with ESMTP ID b79d29ee;
+          Thu, 06 Apr 2023 02:41:31 +0000 (UTC)
+Received: from obm3-ui.linagora.dc1 (obm3-ui.linagora.dc2 [172.24.128.227])
+	by incoming.linagora.com (Postfix) with ESMTP id 80A049C401;
+	Thu,  6 Apr 2023 02:41:31 +0000 (UTC)
+Received: from s602f.ik2.com (s602f.ik2.com [66.37.25.73])
+	by obm3-ui.linagora.dc1 (Postfix) with ESMTP id 79BC514723;
+	Thu,  6 Apr 2023 04:41:34 +0200 (CEST)
+Received: from s602e.ik2.com
+	by s602f.ik2.com with esmtps (TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256)
+	(envelope-from <sophie.mermaz@ccifv.org>)
+	id 1pkFYy-0007dK-6I; Thu, 06 Apr 2023 02:41:29 +0000
+Received: from 40.107.117.113 by s602e.ik2.com (IK2 SMTP Server); Thu, 6 Apr 2023 02:41:23 +0000
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
+ b=bNixvEf/r4lmT9qBDmxHy/FVJVPc5F3Ho94lHobSpjE/0RHkR/y7lbwc+sYqk3RPrECPESl1biBcBTDKQnPpB9awk6D/4RbSQFNaVShyTPOGhULslCY10Ft+F1UlcbPg4ZsBRslW3GqWf/H0190lhFmF5G6nlo7qTxg5jom89tcv1H/dfdOnkbBfVOo1aBSKyMijv4mjXFnMtmEGCB62dzCugBzCHHYSftJ8/5FkqaP2KmpfUmm+7y1/s83Outw7Mxrfx7lbMXs0RB6TqPDbExJi7wBfV0i62W5Kn+PXyK6u8tqcmLgL+69fD2SLL4KlpgO/ei0XDy2xfrJXVBSZbA==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector9901;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=wbWQFCOYNlj0oWEAz+/Lpcyc6Vc/ya3FJiUwjmw2+Ys=;
+ b=RYoIH/YrvK0UkGLG/cQ70LxwAqOcKGmmhR+Ao2h53iVH1D1EYqI37FA3Z+yUZ7qodYphKRXAvvhI+9ufIJ1UC34RVRza+EvIK6dIt6kn3TOO+t1DkugWUHPuliwTrkNWKw3xq4Ih8xr471LngoJqs8rTLmApTa3Kb1V8XVORMGsBn5L0E8W2uchbVRJWbhDU90ClWknXl5c/M87eGfJuufnlnfX2SlEsJkxNpQBucKKyawLGWaIbj9sr8FqkGC/GmKm89iUceIAlsAhpN5fno83nFIp61eKhbCJqyfewKLXB6IQABXmPDOLWUJb1ajWFB5+z4/gFd9xAk93tvgxqeg==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=ccifv.org; dmarc=pass action=none header.from=ccifv.org;
+ dkim=pass header.d=ccifv.org; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ccifv.org;
+ s=selector1;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=wbWQFCOYNlj0oWEAz+/Lpcyc6Vc/ya3FJiUwjmw2+Ys=;
+ b=psMLdPoD5LKZtj/EnvkBEjUgR3SUrkU/YtmY5sdtRyGT9aLi9V2CWmjEUgwnj0lCOr6rYWhxxY1xzSixpo5yiWgYtb2K7UJF2Rk7akmmRBL5s1dm6B6rQ7ArrfnDQhbyIBxu5r6E3zJpSQ8NiCEjq1yicYq4n/uOdtP/Sy1/dzD4EXXdJvzCv4lW6X+E87oSCbXUU2X2lgTnZyeqz5yNQvNjJiqOocK9SAOGQpiM8MsgRJcvNL3QfOjOR4ju2iwI4BTHYWvHoBSnuoEzdPzXZ5lPJH5+ZTC8Q6qAMVXQqhd6aCyc4zpPiOq1N5MfEslSBA7pDlGJf9ZTpGcM8UKnug==
+Received: from KL1PR03MB7221.apcprd03.prod.outlook.com (2603:1096:820:cb::11)
+ by SEYPR03MB7167.apcprd03.prod.outlook.com (2603:1096:101:d6::8) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.6254.28; Thu, 6 Apr
+ 2023 02:41:17 +0000
+Received: from KL1PR03MB7221.apcprd03.prod.outlook.com
+ ([fe80::560e:a51a:5fac:ab49]) by KL1PR03MB7221.apcprd03.prod.outlook.com
+ ([fe80::560e:a51a:5fac:ab49%4]) with mapi id 15.20.6254.037; Thu, 6 Apr 2023
+ 02:41:17 +0000
+X-LINAGORA-Copy-Delivery-Done: 1
+From: Sophie Mermaz <sophie.mermaz@ccifv.org>
+To: "ttnnghiem@linagora.com" <ttnnghiem@linagora.com>
+CC: =?utf-8?B?QmVub8OudCBURUxMSUVS?= <btellier@linagora.com>
+Subject: RE: Rencontre LINAGORA  - CCIFV
+Thread-Topic: Rencontre LINAGORA  - CCIFV
+Thread-Index: AQHZZ4A3WFODBOEAYE6iNDdwfLiV468dkoDA
+Date: Thu, 6 Apr 2023 02:41:17 +0000
+Message-ID:
+ <KL1PR03MB7221989BC071D2CE526990DDFD919@KL1PR03MB7221.apcprd03.prod.outlook.com>
+References: <Mime4j.31b.2318bdf7652fd6bc.1874fe8156c@linagora.com>
+In-Reply-To: <Mime4j.31b.2318bdf7652fd6bc.1874fe8156c@linagora.com>
+Accept-Language: en-US
+Content-Language: fr-FR
+X-MS-Has-Attach: yes
+X-MS-TNEF-Correlator:
+authentication-results: dkim=none (message not signed)
+ header.d=none;dmarc=none action=none header.from=ccifv.org;
+x-ms-publictraffictype: Email
+x-ms-traffictypediagnostic: KL1PR03MB7221:EE_|SEYPR03MB7167:EE_
+x-ms-office365-filtering-correlation-id: 8785db81-2a93-48a8-1c0f-08db364865dd
+x-ms-exchange-senderadcheck: 1
+x-ms-exchange-antispam-relay: 0
+x-microsoft-antispam-message-info:
+ 6TaJLud61CDMzpbOnMGevTMgbDqnJ/OcPvzua+mwk/LEF5krynxzBYHAw75rMEevb240go9LN6iBZRrD9PshpbIigqrCplhP8mKjRzrypx8V8uV/OWnDEcSzvJdyxjr/4wyGuwAZXdmjewvPfpC/0Evz7hiykl9PKv4vPqM9qmVkh0ESDya9Ydl9injYQuiI5P2wamGZCouIIeep54xoBCTKIuJtSN4aHVSAQQ4p1S/mS82xro5NiyPGQdXw27cLMtyTDM+Xuqpjr8QHvfCg8BfQB5LcuWjXEdKykmWLV5EGHgY7FZa88fuAOf15u0oV/98is6bKFDcUBzq3yLE/Sy0NT4ByPmsCGn17LMs5AeHh8dRcuO8CDGQ6HVxIRe2aHdHWUHstg7VVLw6BJBCpFwRc9TgSoMrPefFDROylBTiu9b0CCGZ2RlKr6khtlvopsSXK1lEMSu4FYQrAtWmPaF+IE43VuUTPu8m65eqdz7WCU/8NlZZsFJMkDJtzynEh9OaWg3/HvmBC5vT/8ngZ3sovYMowiT5Pzdrj8oi2/lMh5Qq75Pya7gvJSiPd9gRJaAK1V5M1mokfML2T9RHlkABshNxTlTnrwJ2PkJM95bTQWMqiuZM+U6Zm2SmikXuxdq+btOiHtnbnsYb75u9wU3/EbLGoKj+wOBAj3poZBwK7RiCQVy3c7vmb4Xx8WIJbvRR19hhxudi/rUIZOBJwxw==
+x-ms-exchange-antispam-messagedata-chunkcount: 1
+x-ms-exchange-antispam-messagedata-0:
+ =?utf-8?B?QUZoZDN5Y1hNNUd4RDJJRUltT0JKOS9jdWM2NjQ1K0svYmZZN0RKNERTSFhB?=
+ =?utf-8?B?bTZTYVpLQXloUlVpN3lySG93WFVLVEExR2ViVGhIOVRrNDNIRmVEUTh3VE9n?=
+ =?utf-8?B?ZnRVQ0l4YU1Ea0cxU2hQeWl0MkhrLzlneWc5Zk9EUVA3Y1V4d1IyMnM1bnVU?=
+ =?utf-8?B?UnlyQzVic2xIeitpVHFkMzFuMmoxb2FQMC93TUZZdUpUeHV5RDJZSEJZMEVX?=
+ =?utf-8?B?YnBZa3R0VU9sRURnazFNRWJqVjZpN3JvaVpRRy96ZldqS3BTS3lab2NUdFYr?=
+ =?utf-8?B?OFlSMFFNMk9CZkcvaWY3RldjbWxzS2JDdWFPWFNwaTVIK1dqSW52RUZZQTk4?=
+ =?utf-8?B?RlFYVysxTUxsajZkejhnYWF6NUtJejVOMUplU3dVdi81akZoUFArTk16TFgv?=
+ =?utf-8?B?T252MG56KzRrcEtRaUd4Rkk0K1ZBWWRRbG85aWtESnBnQ25iZkt0WldBUGdP?=
+ =?utf-8?B?K1hDOS9XcDg0ZjkvOEJyd0VMeHhOQ3BCVDJRcDBUS29RQmc1a3pQSWZkOG1O?=
+ =?utf-8?B?U3E5d0htcGZsT1h6UWV2dmlCTFRNUDRpSWdUYzN2NEtVckZzL3lpUWZualcz?=
+ =?utf-8?B?NHNacllzL2ZvTFNuSGtvL3RodC85d3FGS1dHaVYrNFpzKzdIK1oyMFF0c0t5?=
+ =?utf-8?B?SUdMUHY5YlErbloydWVTTG1WbTlSOStyb25sTXk3UlpIU1RHQjc3VC9ZZE9V?=
+ =?utf-8?B?azFoSEVZREdyRTB6OUdmcEhXMUVlOE1EbnR3UEtodll3QmJDUVoySW4wMGg3?=
+ =?utf-8?B?VEU5elVPdVdHdTlYazlCZ1U3UUNpNDFFaUNKZ2dmV2dSU2hUQkpkWWdjSkZD?=
+ =?utf-8?B?MW5wNVZUQ29nbE1LaHl3em5RS0M1WFRaR0lxZkorMnNOZHAwMjlLaCtKV3d0?=
+ =?utf-8?B?TnR5bnlOdXdvMkZHUTg2cHJMWkIzVm5qSVkzZENnVEIyUjYvVE5KN0RwaVZZ?=
+ =?utf-8?B?WlorV3NRcFRQb2pQT1kwVFd2cGtPTndzQXIxR3AweWl5ZWkya3VJNXplYzMv?=
+ =?utf-8?B?em5CRzBndHpuYmZkdFppbFIwSUhQeFhSSmFJeVpaSDlOS2VocExHdDBvVE8r?=
+ =?utf-8?B?ZG9QbFF0L2dpRGp2T1JlcFkyclF2dkVrcWc3MnYwb2o1NlhxVTVOVFJlaS92?=
+ =?utf-8?B?MlFQNGF1TzFjQVN3d0NhUmdMOWRpNEtaUnBmSFpGZVI4dFVoRmEwak44c3M0?=
+ =?utf-8?B?QzN1ZXI0TWMzM21mM09NdEJ6SjhVcXhYUkJsTGlXYTBlV1hNemVVYXVRVmM2?=
+ =?utf-8?B?TWRzT05NeUdydTJIdyt5anFCckU2NHM4Sk9KQkNLSHkwcTJrSUtocjJ1cURS?=
+ =?utf-8?B?djZRdm81NW5TSFpzd1NXektvNkdpQXMzY2lHU0l2ZzlPL1ZOcHZsZnFOODRk?=
+ =?utf-8?B?anBqbTRTaEphU1BuOGFBbWpoQVpRYmk0ZEFOS3RPMGJhbGw4S1lxcUdpL3BV?=
+ =?utf-8?B?aktIT0xHMXNiQTM0Y0hoOGY1RlVPTHl2dzVOSHFVMi9tcldUVTFMam5BazQx?=
+ =?utf-8?B?NXFtRzliV3Y2bEZwMGhHSjFOSG9aNmtTVUdtVEpYUS9YejE1WVZwU2swUE9k?=
+ =?utf-8?B?RGg3SCtJWHFRRDN5aHl0akFEZzBpdnJVOW5UT1NFN1hjajAyaUowN2VjZkxw?=
+ =?utf-8?B?VmJvUmxhYVVaYUlxbFZwcmZGandpSGFjbm8wemYxTnhwYTI5dFVwdGI1ekkw?=
+ =?utf-8?B?QXBLNUFzVVB5c3M1RUJYcW1PMHVuc0Q4Z2xLWVFGVjlkVUlJUU4yRUQ1d1B6?=
+ =?utf-8?B?Zk9vL3RjQ1ByT3VwVWxmOVJYUmQyOHloMkdnMnZBSDZNZ1pZUmtSMHFOMVFk?=
+ =?utf-8?B?aitJZHFyNk9mdGhLRFBpTjVLcklqTE02WVpueFdYUkdmaGNlRmFMdEdEcVkr?=
+ =?utf-8?B?VEcxaHArN2hFMEVJdEdiRnJqOTBlT0tWUkorNDluTG9tSkpVRmN2Qkw0TzFZ?=
+ =?utf-8?B?RjJtUHBIbEhxNUJ4by93enl4ZjdoL00vWkVjd1ZyYyt6bDM3eUprUlc0YWpB?=
+ =?utf-8?B?enBxSW14ei9lMDZsNUMrQjNvVE9zbUFVUlhyN08yYTFkOWs2NUdsRUFQeGVk?=
+ =?utf-8?B?UjBLbXlhd05vbzJzNG5kZVhrZFd1dEw1eEprRkdwNkR2dytZaGRJaC8wU0U5?=
+ =?utf-8?Q?nqZyTqZoveG7TSqS0Q/YbiJr1?=
+Content-Type: text/plain
+MIME-Version: 1.0
+X-OriginatorOrg: ccifv.org
+X-MS-Exchange-CrossTenant-AuthAs: Internal
+X-MS-Exchange-CrossTenant-AuthSource: KL1PR03MB7221.apcprd03.prod.outlook.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: 8785db81-2a93-48a8-1c0f-08db364865dd
+X-MS-Exchange-CrossTenant-originalarrivaltime: 06 Apr 2023 02:41:17.7214
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 7b9d24ec-5e88-4c91-9f3a-83bc2820973d
+X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
+X-MS-Exchange-CrossTenant-userprincipalname: IlSCFa9MI4+9xe+rv55hydsCFFSo4OoqsH97Vc1sSa7MSzM+P+b0r5UdsBQwLfZ/UIhb4OPhcXV76zArhzEGqQ==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: SEYPR03MB7167
+X-SF-RX-Return-Path: <sophie.mermaz@ccifv.org>
+X-SF-Originating-IP: 40.107.117.113
+X-SF-WhiteListedReason: keyword whitelist match
+X-SF-Score: -1.8
+X-SF-SRS: Sender address rewritten from <sophie.mermaz@ccifv.org> to <SRS0=9mf4=75=ccifv.org=sophie.mermaz@ik2.com>
+X-SF-Domain: qgwlxqsyyb
