@@ -8,9 +8,8 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.net.InetSocketAddress;
 import java.net.URI;
-import java.security.KeyManagementException;
-import java.security.NoSuchAlgorithmException;
 import java.security.cert.X509Certificate;
+import java.time.Duration;
 import java.util.Date;
 import java.util.List;
 import java.util.Random;
@@ -24,8 +23,10 @@ import javax.net.ssl.X509TrustManager;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVRecord;
+import org.apache.james.metrics.api.Metric;
 import org.apache.james.metrics.dropwizard.DropWizardMetricFactory;
 import org.apache.james.util.ClassLoaderUtils;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.codahale.metrics.MetricRegistry;
@@ -47,8 +48,11 @@ import com.yahoo.imapnio.async.response.ImapAsyncResponse;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
+import reactor.util.retry.Retry;
 
 public class Main {
+    private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
     private static final String PREFIX = "folder-";
     private static final Random RANDOM = new Random();
     private static final byte[] HEADER_BYTES = ClassLoaderUtils.getSystemResourceAsByteArray("eml/headers");
@@ -78,8 +82,14 @@ public class Main {
     private static final int NUM_MSG_REGULAR_FOLDER = 5;
     private static final int NUM_MSG_INBOX = 10;
     private static final int NUM_OF_THREADS = 10;
+    private static final int CONCURRENT_USERS = 5;
 
     private static DropWizardMetricFactory dropWizardMetricFactory;
+    private static Metric failedAppend;
+    private static Metric failedConnect;
+    private static Metric failedCreate;
+    private static Metric failedAuth;
+    private static Metric provisionnedUsers;
 
     public static void main(String... args) throws Exception {
         startMetrics();
@@ -89,18 +99,17 @@ public class Main {
         Stopwatch started = Stopwatch.createStarted();
 
         Flux.fromIterable(records)
-            .flatMap(Main::provisionUser, 10)
+            .flatMap(Main::provisionUser, CONCURRENT_USERS)
             .then()
             .block();
 
-        System.out.println("Elapsed " + started.elapsed(TimeUnit.MILLISECONDS) + " ms");
+        LOGGER.info("Elapsed {} ms", started.elapsed(TimeUnit.MILLISECONDS));
         System.exit(0);
     }
 
     private static Iterable<CSVRecord> parseCSV() throws IOException {
         Reader in = new InputStreamReader(new ByteArrayInputStream(CSV));
-        Iterable<CSVRecord> records = CSVFormat.DEFAULT.parse(in);
-        return records;
+        return CSVFormat.DEFAULT.parse(in);
     }
 
     private static void startMetrics() {
@@ -114,9 +123,15 @@ public class Main {
             .convertDurationsTo(TimeUnit.MILLISECONDS)
             .build();
         slf4jReporter.start(10, TimeUnit.SECONDS);
+
+        failedAppend = dropWizardMetricFactory.generate("failed-append");
+        failedAuth = dropWizardMetricFactory.generate("failed-auth");
+        failedConnect = dropWizardMetricFactory.generate("failed-connect");
+        failedCreate = dropWizardMetricFactory.generate("failed-create");
+        provisionnedUsers = dropWizardMetricFactory.generate("provisionnedUsers");
     }
 
-    private static Mono<Void> provisionUser(CSVRecord record)  {
+    private static Mono<Void> provisionUser(CSVRecord csvRecord)  {
         try {
             ImapAsyncClient imapClient = new ImapAsyncClient(NUM_OF_THREADS);
             URI serverUri = new URI(URL);
@@ -125,7 +140,7 @@ public class Main {
             return connect(imapClient, serverUri)
 
                 // LOGIN
-                .flatMap(session -> login(record, session)
+                .flatMap(session -> login(csvRecord, session)
                     .thenReturn(session.getSession()))
 
                 // Provision massages into INBOX
@@ -139,26 +154,42 @@ public class Main {
                             .concatMap(j -> append(session, PREFIX + i)).then()))
                     .then())
 
+                .then(Mono.fromRunnable(() -> provisionnedUsers.increment()))
+
+                .onErrorResume(e -> {
+                    LOGGER.error("Fatal error provisioning {}", csvRecord.get(0), e);
+                    return Mono.empty();
+                })
+
                 .then();
         } catch (Exception e) {
             return Mono.error(e);
         }
     }
 
-    private static Mono<ImapAsyncResponse> login(CSVRecord record, ImapAsyncCreateSessionResponse session) {
+    private static Mono<ImapAsyncResponse> login(CSVRecord csvRecord, ImapAsyncCreateSessionResponse session) {
         return Mono.from(dropWizardMetricFactory.decoratePublisherWithTimerMetric("LOGIN",
-            execute(session.getSession(), new LoginCommand(record.get(0), record.get(1)))));
+            execute(session.getSession(), new LoginCommand(csvRecord.get(0), csvRecord.get(1)))))
+            .retryWhen(Retry.backoff(5, Duration.ofMillis(200)).scheduler(Schedulers.parallel()))
+            .doOnError(e -> failedAuth.increment());
     }
 
     private static Mono<ImapAsyncResponse> append(ImapAsyncSession session, String folderName) {
         return Mono.from(dropWizardMetricFactory.decoratePublisherWithTimerMetric("APPEND",
-            execute(session, new AppendCommand(folderName, new Flags(), new Date(), messageBytes()))));
+            execute(session, new AppendCommand(folderName, new Flags(), new Date(), messageBytes()))))
+            .onErrorResume(e -> {
+                failedAppend.increment();
+                LOGGER.error("Failed appending a message", e);
+                return Mono.empty();
+            });
     }
 
     private static Mono<ImapAsyncResponse> createFolder(ImapAsyncSession session, String folderName) {
         return Mono.from(dropWizardMetricFactory.decoratePublisherWithTimerMetric("CREATE",
             execute(session, new CreateFolderCommand(folderName))
-                .onErrorResume(e -> e.getMessage().contains("NO CREATE failed. Mailbox already exists."), e -> Mono.empty())));
+                .onErrorResume(e -> e.getMessage().contains("NO CREATE failed. Mailbox already exists."), e -> Mono.empty())))
+            .retryWhen(Retry.backoff(5, Duration.ofMillis(200)).scheduler(Schedulers.parallel()))
+            .doOnError(e -> failedCreate.increment());
     }
 
     private static byte[] messageBytes() {
@@ -223,14 +254,16 @@ public class Main {
         List<String> sniNames = null;
         InetSocketAddress localAddress = null;
 
-        return Mono.from(dropWizardMetricFactory.decoratePublisherWithTimerMetric("CONNECT",
+        Mono<ImapAsyncCreateSessionResponse> result = Mono.from(dropWizardMetricFactory.decoratePublisherWithTimerMetric("CONNECT",
             Mono.create(sink -> {
-            final ImapFuture<ImapAsyncCreateSessionResponse> future = (ImapFuture) imapClient.createSession(serverUri, config, localAddress, sniNames, ImapAsyncSession.DebugMode.DEBUG_ON,
-                "NA", SSL_CONTEXT);
-            future.setDoneCallback(sink::success);
-            future.setExceptionCallback(sink::error);
-            future.setCanceledCallback(sink::success);
-        })));
+                ImapFuture<ImapAsyncCreateSessionResponse> future = (ImapFuture) imapClient.createSession(serverUri, config, localAddress, sniNames, ImapAsyncSession.DebugMode.DEBUG_ON, "NA", SSL_CONTEXT);
+                future.setDoneCallback(sink::success);
+                future.setExceptionCallback(sink::error);
+                future.setCanceledCallback(sink::success);
+            })));
+        return result
+            .retryWhen(Retry.backoff(5, Duration.ofMillis(200)).scheduler(Schedulers.parallel()))
+            .doOnError(e -> failedConnect.increment());
     }
 
     private static SSLContext createSslContext() {
@@ -245,7 +278,6 @@ public class Main {
     }
 
     static Mono<ImapAsyncResponse> execute(ImapAsyncSession session, ImapRequest cmd) {
-        System.out.println("Execute " + cmd.getClass());
         return Mono.<ImapAsyncResponse>create(sink -> {
             try {
                 ImapFuture<ImapAsyncResponse> future = session.execute(cmd);
