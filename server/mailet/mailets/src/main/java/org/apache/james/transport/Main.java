@@ -12,9 +12,13 @@ import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import javax.mail.Flags;
 import javax.net.ssl.SSLContext;
@@ -33,6 +37,7 @@ import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Slf4jReporter;
 import com.google.common.base.Stopwatch;
 import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableList;
 import com.google.common.primitives.Bytes;
 import com.yahoo.imapnio.async.client.ImapAsyncClient;
 import com.yahoo.imapnio.async.client.ImapAsyncCreateSessionResponse;
@@ -83,6 +88,8 @@ public class Main {
     private static final int NUM_MSG_INBOX = 10;
     private static final int NUM_OF_THREADS = 10;
     private static final int CONCURRENT_USERS = 5;
+    private static final int NUM_CONNECTIONS_PER_USER = 10;
+    private static final Map<Integer, List<String>> PARTITIONED_MAILBOXES = computePartitionnedMailboxes();
 
     private static DropWizardMetricFactory dropWizardMetricFactory;
     private static Metric failedAppend;
@@ -136,22 +143,24 @@ public class Main {
             ImapAsyncClient imapClient = new ImapAsyncClient(NUM_OF_THREADS);
             URI serverUri = new URI(URL);
 
-            // TODO pooling: for each user do 4 connections and mutualize requests to it
-            return connect(imapClient, serverUri)
-
-                // LOGIN
-                .flatMap(session -> login(csvRecord, session)
-                    .thenReturn(session.getSession()))
-
-                // Provision massages into INBOX
-                .flatMap(session -> Flux.range(0, NUM_MSG_INBOX)
-                    .concatMap(j -> append(session, "INBOX")).then().thenReturn(session))
-
-                // Create mailboxes with sub messages
-                .flatMap(session -> Flux.range(0, NUM_MBX)
-                    .concatMap(i -> createFolder(session, PREFIX + i)
-                        .then(Flux.range(0, NUM_MSG_REGULAR_FOLDER)
-                            .concatMap(j -> append(session, PREFIX + i)).then()))
+            return Flux.range(0, NUM_CONNECTIONS_PER_USER)
+                .flatMap(i -> connect(imapClient, serverUri)
+                    // LOGIN
+                    .flatMap(session -> login(csvRecord, session)
+                        .thenReturn(session.getSession())))
+                
+                .collectList()
+                
+                // Create mailboxes (uses first session)
+                .flatMap(sessions -> Flux.range(0, NUM_MBX)
+                    .concatMap(i -> createFolder(sessions.get(0), PREFIX + i))
+                    .then()
+                    .thenReturn(sessions))
+                
+                // Append messages in parallel on all connections
+                .flatMap(sessions -> Flux.range(0, NUM_CONNECTIONS_PER_USER)
+                    .flatMap(i -> Flux.fromIterable(PARTITIONED_MAILBOXES.get(i))
+                        .concatMap(mailbox -> append(sessions.get(i), mailbox)))
                     .then())
 
                 .then(Mono.fromRunnable(() -> provisionnedUsers.increment()))
@@ -165,6 +174,22 @@ public class Main {
         } catch (Exception e) {
             return Mono.error(e);
         }
+    }
+
+    private static Map<Integer, List<String>> computePartitionnedMailboxes() {
+        ImmutableList<String> mailboxNames = computeAppendOrders();
+        AtomicInteger counter = new AtomicInteger(0);
+        return mailboxNames.stream()
+            .collect(Collectors.groupingBy(s -> counter.incrementAndGet() % NUM_CONNECTIONS_PER_USER));
+    }
+
+    private static ImmutableList<String> computeAppendOrders() {
+        ImmutableList.Builder<String> builder = ImmutableList.builder();
+        IntStream.range(0, NUM_MSG_INBOX).forEach(i -> builder.add("INBOX"));
+        IntStream.range(0, NUM_MBX).forEach(i ->
+            IntStream.range(0, NUM_MSG_REGULAR_FOLDER)
+                .forEach(j -> builder.add(PREFIX + i)));
+        return builder.build();
     }
 
     private static Mono<ImapAsyncResponse> login(CSVRecord csvRecord, ImapAsyncCreateSessionResponse session) {
