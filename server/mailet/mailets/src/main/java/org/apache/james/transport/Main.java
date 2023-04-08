@@ -42,7 +42,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public class Main {
-    private static final String PREFIX = "folder-m-";
+    private static final String PREFIX = "folder-";
     private static final Random RANDOM = new Random();
     private static final byte[] HEADER_BYTES = ClassLoaderUtils.getSystemResourceAsByteArray("eml/headers");
     private static final byte[] HEADER_BYTES_SIMPLE = ClassLoaderUtils.getSystemResourceAsByteArray("eml/headersSimple");
@@ -90,7 +90,7 @@ public class Main {
 
                 // Create mailboxes with sub messages
                 .flatMap(session -> Flux.range(0, NUM_MBX)
-                    .concatMap(i -> execute(session, new CreateFolderCommand(PREFIX + i))
+                    .concatMap(i -> createFolder(session, PREFIX + i)
                         .then(Flux.range(0, NUM_MSG_REGULAR_FOLDER)
                             .concatMap(j -> execute(session, new AppendCommand(PREFIX + i, new Flags(), new Date(), messageBytes()))).then()))
                     .then())
@@ -99,6 +99,11 @@ public class Main {
         } catch(Exception e) {
             return Mono.error(e);
         }
+    }
+
+    private static Mono<ImapAsyncResponse> createFolder(ImapAsyncSession session, String folderName) {
+        return execute(session, new CreateFolderCommand(folderName))
+            .onErrorResume(e -> e.getMessage().contains("NO CREATE failed. Mailbox already exists."), e -> Mono.empty());
     }
 
     private static byte[] messageBytes() {
