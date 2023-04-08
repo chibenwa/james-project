@@ -1,6 +1,9 @@
 package org.apache.james.transport;
 
+import static com.codahale.metrics.Slf4jReporter.LoggingLevel.INFO;
+
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.net.InetSocketAddress;
@@ -21,8 +24,12 @@ import javax.net.ssl.X509TrustManager;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVRecord;
+import org.apache.james.metrics.dropwizard.DropWizardMetricFactory;
 import org.apache.james.util.ClassLoaderUtils;
+import org.slf4j.LoggerFactory;
 
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.Slf4jReporter;
 import com.google.common.base.Stopwatch;
 import com.google.common.base.Strings;
 import com.google.common.primitives.Bytes;
@@ -49,6 +56,22 @@ public class Main {
     private static final byte[] BODY_START_BYTES = ClassLoaderUtils.getSystemResourceAsByteArray("eml/bodyStart");
     private static final byte[] BODY_END_BYTES = ClassLoaderUtils.getSystemResourceAsByteArray("eml/bodyEnd");
     private static final byte[] CSV = ClassLoaderUtils.getSystemResourceAsByteArray("users.csv");
+    private static final TrustManager[] TRUST_ALL_CERTS = new TrustManager[]{
+        new X509TrustManager() {
+            public X509Certificate[] getAcceptedIssuers() {
+                return new X509Certificate[0];
+            }
+
+            public void checkClientTrusted(
+                X509Certificate[] certs, String authType) {
+            }
+
+            public void checkServerTrusted(
+                X509Certificate[] certs, String authType) {
+            }
+        }
+    };
+    private static final SSLContext SSL_CONTEXT = createSslContext();
 
     private static final String URL = "imaps://172.25.0.2:993";
     private static final int NUM_MBX = 4;
@@ -56,12 +79,14 @@ public class Main {
     private static final int NUM_MSG_INBOX = 10;
     private static final int NUM_OF_THREADS = 10;
 
+    private static DropWizardMetricFactory dropWizardMetricFactory;
+
     public static void main(String... args) throws Exception {
-        Reader in = new InputStreamReader(new ByteArrayInputStream(CSV));
+        startMetrics();
 
-        Iterable<CSVRecord> records = CSVFormat.DEFAULT.parse(in);
+        Iterable<CSVRecord> records = parseCSV();
 
-        final Stopwatch started = Stopwatch.createStarted();
+        Stopwatch started = Stopwatch.createStarted();
 
         Flux.fromIterable(records)
             .flatMap(Main::provisionUser, 10)
@@ -69,6 +94,26 @@ public class Main {
             .block();
 
         System.out.println("Elapsed " + started.elapsed(TimeUnit.MILLISECONDS) + " ms");
+        System.exit(0);
+    }
+
+    private static Iterable<CSVRecord> parseCSV() throws IOException {
+        Reader in = new InputStreamReader(new ByteArrayInputStream(CSV));
+        Iterable<CSVRecord> records = CSVFormat.DEFAULT.parse(in);
+        return records;
+    }
+
+    private static void startMetrics() {
+        MetricRegistry metricRegistry = new MetricRegistry();
+        dropWizardMetricFactory = new DropWizardMetricFactory(metricRegistry);
+        dropWizardMetricFactory.start();
+        Slf4jReporter slf4jReporter = Slf4jReporter.forRegistry(metricRegistry)
+            .outputTo(LoggerFactory.getLogger("METRICS"))
+            .withLoggingLevel(INFO)
+            .convertRatesTo(TimeUnit.SECONDS)
+            .convertDurationsTo(TimeUnit.MILLISECONDS)
+            .build();
+        slf4jReporter.start(10, TimeUnit.SECONDS);
     }
 
     private static Mono<Void> provisionUser(CSVRecord record)  {
@@ -76,34 +121,44 @@ public class Main {
             ImapAsyncClient imapClient = new ImapAsyncClient(NUM_OF_THREADS);
             URI serverUri = new URI(URL);
 
-
             // TODO pooling: for each user do 4 connections and mutualize requests to it
             return connect(imapClient, serverUri)
 
                 // LOGIN
-                .flatMap(session -> execute(session.getSession(), new LoginCommand(record.get(0), record.get(1)))
+                .flatMap(session -> login(record, session)
                     .thenReturn(session.getSession()))
 
                 // Provision massages into INBOX
                 .flatMap(session -> Flux.range(0, NUM_MSG_INBOX)
-                    .concatMap(j -> execute(session, new AppendCommand("INBOX", new Flags(), new Date(), messageBytes()))).then().thenReturn(session))
+                    .concatMap(j -> append(session, "INBOX")).then().thenReturn(session))
 
                 // Create mailboxes with sub messages
                 .flatMap(session -> Flux.range(0, NUM_MBX)
                     .concatMap(i -> createFolder(session, PREFIX + i)
                         .then(Flux.range(0, NUM_MSG_REGULAR_FOLDER)
-                            .concatMap(j -> execute(session, new AppendCommand(PREFIX + i, new Flags(), new Date(), messageBytes()))).then()))
+                            .concatMap(j -> append(session, PREFIX + i)).then()))
                     .then())
 
                 .then();
-        } catch(Exception e) {
+        } catch (Exception e) {
             return Mono.error(e);
         }
     }
 
+    private static Mono<ImapAsyncResponse> login(CSVRecord record, ImapAsyncCreateSessionResponse session) {
+        return Mono.from(dropWizardMetricFactory.decoratePublisherWithTimerMetric("LOGIN",
+            execute(session.getSession(), new LoginCommand(record.get(0), record.get(1)))));
+    }
+
+    private static Mono<ImapAsyncResponse> append(ImapAsyncSession session, String folderName) {
+        return Mono.from(dropWizardMetricFactory.decoratePublisherWithTimerMetric("APPEND",
+            execute(session, new AppendCommand(folderName, new Flags(), new Date(), messageBytes()))));
+    }
+
     private static Mono<ImapAsyncResponse> createFolder(ImapAsyncSession session, String folderName) {
-        return execute(session, new CreateFolderCommand(folderName))
-            .onErrorResume(e -> e.getMessage().contains("NO CREATE failed. Mailbox already exists."), e -> Mono.empty());
+        return Mono.from(dropWizardMetricFactory.decoratePublisherWithTimerMetric("CREATE",
+            execute(session, new CreateFolderCommand(folderName))
+                .onErrorResume(e -> e.getMessage().contains("NO CREATE failed. Mailbox already exists."), e -> Mono.empty())));
     }
 
     private static byte[] messageBytes() {
@@ -161,37 +216,32 @@ public class Main {
             customBodyValue);
     }
 
-    static Mono<ImapAsyncCreateSessionResponse> connect(ImapAsyncClient imapClient, URI serverUri) throws NoSuchAlgorithmException, KeyManagementException {
+    static Mono<ImapAsyncCreateSessionResponse> connect(ImapAsyncClient imapClient, URI serverUri) {
         ImapAsyncSessionConfig config = new ImapAsyncSessionConfig();
         config.setConnectionTimeoutMillis(5000);
         config.setReadTimeoutMillis(6000);
         List<String> sniNames = null;
         InetSocketAddress localAddress = null;
 
-        // Create a trust manager that does not validate certificate chains
-        TrustManager[] trustAllCerts = new TrustManager[] {
-            new X509TrustManager() {
-                public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-                    return new X509Certificate[0];
-                }
-                public void checkClientTrusted(
-                    java.security.cert.X509Certificate[] certs, String authType) {
-                }
-                public void checkServerTrusted(
-                    java.security.cert.X509Certificate[] certs, String authType) {
-                }
-            }
-        };
-        SSLContext sc = SSLContext.getInstance("SSL");
-        sc.init(null, trustAllCerts, new java.security.SecureRandom());
-
-        return Mono.create(sink -> {
+        return Mono.from(dropWizardMetricFactory.decoratePublisherWithTimerMetric("CONNECT",
+            Mono.create(sink -> {
             final ImapFuture<ImapAsyncCreateSessionResponse> future = (ImapFuture) imapClient.createSession(serverUri, config, localAddress, sniNames, ImapAsyncSession.DebugMode.DEBUG_ON,
-                "NA", sc);
+                "NA", SSL_CONTEXT);
             future.setDoneCallback(sink::success);
             future.setExceptionCallback(sink::error);
             future.setCanceledCallback(sink::success);
-        });
+        })));
+    }
+
+    private static SSLContext createSslContext() {
+        try {
+            // Create a trust manager that does not validate certificate chains
+            SSLContext sc = SSLContext.getInstance("SSL");
+            sc.init(null, TRUST_ALL_CERTS, new java.security.SecureRandom());
+            return sc;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     static Mono<ImapAsyncResponse> execute(ImapAsyncSession session, ImapRequest cmd) {
