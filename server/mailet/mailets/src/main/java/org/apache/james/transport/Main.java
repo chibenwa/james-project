@@ -15,6 +15,7 @@ import java.time.Duration;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -59,6 +60,15 @@ import reactor.core.scheduler.Schedulers;
 import reactor.util.retry.Retry;
 
 public class Main {
+    private static final Properties PROPERTIES = retrieveProperties();
+    private static final String URL = PROPERTIES.getProperty("url", "imaps://172.25.0.2:993");
+    private static final int NUM_MBX = Integer.parseInt(PROPERTIES.getProperty("mailbox.count", "4"));
+    private static final int NUM_MSG_REGULAR_FOLDER = Integer.parseInt(PROPERTIES.getProperty("message.per.folder.count", "5"));
+    private static final int NUM_MSG_INBOX = Integer.parseInt(PROPERTIES.getProperty("message.inbox.count", "10"));
+    private static final int NUM_OF_THREADS = Integer.parseInt(PROPERTIES.getProperty("thread.count", "8"));
+    private static final int CONCURRENT_USERS = Integer.parseInt(PROPERTIES.getProperty("concurrent.user.count", "5"));
+    private static final int NUM_CONNECTIONS_PER_USER = Integer.parseInt(PROPERTIES.getProperty("connection.per.user.count", "2"));
+
     private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
     private static final String PREFIX = "folder-";
     private static final Random RANDOM = new Random();
@@ -86,14 +96,6 @@ public class Main {
     private static final Map<Integer, List<String>> PARTITIONED_MAILBOXES = computePartitionnedMailboxes();
     private static final ImapAsyncClient IMAP_CLIENT = createImapClient();
 
-    private static final String URL = "imaps://172.25.0.2:993";
-    private static final int NUM_MBX = 4;
-    private static final int NUM_MSG_REGULAR_FOLDER = 5;
-    private static final int NUM_MSG_INBOX = 10;
-    private static final int NUM_OF_THREADS = 10;
-    private static final int CONCURRENT_USERS = 5;
-    private static final int NUM_CONNECTIONS_PER_USER = 2;
-
     private static DropWizardMetricFactory dropWizardMetricFactory;
     private static Metric failedAppend;
     private static Metric failedConnect;
@@ -115,6 +117,21 @@ public class Main {
 
         LOGGER.info("Elapsed {} ms", started.elapsed(TimeUnit.MILLISECONDS));
         System.exit(0);
+    }
+
+    private static Properties retrieveProperties() {
+        try {
+            final Properties properties = new Properties();
+            final File file = new File("provisioning.properties");
+            if (file.exists()) {
+                try (FileInputStream fileInputStream = new FileInputStream(file)) {
+                    properties.load(fileInputStream);
+                }
+            }
+            return properties;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private static Iterable<CSVRecord> parseCSV() throws IOException {
