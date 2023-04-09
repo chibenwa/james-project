@@ -3,6 +3,8 @@ package org.apache.james.transport;
 import static com.codahale.metrics.Slf4jReporter.LoggingLevel.INFO;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -64,7 +66,7 @@ public class Main {
     private static final byte[] HEADER_BYTES_SIMPLE = ClassLoaderUtils.getSystemResourceAsByteArray("eml/headersSimple");
     private static final byte[] BODY_START_BYTES = ClassLoaderUtils.getSystemResourceAsByteArray("eml/bodyStart");
     private static final byte[] BODY_END_BYTES = ClassLoaderUtils.getSystemResourceAsByteArray("eml/bodyEnd");
-    private static final byte[] CSV = ClassLoaderUtils.getSystemResourceAsByteArray("users.csv");
+
     private static final TrustManager[] TRUST_ALL_CERTS = new TrustManager[]{
         new X509TrustManager() {
             public X509Certificate[] getAcceptedIssuers() {
@@ -116,8 +118,22 @@ public class Main {
     }
 
     private static Iterable<CSVRecord> parseCSV() throws IOException {
-        try (Reader in = new InputStreamReader(new ByteArrayInputStream(CSV))) {
+        try (Reader in = new InputStreamReader(new ByteArrayInputStream(loadCSVBytes()))) {
             return ImmutableList.copyOf(CSVFormat.DEFAULT.parse(in));
+        }
+    }
+
+    private static byte[] loadCSVBytes() {
+        try {
+            final File file = new File("users.csv");
+            if (file.exists()) {
+                try (FileInputStream fileInputStream = new FileInputStream(file)) {
+                    return fileInputStream.readAllBytes();
+                }
+            }
+            return ClassLoaderUtils.getSystemResourceAsByteArray("users.csv");
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
