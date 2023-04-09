@@ -116,8 +116,9 @@ public class Main {
     }
 
     private static Iterable<CSVRecord> parseCSV() throws IOException {
-        Reader in = new InputStreamReader(new ByteArrayInputStream(CSV));
-        return CSVFormat.DEFAULT.parse(in);
+        try (Reader in = new InputStreamReader(new ByteArrayInputStream(CSV))) {
+            return ImmutableList.copyOf(CSVFormat.DEFAULT.parse(in));
+        }
     }
 
     private static void startMetrics() {
