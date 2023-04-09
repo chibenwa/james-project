@@ -81,6 +81,8 @@ public class Main {
         }
     };
     private static final SSLContext SSL_CONTEXT = createSslContext();
+    private static final Map<Integer, List<String>> PARTITIONED_MAILBOXES = computePartitionnedMailboxes();
+    private static final ImapAsyncClient IMAP_CLIENT = createImapClient();
 
     private static final String URL = "imaps://172.25.0.2:993";
     private static final int NUM_MBX = 4;
@@ -88,8 +90,7 @@ public class Main {
     private static final int NUM_MSG_INBOX = 10;
     private static final int NUM_OF_THREADS = 10;
     private static final int CONCURRENT_USERS = 5;
-    private static final int NUM_CONNECTIONS_PER_USER = 10;
-    private static final Map<Integer, List<String>> PARTITIONED_MAILBOXES = computePartitionnedMailboxes();
+    private static final int NUM_CONNECTIONS_PER_USER = 2;
 
     private static DropWizardMetricFactory dropWizardMetricFactory;
     private static Metric failedAppend;
@@ -140,11 +141,10 @@ public class Main {
 
     private static Mono<Void> provisionUser(CSVRecord csvRecord)  {
         try {
-            ImapAsyncClient imapClient = new ImapAsyncClient(NUM_OF_THREADS);
             URI serverUri = new URI(URL);
 
             return Flux.range(0, NUM_CONNECTIONS_PER_USER)
-                .flatMap(i -> connect(imapClient, serverUri)
+                .flatMap(i -> connect(serverUri)
                     // LOGIN
                     .flatMap(session -> login(csvRecord, session)
                         .thenReturn(session.getSession())))
@@ -161,6 +161,12 @@ public class Main {
                 .flatMap(sessions -> Flux.range(0, NUM_CONNECTIONS_PER_USER)
                     .flatMap(i -> Flux.fromIterable(PARTITIONED_MAILBOXES.get(i))
                         .concatMap(mailbox -> append(sessions.get(i), mailbox)))
+                    .then()
+                    .thenReturn(sessions))
+
+                // Close session
+                .flatMap(sessions -> Flux.fromIterable(sessions)
+                    .flatMap(Main::close)
                     .then())
 
                 .then(Mono.fromRunnable(() -> provisionnedUsers.increment()))
@@ -173,6 +179,23 @@ public class Main {
                 .then();
         } catch (Exception e) {
             return Mono.error(e);
+        }
+    }
+
+    private static Mono<Object> close(ImapAsyncSession session) {
+        return Mono.from(dropWizardMetricFactory.decoratePublisherWithTimerMetric("CLOSE", Mono.create(sink -> {
+            ImapFuture<Boolean> future = session.close();
+            future.setDoneCallback(sink::success);
+            future.setExceptionCallback(sink::error);
+            future.setCanceledCallback(sink::success);
+        })));
+    }
+
+    private static ImapAsyncClient createImapClient() {
+        try {
+            return new ImapAsyncClient(NUM_OF_THREADS);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -272,7 +295,7 @@ public class Main {
             customBodyValue);
     }
 
-    static Mono<ImapAsyncCreateSessionResponse> connect(ImapAsyncClient imapClient, URI serverUri) {
+    static Mono<ImapAsyncCreateSessionResponse> connect(URI serverUri) {
         ImapAsyncSessionConfig config = new ImapAsyncSessionConfig();
         config.setConnectionTimeoutMillis(5000);
         config.setReadTimeoutMillis(6000);
@@ -281,7 +304,7 @@ public class Main {
 
         Mono<ImapAsyncCreateSessionResponse> result = Mono.from(dropWizardMetricFactory.decoratePublisherWithTimerMetric("CONNECT",
             Mono.create(sink -> {
-                ImapFuture<ImapAsyncCreateSessionResponse> future = (ImapFuture) imapClient.createSession(serverUri, config, localAddress, sniNames, ImapAsyncSession.DebugMode.DEBUG_ON, "NA", SSL_CONTEXT);
+                ImapFuture<ImapAsyncCreateSessionResponse> future = (ImapFuture) IMAP_CLIENT.createSession(serverUri, config, localAddress, sniNames, ImapAsyncSession.DebugMode.DEBUG_OFF, "NA", SSL_CONTEXT);
                 future.setDoneCallback(sink::success);
                 future.setExceptionCallback(sink::error);
                 future.setCanceledCallback(sink::success);
