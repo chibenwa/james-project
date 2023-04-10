@@ -275,8 +275,10 @@ public class Main {
             execute(session, new AppendCommand(folderName, new Flags(), new Date(), messageBytes()))))
             .onErrorResume(e -> {
                 failedAppend.increment();
+                if (e.getMessage().contains("failureType=OPERATION_PROHIBITED_ON_CLOSED_CHANNEL")) {
+                    return Mono.error(e);
+                }
                 LOGGER.error("Failed appending a message", e);
-                // TODO Close sessions early
                 return Mono.empty();
             });
     }
