@@ -101,6 +101,10 @@ public class Main {
     private static final SSLContext SSL_CONTEXT = createSslContext();
     private static final Map<Integer, List<String>> PARTITIONED_MAILBOXES = computePartitionnedMailboxes();
     private static final ImapAsyncClient IMAP_CLIENT = createImapClient();
+    private static final byte[] BODY_10_MB = Strings.repeat("UmV0dXJuLVBhdGg6IDx0cHJ1ZGVudG92YUBsaW5hZ29yYS5jb20+DQpvcmcuYXBhY2hlLmph\r\n", 151515).getBytes();
+    private static final byte[] BODY_5_MB = Strings.repeat("UmV0dXJuLVBhdGg6IDx0cHJ1ZGVudG92YUBsaW5hZ29yYS5jb20+DQpvcmcuYXBhY2hlLmph\r\n", 75757).getBytes();
+    private static final byte[] BODY_1_MB = Strings.repeat("UmV0dXJuLVBhdGg6IDx0cHJ1ZGVudG92YUBsaW5hZ29yYS5jb20+DQpvcmcuYXBhY2hlLmph\r\n", 15151).getBytes();
+    private static final byte[] BODY_100_KB = Strings.repeat("UmV0dXJuLVBhdGg6IDx0cHJ1ZGVudG92YUBsaW5hZ29yYS5jb20+DQpvcmcuYXBhY2hlLmph\r\n", 1515).getBytes();
 
     private static DropWizardMetricFactory dropWizardMetricFactory;
     private static Metric failedAppend;
@@ -297,8 +301,7 @@ public class Main {
                 customHeader,
                 customBodyValue,
                 BODY_START_BYTES,
-                // 10MB Attachment 66
-                Strings.repeat("UmV0dXJuLVBhdGg6IDx0cHJ1ZGVudG92YUBsaW5hZ29yYS5jb20+DQpvcmcuYXBhY2hlLmph\r\n", 151515).getBytes(),
+                BODY_10_MB,
                 BODY_END_BYTES);
         }
         // 4% -> 5MB   (with attachments)
@@ -308,8 +311,7 @@ public class Main {
                 customHeader,
                 customBodyValue,
                 BODY_START_BYTES,
-                // 10MB Attachment 66
-                Strings.repeat("UmV0dXJuLVBhdGg6IDx0cHJ1ZGVudG92YUBsaW5hZ29yYS5jb20+DQpvcmcuYXBhY2hlLmph\r\n", 75757).getBytes(),
+                BODY_5_MB,
                 BODY_END_BYTES);
         }
         // 10% -> 1 MB  (with attachments)
@@ -319,8 +321,7 @@ public class Main {
                 customHeader,
                 customBodyValue,
                 BODY_START_BYTES,
-                // 10MB Attachment 66
-                Strings.repeat("UmV0dXJuLVBhdGg6IDx0cHJ1ZGVudG92YUBsaW5hZ29yYS5jb20+DQpvcmcuYXBhY2hlLmph\r\n", 15151).getBytes(),
+                BODY_1_MB,
                 BODY_END_BYTES);
         }
         // 20% -> 100KB (with attachments)
@@ -330,8 +331,7 @@ public class Main {
                 customHeader,
                 customBodyValue,
                 BODY_START_BYTES,
-                // 10MB Attachment 66
-                Strings.repeat("UmV0dXJuLVBhdGg6IDx0cHJ1ZGVudG92YUBsaW5hZ29yYS5jb20+DQpvcmcuYXBhY2hlLmph\r\n", 1515).getBytes(),
+                BODY_100_KB,
                 BODY_END_BYTES);
         }
         return Bytes.concat(
