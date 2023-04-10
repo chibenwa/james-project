@@ -68,6 +68,8 @@ public class Main {
     private static final int NUM_OF_THREADS = Integer.parseInt(PROPERTIES.getProperty("thread.count", "8"));
     private static final int CONCURRENT_USERS = Integer.parseInt(PROPERTIES.getProperty("concurrent.user.count", "5"));
     private static final int NUM_CONNECTIONS_PER_USER = Integer.parseInt(PROPERTIES.getProperty("connection.per.user.count", "2"));
+    private static final int READ_TIMEOUT_MS = Integer.parseInt(PROPERTIES.getProperty("read.timeout.ms", "180000"));
+    private static final int CONNECT_TIMEOUT_MS = Integer.parseInt(PROPERTIES.getProperty("connect.timeout.ms", "30000"));
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
     private static final String PREFIX = "folder-";
@@ -331,8 +333,8 @@ public class Main {
 
     static Mono<ImapAsyncCreateSessionResponse> connect(URI serverUri) {
         ImapAsyncSessionConfig config = new ImapAsyncSessionConfig();
-        config.setConnectionTimeoutMillis(5000);
-        config.setReadTimeoutMillis(6000);
+        config.setConnectionTimeoutMillis(CONNECT_TIMEOUT_MS);
+        config.setReadTimeoutMillis(READ_TIMEOUT_MS);
         List<String> sniNames = null;
         InetSocketAddress localAddress = null;
 
