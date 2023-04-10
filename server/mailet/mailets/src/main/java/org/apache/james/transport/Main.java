@@ -15,6 +15,7 @@ import java.time.Duration;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Random;
 import java.util.UUID;
@@ -70,6 +71,9 @@ public class Main {
     private static final int NUM_CONNECTIONS_PER_USER = Integer.parseInt(PROPERTIES.getProperty("connection.per.user.count", "2"));
     private static final int READ_TIMEOUT_MS = Integer.parseInt(PROPERTIES.getProperty("read.timeout.ms", "180000"));
     private static final int CONNECT_TIMEOUT_MS = Integer.parseInt(PROPERTIES.getProperty("connect.timeout.ms", "30000"));
+    private static final int USER_OFFSET = Integer.parseInt(PROPERTIES.getProperty("users.offset", "0"));
+    private static final Optional<Integer> USER_LIMIT = Optional.ofNullable(PROPERTIES.getProperty("users.offset", null))
+        .map(Integer::parseInt);
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
     private static final String PREFIX = "folder-";
@@ -112,7 +116,11 @@ public class Main {
 
         Stopwatch started = Stopwatch.createStarted();
 
-        Flux.fromIterable(records)
+        Flux<CSVRecord> userFlux = Flux.fromIterable(records)
+            .skip(USER_OFFSET);
+
+        USER_LIMIT.map(userFlux::take)
+            .orElse(userFlux)
             .flatMap(Main::provisionUser, CONCURRENT_USERS)
             .then()
             .block();
@@ -264,6 +272,7 @@ public class Main {
             .onErrorResume(e -> {
                 failedAppend.increment();
                 LOGGER.error("Failed appending a message", e);
+                // TODO Close sessions early
                 return Mono.empty();
             });
     }
