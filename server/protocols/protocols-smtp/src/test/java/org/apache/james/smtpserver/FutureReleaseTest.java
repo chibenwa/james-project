@@ -237,7 +237,10 @@ class FutureReleaseTest {
         smtpProtocol.sendCommand("RCPT TO:<rcpt@localhost>");
         smtpProtocol.sendShortMessageData("Subject: test mail\r\n\r\nTest body testSimpleMailSendWithFutureRelease\r\n.\r\n");
 
-        assertThat(queue.browse().hasNext()).isTrue();
+        ManageableMailQueue.MailQueueIterator browse = queue.browse();
+        assertThat(browse.hasNext()).isTrue();
+        assertThat(browse.next().getNextDelivery().map(ChronoZonedDateTime::toInstant))
+            .contains(Instant.parse("2023-04-14T10:30:00Z"));
     }
 
     @Test
