@@ -21,6 +21,7 @@ package org.apache.james.queue.memory;
 
 import static org.apache.james.util.ReactorUtils.DEFAULT_CONCURRENCY;
 
+import java.time.Clock;
 import java.time.DateTimeException;
 import java.time.Duration;
 import java.time.Instant;
@@ -69,11 +70,17 @@ public class MemoryMailQueueFactory implements MailQueueFactory<MemoryMailQueueF
 
     private final ConcurrentHashMap<MailQueueName, MemoryCacheableMailQueue> mailQueues;
     private final MailQueueItemDecoratorFactory mailQueueItemDecoratorFactory;
+    private final Clock clock;
 
     @Inject
-    public MemoryMailQueueFactory(MailQueueItemDecoratorFactory mailQueueItemDecoratorFactory) {
+    public MemoryMailQueueFactory(MailQueueItemDecoratorFactory mailQueueItemDecoratorFactory, Clock clock) {
         this.mailQueues = new ConcurrentHashMap<>();
         this.mailQueueItemDecoratorFactory = mailQueueItemDecoratorFactory;
+        this.clock = clock;
+    }
+
+    public MemoryMailQueueFactory(MailQueueItemDecoratorFactory mailQueueItemDecoratorFactory) {
+        this(mailQueueItemDecoratorFactory, Clock.systemUTC());
     }
 
     @PreDestroy
@@ -98,7 +105,7 @@ public class MemoryMailQueueFactory implements MailQueueFactory<MemoryMailQueueF
 
     @Override
     public MemoryCacheableMailQueue createQueue(MailQueueName name, PrefetchCount prefetchCount) {
-        MemoryCacheableMailQueue queue = mailQueues.computeIfAbsent(name, mailQueueName -> new MemoryCacheableMailQueue(mailQueueName, mailQueueItemDecoratorFactory));
+        MemoryCacheableMailQueue queue = mailQueues.computeIfAbsent(name, mailQueueName -> new MemoryCacheableMailQueue(mailQueueName, mailQueueItemDecoratorFactory, clock));
         queue.reference();
         return queue;
     }
@@ -110,8 +117,10 @@ public class MemoryMailQueueFactory implements MailQueueFactory<MemoryMailQueueF
         private final MailQueueName name;
         private final Flux<MailQueueItem> flux;
         private final Scheduler scheduler;
+        private final Clock clock;
 
-        public MemoryCacheableMailQueue(MailQueueName name, MailQueueItemDecoratorFactory mailQueueItemDecoratorFactory) {
+        public MemoryCacheableMailQueue(MailQueueName name, MailQueueItemDecoratorFactory mailQueueItemDecoratorFactory, Clock clock) {
+            this.clock = clock;
             this.mailItems = new DelayQueue<>();
             this.inProcessingMailItems = new LinkedBlockingDeque<>();
             this.name = name;
@@ -169,13 +178,13 @@ public class MemoryMailQueueFactory implements MailQueueFactory<MemoryMailQueueF
         private ZonedDateTime calculateNextDelivery(Duration delay) {
             if (!delay.isNegative()) {
                 try {
-                    return ZonedDateTime.now().plus(delay);
+                    return ZonedDateTime.now(clock).plus(delay);
                 } catch (DateTimeException | ArithmeticException e) {
                     return Instant.ofEpochMilli(Long.MAX_VALUE).atZone(ZoneId.of("UTC"));
                 }
             }
 
-            return ZonedDateTime.now();
+            return ZonedDateTime.now(clock);
         }
 
         @Override
