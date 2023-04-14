@@ -24,12 +24,16 @@ import static org.apache.james.smtpserver.futurerelease.FutureReleaseParameters.
 import static org.apache.james.smtpserver.futurerelease.FutureReleaseParameters.HOLDUNTIL_PARAMETER;
 import static org.apache.james.smtpserver.futurerelease.FutureReleaseParameters.MAX_HOLD_FOR_SUPPORTED;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
+
+import javax.inject.Inject;
 
 import org.apache.james.protocols.api.ProtocolSession;
 import org.apache.james.protocols.smtp.SMTPSession;
@@ -39,67 +43,66 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class FutureReleaseMailParameterHook implements MailParametersHook {
-
     private static final int UTC_TIMESTAMP_LENGTH = 20;
     private static final int ZONED_TIMESTAMP_LENGTH = 25;
     private static final Logger LOGGER = LoggerFactory.getLogger(FutureReleaseMailParameterHook.class);
+
     public static final ProtocolSession.AttachmentKey<FutureReleaseParameters.HoldFor> FUTURERELEASE_HOLDFOR = ProtocolSession.AttachmentKey.of("FUTURERELEASE_HOLDFOR", FutureReleaseParameters.HoldFor.class);
-    private static final Instant now = ZonedDateTime.parse("2023-04-13T11:00:00Z").toInstant();
-    public static final long INVALID_HOLDUNTIL_VALUE = -1L;
-    private static final long NUMBER_PARSE_EXCEPTION = -2L;
-    private static final long DATE_TIME_FORMAT_EXCEPTION = -3L;
-    private static final long INVALID_PARAM_NAME = -4L;
+
+    private final Clock clock;
+
+    @Inject
+    public FutureReleaseMailParameterHook(Clock clock) {
+        this.clock = clock;
+    }
 
     @Override
     public HookResult doMailParameter(SMTPSession session, String paramName, String paramValue) {
-        long requestedHoldFor = evaluateHoldFor(paramName, paramValue);
-        if (requestedHoldFor > MAX_HOLD_FOR_SUPPORTED) {
-            LOGGER.debug("HoldFor is greater than max-future-release-interval or holdUntil exceeded max-future-release-date-time");
-            return HookResult.DENY;
-        }
-        if (requestedHoldFor < 0) {
-            LOGGER.debug("HoldFor value is negative or holdUntil value is before now");
-            return HookResult.DENY;
-        }
-        if (session.getAttachment(FUTURERELEASE_HOLDFOR, Transaction).isPresent()) {
-            LOGGER.debug("Mail parameter cannot contains both holdFor and holdUntil parameters");
-            return HookResult.DENY;
-        }
-        session.setAttachment(FUTURERELEASE_HOLDFOR, FutureReleaseParameters.HoldFor.of(requestedHoldFor), Transaction);
-        return HookResult.DECLINED;
-    }
-
-    private static Long evaluateHoldFor(String paramName, String paramValue) {
         try {
-            if (paramName.equals(HOLDFOR_PARAMETER)) {
-                return Long.parseLong(paramValue);
+            Duration requestedHoldFor = evaluateHoldFor(paramName, paramValue);
+
+            if (requestedHoldFor.compareTo(MAX_HOLD_FOR_SUPPORTED) > 0) {
+                LOGGER.debug("HoldFor is greater than max-future-release-interval or holdUntil exceeded max-future-release-date-time");
+                return HookResult.DENY;
             }
-            if (selectDateTimeFormatter(paramValue).equals(DateTimeFormatter.ISO_DATE)) {
-                return INVALID_HOLDUNTIL_VALUE;
+            if (requestedHoldFor.isNegative()) {
+                LOGGER.debug("HoldFor value is negative or holdUntil value is before now");
+                return HookResult.DENY;
             }
-            if (paramName.equals(HOLDUNTIL_PARAMETER)) {
-                DateTimeFormatter formatter = selectDateTimeFormatter(paramValue);
-                return Duration.between(now, ZonedDateTime.parse(paramValue, formatter).toInstant()).toSeconds();
+            if (session.getAttachment(FUTURERELEASE_HOLDFOR, Transaction).isPresent()) {
+                LOGGER.debug("Mail parameter cannot contains both holdFor and holdUntil parameters");
+                return HookResult.DENY;
             }
-        } catch (NumberFormatException e) {
-            LOGGER.debug("Failed to parse number format");
-            return NUMBER_PARSE_EXCEPTION;
-        } catch (DateTimeParseException e) {
-            LOGGER.debug("Failed to parse date format");
-            return DATE_TIME_FORMAT_EXCEPTION;
+            session.setAttachment(FUTURERELEASE_HOLDFOR, FutureReleaseParameters.HoldFor.of(requestedHoldFor), Transaction);
+            return HookResult.DECLINED;
+        } catch (IllegalArgumentException e) {
+            LOGGER.debug("Incorrect syntax when handling FUTURE-RELEASE mail parameter", e);
+            return HookResult.DENY;
         }
-        return INVALID_PARAM_NAME;
     }
 
-    private static DateTimeFormatter selectDateTimeFormatter(String dateTime) {
+    private Duration evaluateHoldFor(String paramName, String paramValue) {
+        if (paramName.equals(HOLDFOR_PARAMETER)) {
+            return Duration.ofSeconds(Long.parseLong(paramValue));
+        }
+        if (paramName.equals(HOLDUNTIL_PARAMETER)) {
+            DateTimeFormatter formatter = selectDateTimeFormatter(paramValue);
+            Instant now = LocalDateTime.now(clock).toInstant(ZoneOffset.UTC);
+            return Duration.between(now, ZonedDateTime.parse(paramValue, formatter).toInstant());
+        }
+        throw new IllegalArgumentException("Invalid parameter name " + paramName);
+    }
+
+    private DateTimeFormatter selectDateTimeFormatter(String dateTime) {
         if (dateTime.length() == UTC_TIMESTAMP_LENGTH) {
             return DateTimeFormatter.ISO_INSTANT.withZone(ZoneId.of("Z"));
         }
         if (dateTime.length() == ZONED_TIMESTAMP_LENGTH) {
             return DateTimeFormatter.ISO_OFFSET_DATE_TIME;
         }
-        return DateTimeFormatter.ISO_DATE;
+        throw new IllegalArgumentException("Date time pattern is unrecognized");
     }
+
     @Override
     public String[] getMailParamNames() {
         return new String[] {HOLDFOR_PARAMETER, HOLDUNTIL_PARAMETER};

@@ -18,7 +18,17 @@
  ****************************************************************/
 package org.apache.james.smtpserver.futurerelease;
 
+import static org.apache.james.smtpserver.futurerelease.FutureReleaseParameters.MAX_HOLD_FOR_SUPPORTED;
+
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.Set;
+
+import javax.inject.Inject;
 
 import org.apache.james.protocols.smtp.SMTPSession;
 import org.apache.james.protocols.smtp.hook.HeloHook;
@@ -27,12 +37,19 @@ import org.apache.james.protocols.smtp.hook.HookResult;
 import com.google.common.collect.ImmutableSet;
 
 public class FutureReleaseEHLOHook implements HeloHook {
-    private static final long MAX_FUTURE_RELEASE_INTERVAL = 86400;
-    private static final String MAX_FUTURE_RELEASE_DATE_TIME = "2023-04-14T10:00:00Z";
+    private final Clock clock;
+
+    @Inject
+    public FutureReleaseEHLOHook(Clock clock) {
+        this.clock = clock;
+    }
 
     @Override
     public Set<String> implementedEsmtpFeatures() {
-        return ImmutableSet.of("FUTURERELEASE " + MAX_FUTURE_RELEASE_INTERVAL + " " + MAX_FUTURE_RELEASE_DATE_TIME);
+        Instant now = LocalDateTime.now(clock).toInstant(ZoneOffset.UTC);
+        String dateAsString = DateTimeFormatter.ISO_INSTANT.withZone(ZoneId.of("UTC")).format(now.plus(MAX_HOLD_FOR_SUPPORTED));
+
+        return ImmutableSet.of("FUTURERELEASE " + MAX_HOLD_FOR_SUPPORTED.toSeconds() + " " + dateAsString);
     }
 
     @Override

@@ -25,6 +25,11 @@ import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.chrono.ChronoZonedDateTime;
 import java.util.Base64;
 
 import org.apache.commons.configuration2.BaseHierarchicalConfiguration;
@@ -52,6 +57,7 @@ import org.apache.james.metrics.tests.RecordingMetricFactory;
 import org.apache.james.protocols.api.utils.ProtocolServerUtils;
 import org.apache.james.protocols.lib.mock.MockProtocolHandlerLoader;
 import org.apache.james.queue.api.MailQueueFactory;
+import org.apache.james.queue.api.ManageableMailQueue;
 import org.apache.james.queue.api.RawMailQueueItemDecoratorFactory;
 import org.apache.james.queue.memory.MemoryMailQueueFactory;
 import org.apache.james.rrt.api.AliasReverseResolver;
@@ -64,7 +70,6 @@ import org.apache.james.rrt.memory.MemoryRecipientRewriteTable;
 import org.apache.james.server.core.configuration.Configuration;
 import org.apache.james.server.core.configuration.FileConfigurationProvider;
 import org.apache.james.server.core.filesystem.FileSystemImpl;
-import org.apache.james.smtpserver.futurerelease.FutureReleaseParameters;
 import org.apache.james.smtpserver.netty.SMTPServer;
 import org.apache.james.smtpserver.netty.SmtpMetricsImpl;
 import org.apache.james.user.api.UsersRepository;
@@ -77,12 +82,12 @@ import org.junit.jupiter.api.Test;
 import com.google.common.collect.ImmutableList;
 import com.google.inject.TypeLiteral;
 
-import nl.jqno.equalsverifier.EqualsVerifier;
-
-public class FutureReleaseTest {
+class FutureReleaseTest {
     public static final String LOCAL_DOMAIN = "example.local";
     public static final Username BOB = Username.of("bob@localhost");
     public static final String PASSWORD = "bobpwd";
+    private static final Instant DATE = Instant.parse("2023-04-14T10:00:00.00Z");
+    private static final Clock CLOCK = Clock.fixed(DATE, ZoneId.of("Z"));
 
     protected MemoryDomainList domainList;
     protected MemoryUsersRepository usersRepository;
@@ -155,11 +160,12 @@ public class FutureReleaseTest {
         rewriteTable.setConfiguration(RecipientRewriteTableConfiguration.DEFAULT_ENABLED);
         AliasReverseResolver aliasReverseResolver = new AliasReverseResolverImpl(rewriteTable);
         CanSendFrom canSendFrom = new CanSendFromImpl(rewriteTable, aliasReverseResolver);
-        queueFactory = new MemoryMailQueueFactory(new RawMailQueueItemDecoratorFactory());
+        queueFactory = new MemoryMailQueueFactory(new RawMailQueueItemDecoratorFactory(), CLOCK);
         queue = queueFactory.createQueue(MailQueueFactory.SPOOL);
 
         chain = MockProtocolHandlerLoader.builder()
             .put(binder -> binder.bind(DomainList.class).toInstance(domainList))
+            .put(binder -> binder.bind(Clock.class).toInstance(CLOCK))
             .put(binder -> binder.bind(new TypeLiteral<MailQueueFactory<?>>() {}).toInstance(queueFactory))
             .put(binder -> binder.bind(RecipientRewriteTable.class).toInstance(rewriteTable))
             .put(binder -> binder.bind(CanSendFrom.class).toInstance(canSendFrom))
@@ -178,25 +184,6 @@ public class FutureReleaseTest {
         smtpServer.destroy();
     }
 
-    @Test
-    void testEqualsVerifiersForHoldForClass() throws Exception {
-        SMTPClient smtpProtocol = new SMTPClient();
-        InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
-        smtpProtocol.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
-        authenticate(smtpProtocol);
-        smtpProtocol.sendCommand("EHLO localhost");
-        EqualsVerifier.forClass(FutureReleaseParameters.HoldFor.class).verify();
-    }
-
-    @Test
-    void testEqualsVerifierForHoldUntilClass() throws Exception {
-        SMTPClient smtpProtocol = new SMTPClient();
-        InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
-        smtpProtocol.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
-        authenticate(smtpProtocol);
-        smtpProtocol.sendCommand("EHLO localhost");
-        EqualsVerifier.forClass(FutureReleaseParameters.HoldFor.class).verify();
-    }
 
     @Test
     void ehloShouldAdvertiseFutureReleaseExtension() throws Exception {
@@ -208,7 +195,7 @@ public class FutureReleaseTest {
 
         SoftAssertions.assertSoftly(softly -> {
             softly.assertThat(smtpProtocol.getReplyCode()).isEqualTo(250);
-            softly.assertThat(smtpProtocol.getReplyString()).contains("250 FUTURERELEASE 86400 2023-04-14T10:00:00Z");
+            softly.assertThat(smtpProtocol.getReplyString()).contains("250 FUTURERELEASE 86400 2023-04-15T10:00:00Z");
         });
     }
 
@@ -232,10 +219,10 @@ public class FutureReleaseTest {
         smtpProtocol.sendCommand("RCPT TO:<rcpt@localhost>");
         smtpProtocol.sendShortMessageData("Subject: test mail\r\n\r\nTest body testSimpleMailSendWithFutureRelease\r\n.\r\n");
 
-        SoftAssertions.assertSoftly(softly -> {
-            softly.assertThat(smtpProtocol.getReplyCode()).isEqualTo(250);
-            softly.assertThat(smtpProtocol.getReplyString()).contains("250");
-        });
+        ManageableMailQueue.MailQueueIterator browse = queue.browse();
+        assertThat(browse.hasNext()).isTrue();
+        assertThat(browse.next().getNextDelivery().map(ChronoZonedDateTime::toInstant))
+            .contains(DATE.plusSeconds(83200));
     }
 
     @Test
@@ -246,14 +233,11 @@ public class FutureReleaseTest {
         authenticate(smtpProtocol);
 
         smtpProtocol.sendCommand("EHLO localhost");
-        smtpProtocol.sendCommand("MAIL FROM: <bob@localhost> HOLDUNTIL=2023-04-14T08:00:00Z");
+        smtpProtocol.sendCommand("MAIL FROM: <bob@localhost> HOLDUNTIL=2023-04-14T10:30:00Z");
         smtpProtocol.sendCommand("RCPT TO:<rcpt@localhost>");
         smtpProtocol.sendShortMessageData("Subject: test mail\r\n\r\nTest body testSimpleMailSendWithFutureRelease\r\n.\r\n");
 
-        SoftAssertions.assertSoftly(softly -> {
-            softly.assertThat(smtpProtocol.getReplyCode()).isEqualTo(250);
-            softly.assertThat(smtpProtocol.getReplyString()).contains("250");
-        });
+        assertThat(queue.browse().hasNext()).isTrue();
     }
 
     @Test
@@ -265,6 +249,51 @@ public class FutureReleaseTest {
 
         smtpProtocol.sendCommand("EHLO localhost");
         smtpProtocol.sendCommand("MAIL FROM: <bob@localhost> HOLDFOR=93200");
+        SoftAssertions.assertSoftly(softly -> {
+            softly.assertThat(smtpProtocol.getReplyCode()).isEqualTo(554);
+            softly.assertThat(smtpProtocol.getReplyString()).contains("554 Email rejected");
+        });
+    }
+
+    @Test
+    void mailShouldBeRejectedWhenInvalidHoldFor() throws Exception {
+        SMTPClient smtpProtocol = new SMTPClient();
+        InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
+        smtpProtocol.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        authenticate(smtpProtocol);
+
+        smtpProtocol.sendCommand("EHLO localhost");
+        smtpProtocol.sendCommand("MAIL FROM: <bob@localhost> HOLDFOR=BAD");
+        SoftAssertions.assertSoftly(softly -> {
+            softly.assertThat(smtpProtocol.getReplyCode()).isEqualTo(554);
+            softly.assertThat(smtpProtocol.getReplyString()).contains("554 Email rejected");
+        });
+    }
+
+    @Test
+    void mailShouldBeRejectedWhenInvalidHoldUntil() throws Exception {
+        SMTPClient smtpProtocol = new SMTPClient();
+        InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
+        smtpProtocol.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        authenticate(smtpProtocol);
+
+        smtpProtocol.sendCommand("EHLO localhost");
+        smtpProtocol.sendCommand("MAIL FROM: <bob@localhost> HOLDUNTIL=BAD");
+        SoftAssertions.assertSoftly(softly -> {
+            softly.assertThat(smtpProtocol.getReplyCode()).isEqualTo(554);
+            softly.assertThat(smtpProtocol.getReplyString()).contains("554 Email rejected");
+        });
+    }
+
+    @Test
+    void mailShouldBeRejectedWhenHoldUntilIsADate() throws Exception {
+        SMTPClient smtpProtocol = new SMTPClient();
+        InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
+        smtpProtocol.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        authenticate(smtpProtocol);
+
+        smtpProtocol.sendCommand("EHLO localhost");
+        smtpProtocol.sendCommand("MAIL FROM: <bob@localhost> HOLDUNTIL=2023-04-15");
         SoftAssertions.assertSoftly(softly -> {
             softly.assertThat(smtpProtocol.getReplyCode()).isEqualTo(554);
             softly.assertThat(smtpProtocol.getReplyString()).contains("554 Email rejected");

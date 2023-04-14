@@ -19,11 +19,8 @@
 
 package org.apache.james.smtpserver.futurerelease;
 
-import java.util.Map;
+import java.time.Duration;
 import java.util.Objects;
-import java.util.Optional;
-
-import org.apache.mailet.AttributeValue;
 
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Preconditions;
@@ -31,35 +28,22 @@ import com.google.common.base.Preconditions;
 public class FutureReleaseParameters {
     public static final String HOLDFOR_PARAMETER = "HOLDFOR";
     public static final String HOLDUNTIL_PARAMETER = "HOLDUNTIL";
-    public static final long MAX_HOLD_FOR_SUPPORTED = 86400;
+    public static final Duration MAX_HOLD_FOR_SUPPORTED = Duration.ofDays(1);
 
     public static class HoldFor {
-        public static Optional<HoldFor> fromSMTPArgLine(Map<String, Long> mailFromArgLine) {
-            return Optional.ofNullable(mailFromArgLine.get(HOLDFOR_PARAMETER))
-                .map(HoldFor::of);
-        }
-
-        public static HoldFor fromAttributeValue(AttributeValue<Long> attributeValue) {
-            return of(attributeValue.value());
-        }
-
-        private final long value;
-
-        public static HoldFor of(long value) {
+        public static HoldFor of(Duration value) {
             Preconditions.checkNotNull(value);
             return new HoldFor(value);
         }
 
-        private HoldFor(long value) {
+        private final Duration value;
+
+        private HoldFor(Duration value) {
             this.value = value;
         }
 
-        public long value() {
+        public Duration value() {
             return value;
-        }
-
-        public AttributeValue<Long> toAttributeValue() {
-            return AttributeValue.of(value);
         }
 
         @Override
@@ -81,50 +65,6 @@ public class FutureReleaseParameters {
             return MoreObjects.toStringHelper(this)
                 .add("value", value)
                 .toString();
-        }
-    }
-
-    public static class HoldUntil {
-        public static Optional<HoldUntil> fromSMTPArgLine(Map<String, String> mailFromArgLine) {
-            return Optional.ofNullable(mailFromArgLine.get(HOLDUNTIL_PARAMETER))
-                .map(HoldUntil::of);
-        }
-
-        public static HoldUntil fromAttributeValue(AttributeValue<String> attributeValue) {
-            return of(attributeValue.value());
-        }
-
-        private final String value;
-
-        private HoldUntil(String value) {
-            this.value = value;
-        }
-
-        public static HoldUntil of(String value) {
-            Preconditions.checkNotNull(value);
-            return new HoldUntil(value);
-        }
-
-        public String asString() {
-            return value;
-        }
-
-        @Override
-        public final int hashCode() {
-            return Objects.hash(value);
-        }
-
-        @Override
-        public final boolean equals(Object o) {
-            if (o instanceof HoldUntil) {
-                HoldUntil that = (HoldUntil) o;
-                return Objects.equals(this.value, that.value);
-            }
-            return false;
-        }
-
-        public AttributeValue<String> toAttributeValue() {
-            return AttributeValue.of(value);
         }
     }
 }
