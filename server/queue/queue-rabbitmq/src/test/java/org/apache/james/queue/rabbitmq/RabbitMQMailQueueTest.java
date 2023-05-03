@@ -223,6 +223,30 @@ class RabbitMQMailQueueTest {
         }
 
         @Test
+        void contentStartShouldBeUpdated(CassandraCluster cassandraCluster) {
+            int emailCount = 100;
+
+            StatementRecorder statementRecorder = new StatementRecorder();
+            cassandraCluster.getConf().recordStatements(statementRecorder);
+
+            clock.setInstant(IN_SLICE_1);
+            enqueueSomeMails(namePatternForSlice(1), emailCount);
+            dequeueMails(emailCount);
+
+            clock.setInstant(IN_SLICE_2);
+            enqueueSomeMails(namePatternForSlice(2), emailCount);
+            dequeueMails(emailCount);
+
+            clock.setInstant(IN_SLICE_3);
+            enqueueSomeMails(namePatternForSlice(3), emailCount);
+            dequeueMails(emailCount);
+
+            // The actual rate of update should actually be lower than the update probability.
+            assertThat(statementRecorder.listExecutedStatements(preparedStatementStartingWith("UPDATE contentstart")))
+                .hasSizeBetween(2, 5);
+        }
+
+        @Test
         void dequeueShouldDeleteBlobs(CassandraCluster cassandra) throws Exception {
             String name1 = "myMail1";
             Flux<MailQueue.MailQueueItem> dequeueFlux = Flux.from(getMailQueue().deQueue());
