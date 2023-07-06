@@ -115,7 +115,7 @@ public interface Pop3MetadataStore {
         }
     }
 
-    Publisher<StatMetadata> stat(MailboxId mailboxId);
+    Publisher<FullMetadata> stat(MailboxId mailboxId);
 
     Publisher<FullMetadata> listAllEntries();
 

@@ -41,8 +41,8 @@ import org.apache.james.mailbox.model.SearchQuery;
 import org.apache.james.modules.MailboxProbeImpl;
 import org.apache.james.modules.protocols.Pop3GuiceProbe;
 import org.apache.james.modules.protocols.SmtpGuiceProbe;
-import org.apache.james.pop3server.mailbox.CassandraPop3MetadataStore;
 import org.apache.james.pop3server.mailbox.Pop3MetadataStore;
+import org.apache.james.pop3server.mailbox.tombstone.Pop3TimeSerieMetadataStore;
 import org.apache.james.util.ClassLoaderUtils;
 import org.apache.james.utils.DataProbeImpl;
 import org.apache.james.utils.GuiceProbe;
@@ -64,12 +64,12 @@ import reactor.core.publisher.Mono;
 
 public interface Pop3ServerContract {
     class POP3ViewProbe implements GuiceProbe {
-        private final CassandraPop3MetadataStore pop3MetadataStore;
+        private final Pop3TimeSerieMetadataStore pop3MetadataStore;
         private final MailboxManager mailboxManager;
         private final MessageId.Factory messageIdFactory;
 
         @Inject
-        private POP3ViewProbe(CassandraPop3MetadataStore pop3MetadataStore, MailboxManager mailboxManager, MessageId.Factory messageIdFactory) {
+        private POP3ViewProbe(Pop3TimeSerieMetadataStore pop3MetadataStore, MailboxManager mailboxManager, MessageId.Factory messageIdFactory) {
             this.pop3MetadataStore = pop3MetadataStore;
             this.mailboxManager = mailboxManager;
             this.messageIdFactory = messageIdFactory;

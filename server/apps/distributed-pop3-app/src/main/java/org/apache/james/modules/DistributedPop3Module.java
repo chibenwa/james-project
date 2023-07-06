@@ -21,12 +21,12 @@ package org.apache.james.modules;
 
 import org.apache.james.backends.cassandra.components.CassandraModule;
 import org.apache.james.events.EventListener;
-import org.apache.james.pop3server.mailbox.CassandraPop3MetadataStore;
 import org.apache.james.pop3server.mailbox.DistributedMailboxAdapter;
 import org.apache.james.pop3server.mailbox.MailboxAdapterFactory;
-import org.apache.james.pop3server.mailbox.Pop3MetadataModule;
 import org.apache.james.pop3server.mailbox.Pop3MetadataStore;
 import org.apache.james.pop3server.mailbox.PopulateMetadataStoreListener;
+import org.apache.james.pop3server.mailbox.tombstone.Pop3TimeSerieMetadataModule;
+import org.apache.james.pop3server.mailbox.tombstone.Pop3TimeSerieMetadataStore;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Scopes;
@@ -35,8 +35,8 @@ import com.google.inject.multibindings.Multibinder;
 public class DistributedPop3Module extends AbstractModule {
     @Override
     protected void configure() {
-        bind(CassandraPop3MetadataStore.class).in(Scopes.SINGLETON);
-        bind(Pop3MetadataStore.class).to(CassandraPop3MetadataStore.class);
+        bind(Pop3TimeSerieMetadataStore.class).in(Scopes.SINGLETON);
+        bind(Pop3MetadataStore.class).to(Pop3TimeSerieMetadataStore.class);
 
         Multibinder.newSetBinder(binder(), EventListener.ReactiveGroupEventListener.class)
             .addBinding()
@@ -46,6 +46,6 @@ public class DistributedPop3Module extends AbstractModule {
         bind(MailboxAdapterFactory.class).to(DistributedMailboxAdapter.Factory.class);
 
         Multibinder<CassandraModule> cassandraDataDefinitions = Multibinder.newSetBinder(binder(), CassandraModule.class);
-        cassandraDataDefinitions.addBinding().toInstance(Pop3MetadataModule.MODULE);
+        cassandraDataDefinitions.addBinding().toInstance(Pop3TimeSerieMetadataModule.MODULE);
     }
 }
