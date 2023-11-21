@@ -24,4 +24,7 @@
   <preDeletionHook>
     <class>org.apache.james.vault.DeletedMessageVaultHook</class>
   </preDeletionHook>
+  <listener>
+    <class>org.apache.james.TNDemoListener</class>
+  </listener>
 </listeners>
