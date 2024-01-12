@@ -36,6 +36,7 @@ import org.apache.james.webadmin.routes.MailboxesRoutes;
 import org.apache.james.webadmin.routes.UserMailboxesRoutes;
 import org.apache.james.webadmin.routes.UserQuotaRoutes;
 import org.apache.james.webadmin.service.CreateMissingParentsRequestToTask;
+import org.apache.james.webadmin.service.SampleMailboxContentTask;
 import org.apache.james.webadmin.service.SubscribeAllRequestToTask;
 import org.apache.james.webadmin.tasks.TaskFromRequestRegistry.TaskRegistration;
 import org.apache.james.webadmin.utils.JsonTransformerModule;
@@ -74,5 +75,6 @@ public class MailboxRoutesModule extends AbstractModule {
 
         userBoundTasks.addBinding().to(SubscribeAllRequestToTask.class);
         allMailboxesTasks.addBinding().to(CreateMissingParentsRequestToTask.class);
+        allMailboxesTasks.addBinding().to(SampleMailboxContentTask.SampleMailboxContentTaskToTask.class);
     }
 }

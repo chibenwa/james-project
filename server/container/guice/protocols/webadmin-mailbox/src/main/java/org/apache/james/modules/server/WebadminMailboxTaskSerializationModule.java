@@ -29,6 +29,7 @@ import org.apache.james.server.task.json.dto.TaskDTO;
 import org.apache.james.server.task.json.dto.TaskDTOModule;
 import org.apache.james.task.Task;
 import org.apache.james.task.TaskExecutionDetails;
+import org.apache.james.user.api.UsersRepository;
 import org.apache.james.webadmin.dto.DTOModuleInjections;
 import org.apache.james.webadmin.service.ClearMailboxContentTaskAdditionalInformationDTO;
 import org.apache.james.webadmin.service.ClearMailboxContentTaskDTO;
@@ -42,6 +43,7 @@ import org.apache.james.webadmin.service.EventDeadLettersRedeliveryTaskAdditiona
 import org.apache.james.webadmin.service.ExpireMailboxAdditionalInformationDTO;
 import org.apache.james.webadmin.service.ExpireMailboxDTO;
 import org.apache.james.webadmin.service.ExpireMailboxService;
+import org.apache.james.webadmin.service.SampleMailboxContentTask;
 import org.apache.james.webadmin.service.SubscribeAllTaskAdditionalInformationDTO;
 import org.apache.james.webadmin.service.SubscribeAllTaskDTO;
 import org.apache.james.webadmin.service.UserMailboxesService;
@@ -72,6 +74,11 @@ public class WebadminMailboxTaskSerializationModule extends AbstractModule {
     }
 
     @ProvidesIntoSet
+    public TaskDTOModule<? extends Task, ? extends TaskDTO> sampleMailboxContent(MailboxManager mailboxManager, UsersRepository usersRepository) {
+        return SampleMailboxContentTask.module(mailboxManager, usersRepository);
+    }
+
+    @ProvidesIntoSet
     public TaskDTOModule<? extends Task, ? extends TaskDTO> recomputeCurrentQuotasTask(RecomputeCurrentQuotasService service) {
         return RecomputeCurrentQuotasTaskDTO.module(service);
     }
@@ -99,6 +106,11 @@ public class WebadminMailboxTaskSerializationModule extends AbstractModule {
     @ProvidesIntoSet
     public AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends  AdditionalInformationDTO> subscribeAllTaskDTO() {
         return SubscribeAllTaskAdditionalInformationDTO.SERIALIZATION_MODULE;
+    }
+
+    @ProvidesIntoSet
+    public AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends  AdditionalInformationDTO> sampleMailboxContentTaskDTO() {
+        return SampleMailboxContentTask.SERIALIZATION_MODULE;
     }
 
     @Named(DTOModuleInjections.WEBADMIN_DTO)
@@ -144,6 +156,12 @@ public class WebadminMailboxTaskSerializationModule extends AbstractModule {
     @ProvidesIntoSet
     public AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends  AdditionalInformationDTO> subscribeAllTaskWebAdminDTO() {
         return SubscribeAllTaskAdditionalInformationDTO.SERIALIZATION_MODULE;
+    }
+
+    @Named(DTOModuleInjections.WEBADMIN_DTO)
+    @ProvidesIntoSet
+    public AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends  AdditionalInformationDTO> sampleMailboxContentTaskWebAdminDTO() {
+        return SampleMailboxContentTask.SERIALIZATION_MODULE;
     }
 
     @ProvidesIntoSet
