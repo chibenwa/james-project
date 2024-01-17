@@ -97,6 +97,7 @@ public class ReadOnlyLDAPUser implements User {
      */
     @Override
     public Username getUserName() {
+        System.out.println("DEBUG: username " + userName.asString() + " for DN " + userDN);
         return userName;
     }
 

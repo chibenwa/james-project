@@ -132,6 +132,19 @@ public class ReadOnlyLDAPUsersDAO implements UsersDAO, Configurable {
      */
     public void init() throws Exception {
 
+        LOGGER.error("<<<<>>>>>>>>>");
+        LOGGER.error("<<<<>>>>>>>>>");
+        LOGGER.error("<<<<>>>>>>>>>");
+        LOGGER.error("<<<<>>>>>>>>>");
+        LOGGER.error("<<<<>>>>>>>>>");
+        LOGGER.error("LDAP DAO v 4");
+        LOGGER.error(ldapConfiguration.getUsernameAttribute());
+        LOGGER.error("<<<<>>>>>>>>>");
+        LOGGER.error("<<<<>>>>>>>>>");
+        LOGGER.error("<<<<>>>>>>>>>");
+        LOGGER.error("<<<<>>>>>>>>>");
+        LOGGER.error("<<<<>>>>>>>>>");
+
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug(this.getClass().getName() + ".init()" + '\n' + "LDAP hosts: " + ldapConfiguration.getLdapHosts()
                 + '\n' + "User baseDN: " + ldapConfiguration.getUserBase() + '\n' + "userIdAttribute: "
@@ -336,7 +349,8 @@ public class ReadOnlyLDAPUsersDAO implements UsersDAO, Configurable {
 
     private Optional<ReadOnlyLDAPUser> buildUser(DN userDN) throws LDAPException {
         SearchResultEntry userAttributes = ldapConnectionPool.getEntry(userDN.toString());
-        Optional<String> userName = Optional.ofNullable(userAttributes.getAttributeValue(ldapConfiguration.getUserIdAttribute()));
+        String usernameAttribute = ldapConfiguration.getUsernameAttribute().orElse(ldapConfiguration.getUserIdAttribute());
+        Optional<String> userName = Optional.ofNullable(userAttributes.getAttributeValue(usernameAttribute));
         return userName
             .map(Username::of)
             .map(username -> new ReadOnlyLDAPUser(username, userDN, ldapConnectionPool));
@@ -344,6 +358,7 @@ public class ReadOnlyLDAPUsersDAO implements UsersDAO, Configurable {
 
     @Override
     public boolean contains(Username name) throws UsersRepositoryException {
+        LOGGER.error("DEBUG: contains " + name.asString());
         return getUserByName(name)
             .filter(readOnlyLDAPUser -> readOnlyLDAPUser.getUserName().equals(name))
             .isPresent();
@@ -373,6 +388,7 @@ public class ReadOnlyLDAPUsersDAO implements UsersDAO, Configurable {
 
     @Override
     public Optional<ReadOnlyLDAPUser> getUserByName(Username name) throws UsersRepositoryException {
+        LOGGER.error("DEBUG: getUserByName " + name.asString());
         try {
             return searchAndBuildUser(name);
         } catch (Exception e) {

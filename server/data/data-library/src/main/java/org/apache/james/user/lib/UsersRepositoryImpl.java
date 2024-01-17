@@ -164,6 +164,7 @@ public class UsersRepositoryImpl<T extends UsersDAO> implements UsersRepository,
             }
         }
 
+        System.out.println("DEBUG: authenticated " + translatedUsername);
         return translatedUsername;
     }
 

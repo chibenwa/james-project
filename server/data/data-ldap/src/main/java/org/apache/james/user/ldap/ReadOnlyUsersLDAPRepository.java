@@ -198,6 +198,7 @@ public class ReadOnlyUsersLDAPRepository extends UsersRepositoryImpl<ReadOnlyLDA
 
     @Override
     public boolean isAdministrator(Username username) throws UsersRepositoryException {
+        System.out.println("DEBUG: Is admin " + username.asString());
         assertValid(username);
 
         if (ldapConfiguration.getAdministratorId().isPresent()) {
@@ -213,6 +214,7 @@ public class ReadOnlyUsersLDAPRepository extends UsersRepositoryImpl<ReadOnlyLDA
 
     @Override
     public void assertValid(Username username) throws UsersRepositoryException {
+        System.out.println("DEBUG: Is valid " + username.asString());
         assertLocalPartValid(username);
 
         boolean localPartAsLoginUsernameSupported = ldapConfiguration.getResolveLocalPartAttribute().isPresent();
