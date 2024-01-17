@@ -319,7 +319,8 @@ public class ReadOnlyLDAPUsersDAO implements UsersDAO, Configurable {
         if (!ldapConfiguration.getRestriction().isActivated()
             || userInGroupsMembershipList(result.getParsedDN(), ldapConfiguration.getRestriction().getGroupMembershipLists(ldapConnectionPool))) {
 
-            Username translatedUsername = Username.of(result.getAttributeValue(ldapConfiguration.getUserIdAttribute()));
+            String usernameAttribute = ldapConfiguration.getUsernameAttribute().orElse(ldapConfiguration.getUserIdAttribute());
+            Username translatedUsername = Username.of(result.getAttributeValue(usernameAttribute));
             return Optional.of(new ReadOnlyLDAPUser(translatedUsername, result.getParsedDN(), ldapConnectionPool));
         }
         return Optional.empty();
