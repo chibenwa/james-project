@@ -1,139 +1,36 @@
-Apache James Project
-====================
+2024-01-29 11:01:47
+{"timestamp":"2024-01-29T10:01:47.691Z","level":"ERROR","thread":"s1-io-3","mdc":{"proxy.destination":"/185.60.150.47:993","proxy.ip":"10.233.66.36","idSet":"11->4929","fetchedData":"FetchData{items=[FLAGS, UID, INTERNAL_DATE, SIZE], setSeen=false, bodyElements=[BodyFetchElement{name=BODY[], sectionType=CONTENT}], changedSince=-1, vanished=false}","protocol":"IMAP","proxy.source":"/109.209.49.50:32967","useUid":"true","selectedMailbox":"bce6f7c0-ba99-11ee-a3db-039945f2e399","ip":"109.209.49.50","action":"FETCH","user":"philippe.baron@avocat.fr"},"logger":"org.apache.james.imap.processor.AbstractMailboxProcessor","message":"Unexpected error during IMAP processing","context":"default","exception":"java.lang.OutOfMemoryError: Java heap space\n\tat org.apache.james.blob.objectstorage.aws.MinimalCopyBytesResponseTransformer$BaosSubscriber.<init>(MinimalCopyBytesResponseTransformer.java:90)\n\tat org.apache.james.blob.objectstorage.aws.MinimalCopyBytesResponseTransformer.onStream(MinimalCopyBytesResponseTransformer.java:74)\n\tat software.amazon.awssdk.core.async.listener.AsyncResponseTransformerListener$NotifyingAsyncResponseTransformer.onStream(AsyncResponseTransformerListener.java:93)\n\tat software.amazon.awssdk.core.internal.http.async.AsyncStreamingResponseHandler.onStream(AsyncStreamingResponseHandler.java:63)\n\tat software.amazon.awssdk.core.internal.http.IdempotentAsyncResponseHandler.onStream(IdempotentAsyncResponseHandler.java:108)\n\tat software.amazon.awssdk.core.internal.http.async.CombinedResponseAsyncHttpResponseHandler.onStream(CombinedResponseAsyncHttpResponseHandler.java:86)\n\tat software.amazon.awssdk.core.internal.http.async.AsyncAfterTransmissionInterceptorCallingResponseHandler.onStream(AsyncAfterTransmissionInterceptorCallingResponseHandler.java:86)\n\tat software.amazon.awssdk.http.nio.netty.internal.ResponseHandler.channelRead0(ResponseHandler.java:107)\n\tat software.amazon.awssdk.http.nio.netty.internal.ResponseHandler.channelRead0(ResponseHandler.java:75)\n\tat io.netty.channel.SimpleChannelInboundHandler.channelRead(SimpleChannelInboundHandler.java:99)\n\tat io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:444)\n\tat io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:420)\n\tat io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:412)\n\tat software.amazon.awssdk.http.nio.netty.internal.nrs.HandlerPublisher.channelRead(HandlerPublisher.java:396)\n\tat io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:442)\n\tat io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:420)\n\tat io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:412)\n\tat software.amazon.awssdk.http.nio.netty.internal.nrs.HttpStreamsHandler.channelRead(HttpStreamsHandler.java:200)\n\tat software.amazon.awssdk.http.nio.netty.internal.nrs.HttpStreamsClientHandler.channelRead(HttpStreamsClientHandler.java:173)\n\tat io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:442)\n\tat io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:420)\n\tat io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:412)\n\tat io.netty.handler.logging.LoggingHandler.channelRead(LoggingHandler.java:280)\n\tat io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:442)\n\tat io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:420)\n\tat io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:412)\n\tat io.netty.handler.timeout.IdleStateHandler.channelRead(IdleStateHandler.java:286)\n\tat io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:442)\n\tat io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:420)\n\tat io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:412)\n\tat io.netty.channel.CombinedChannelDuplexHandler$DelegatingChannelHandlerContext.fireChannelRead(CombinedChannelDuplexHandler.java:436)\n\tat io.netty.handler.codec.ByteToMessageDecoder.fireChannelRead(ByteToMessageDecoder.java:346)\n"}
 
-:latest_james_version: 3.8.0
+2024-01-29 11:01:47
+{"timestamp":"2024-01-29T10:01:47.528Z","level":"ERROR","thread":"aws-java-sdk-NettyEventLoop-0-2","logger":"io.netty.util.ResourceLeakDetector","message":"LEAK: ByteBuf.release() was not called before it's garbage-collected. See https://netty.io/wiki/reference-counted-objects.html for more information.\nRecent access records: \nCreated at:\n\tio.netty.buffer.UnpooledByteBufAllocator.newDirectBuffer(UnpooledByteBufAllocator.java:96)\n\tio.netty.buffer.AbstractByteBufAllocator.directBuffer(AbstractByteBufAllocator.java:188)\n\tio.netty.buffer.AbstractByteBufAllocator.directBuffer(AbstractByteBufAllocator.java:179)\n\tio.netty.buffer.AbstractByteBufAllocator.buffer(AbstractByteBufAllocator.java:116)\n\tio.netty.handler.ssl.SslHandler.allocate(SslHandler.java:2359)\n\tio.netty.handler.ssl.SslHandler.unwrap(SslHandler.java:1440)\n\tio.netty.handler.ssl.SslHandler.decodeJdkCompatible(SslHandler.java:1338)\n\tio.netty.handler.ssl.SslHandler.decode(SslHandler.java:1387)\n\tio.netty.handler.codec.ByteToMessageDecoder.decodeRemovalReentryProtection(ByteToMessageDecoder.java:529)\n\tio.netty.handler.codec.ByteToMessageDecoder.callDecode(ByteToMessageDecoder.java:468)\n\tio.netty.handler.codec.ByteToMessageDecoder.channelRead(ByteToMessageDecoder.java:290)\n\tio.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:444)\n\tio.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:420)\n\tio.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:412)\n\tio.netty.channel.DefaultChannelPipeline$HeadContext.channelRead(DefaultChannelPipeline.java:1410)\n\tio.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:440)\n\tio.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:420)\n\tio.netty.channel.DefaultChannelPipeline.fireChannelRead(DefaultChannelPipeline.java:919)\n\tio.netty.channel.nio.AbstractNioByteChannel$NioByteUnsafe.read(AbstractNioByteChannel.java:166)\n\tio.netty.channel.nio.NioEventLoop.processSelectedKey(NioEventLoop.java:788)\n\tio.netty.channel.nio.NioEventLoop.processSelectedKeysOptimized(NioEventLoop.java:724)\n\tio.netty.channel.nio.NioEventLoop.processSelectedKeys(NioEventLoop.java:650)\n\tio.netty.channel.nio.NioEventLoop.run(NioEventLoop.java:562)\n\tio.netty.util.concurrent.SingleThreadEventExecutor$4.run(SingleThreadEventExecutor.java:997)\n\tio.netty.util.internal.ThreadExecutorMap$2.run(ThreadExecutorMap.java:74)\n\tjava.base/java.lang.Thread.run(Unknown Source)","context":"default"}
+2024-01-29 11:01:47
+{"timestamp":"2024-01-29T10:01:47.527Z","level":"ERROR","thread":"parallel-2","logger":"reactor.core.scheduler.Schedulers","message":"Scheduler worker in group main failed with an uncaught exception","context":"default","exception":"java.lang.OutOfMemoryError: Java heap space\n\tat org.apache.commons.io.IOUtils.byteArray(IOUtils.java:365)\n\tat org.apache.commons.io.output.AbstractByteArrayOutputStream.needNewBuffer(AbstractByteArrayOutputStream.java:140)\n\tat org.apache.commons.io.output.AbstractByteArrayOutputStream.writeImpl(AbstractByteArrayOutputStream.java:331)\n\tat org.apache.commons.io.output.UnsynchronizedByteArrayOutputStream.write(UnsynchronizedByteArrayOutputStream.java:197)\n\tat org.apache.commons.io.output.ThresholdingOutputStream.write(ThresholdingOutputStream.java:232)\n\tat org.apache.commons.io.IOUtils.copyLarge(IOUtils.java:1486)\n\tat org.apache.commons.io.IOUtils.copy(IOUtils.java:1105)\n\tat org.apache.commons.io.IOUtils.copyLarge(IOUtils.java:1458)\n\tat org.apache.commons.io.IOUtils.copy(IOUtils.java:1083)\n\tat org.apache.commons.io.IOUtils.toByteArray(IOUtils.java:2648)\n\tat org.apache.james.blob.aes.AESBlobStoreDAO$$Lambda/0x00007f60c90a9868.doApply(Unknown Source)\n\tat com.github.fge.lambdas.functions.FunctionChainer.doApply(FunctionChainer.java:20)\n\tat com.github.fge.lambdas.functions.ThrowingFunction.apply(ThrowingFunction.java:17)\n\tat reactor.core.publisher.FluxMap$MapSubscriber.onNext(FluxMap.java:106)\n\tat reactor.core.publisher.FluxMap$MapSubscriber.onNext(FluxMap.java:122)\n\tat reactor.core.publisher.FluxMap$MapSubscriber.onNext(FluxMap.java:122)\n\tat reactor.core.publisher.FluxOnErrorResume$ResumeSubscriber.onNext(FluxOnErrorResume.java:79)\n\tat reactor.core.publisher.FluxMap$MapSubscriber.onNext(FluxMap.java:122)\n\tat reactor.core.publisher.MonoPublishOn$PublishOnSubscriber.run(MonoPublishOn.java:181)\n\tat reactor.core.scheduler.SchedulerTask.call(SchedulerTask.java:68)\n\tat reactor.core.scheduler.SchedulerTask.call(SchedulerTask.java:28)\n\tat java.base/java.util.concurrent.FutureTask.run(Unknown Source)\n\tat java.base/java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(Unknown Source)\n\tat java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(Unknown Source)\n\tat java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(Unknown Source)\n\tat java.base/java.lang.Thread.runWith(Unknown Source)\n\tat java.base/java.lang.Thread.run(Unknown Source)\n"}
 
-image:https://img.shields.io/badge/Join%20us-Mailing%20lists-purple.svg[link="https://james.apache.org/mail.html"]
-link:https://gitter.im/apache/james-project[image:https://badges.gitter.im/apache/james-project.svg[Join the chat at link:https://gitter.im/apache/james-project]]
-image:https://img.shields.io/badge/CI-Jenkins-blue.svg[link="https://ci-builds.apache.org/job/james/job/ApacheJames/"]
-image:https://img.shields.io/badge/Documentation-green.svg[link="https://james.apache.org/documentation.html"]
-image:https://img.shields.io/badge/Downloads-{latest_james_version}-yellow.svg[link="https://james.apache.org/download.cgi"]
-image:https://img.shields.io/badge/Images-docker-blue.svg[link="https://hub.docker.com/r/apache/james"]
-image:https://img.shields.io/badge/License-ApacheV2-orange.svg[link="https://www.apache.org/licenses/"]
-image:https://img.shields.io/badge/Latests-news-red.svg[link="https://james.apache.org/index.html#posts"]
-
-image::james-logo.png[link="https://james.apache.org"]
-
-*James* stands for *Java Apache Mail Enterprise Server!*
-
-It has a modular architecture based on a rich set of *modern* and *efficient* components which provides at the end
-*complete, stable, secure and extendable Mail Servers running on the JVM*.
-
-Create your *own personal solution* for emails treatment by assembling the components you need thanks to the Inversion
-of Control mail platform offered and  go further customizing filtering and routing rules using *James Mailet Container*.
-
-Supported protocols are: IMAP, SMTP, link:https://jmap.io[JMAP], POP3 and more...
-
-The link:https://james.staged.apache.org/james-distributed-app/{latest_james_version}/index.html[*Distributed server*] focuses on delivering an easy-to-operate scalable mail server based on modern technologies
-(Cassandra, S3, OpenSearch and RabbitMQ).
-
-Read more on https://james.apache.org/[our website].
-
-== How to contribute?
-
-.Read more...
-[%collapsible]
-====
-James is a project that lives from the contributions of its community! Anyone can contribute!
-
-Read https://james.apache.org/index.html#third[how to contribute].
-
-We more than welcome *articles* and *blog posts* about James. Contact us by https://james.apache.org/mail.html[email]
-or on https://gitter.im/apache/james-project[Gitter] to share your experiences.
-
-*Documentation* is an easy way to get started, and more than wanted! Check out the https://issues.apache.org/jira/issues/?jql=project%20%3D%20JAMES%20AND%20resolution%20%3D%20Unresolved%20AND%20labels%20%3D%20documentation%20ORDER%20BY%20priority%20DESC%2C%20updated%20DESC[~documentation] label on JIRA.
-
-And to get started with *code contributions*, search out the
-https://issues.apache.org/jira/issues/?jql=project%20%3D%20JAMES%20AND%20resolution%20%3D%20Unresolved%20AND%20labels%20%3D%20newbie%20ORDER%20BY%20priority%20DESC%2C%20updated%20DESC[~newbie],
-https://issues.apache.org/jira/issues/?jql=project%20%3D%20JAMES%20AND%20resolution%20%3D%20Unresolved%20AND%20labels%20%3D%20easyfix%20ORDER%20BY%20priority%20DESC%2C%20updated%20DESC[~easyfix],
-https://issues.apache.org/jira/issues/?jql=project%20%3D%20JAMES%20AND%20resolution%20%3D%20Unresolved%20AND%20labels%20%3D%20feature%20ORDER%20BY%20priority%20DESC%2C%20updated%20DESC[~feature] labels on JIRA.
-
-There is many other ways one can help us: packaging, communication, etc ...
-====
-
-== How to try James
-
-.Read more...
-[%collapsible]
-====
-Requirements: `docker` installed.
-
-Here you will try James server version {latest_james_version} thanks to a docker image. This James image has a default configuration using JPA
-(hsqldb) and Lucene. It also includes a default domain named james.local and three default users: user01@james.local,
-user02@james.local, user03@james.local, with their default password being 1234.
-
-Note: this James server will respond to IMAPS port 993 and SMTPS port 465.
-
-Pull and run the James image with the following single command:
-
-[subs="attributes"]
-----
-    $ docker run -p "465:465" -p "993:993" apache/james:demo-{latest_james_version}
-----
-
-Then, connect this image with for instance, Thunderbird.
-link:https://james.apache.org/howTo/imap-server.html[This tutorial] covers more in depth user and domain creation, as well as Thunderbird setup.
-
-Instructions that do not imply `docker` are also available link:https://james.apache.org/server/install.html[here].
-
-Instructions for the distributed server can be found link:server/apps/distributed-app/docs/modules/ROOT/pages/run/run-docker.adoc[here].
-====
-
-== How to check the compilation
-
-.Read more...
-[%collapsible]
-====
-We require link:https://maven.apache.org[maven] version 3.6.1 minimum to build the project.
-
-First, clone the repository locally:
-----
-    $ git clone git@github.com:apache/james-project.git
-----
-
-Then simply run `mvn clean install` within this directory to compile the project.
-
-Useful options includes:
-
- - `-DskipTests` to skip the long to execute resource consuming test suite that requires a docker daemon.
- - `-T 4` to parallelize the build on several CPUs.
- - `-Dmaven.javadoc.skip=true` to skip the javadoc generation.
-====
-
-== How to run James in Docker
-
-.Read more...
-[%collapsible]
-====
-We maintain docker distribution for our link:https://github.com/google/guice[Guice] based applications:
-
- * link:https://github.com/apache/james-project/blob/master/server/apps/distributed-app/README.adoc[Guice + Cassandra + RabbitMQ + S3 + OpenSearch (distributed)]
- * link:https://github.com/apache/james-project/blob/master/server/apps/cassandra-app/README.adoc[Guice + Cassandra + OpenSearch]
- * link:https://github.com/apache/james-project/blob/master/server/apps/jpa-app/README.adoc[Guice + JPA + Lucene]
- * link:https://github.com/apache/james-project/blob/master/server/apps/memory-app/README.md[Guice + Memory (testing)]
-====
-
-== Using the CLI
-
-See https://james.apache.org/server/manage-cli.html[Manage James via the Command Line] for more info.
-
-== Develop on James
-
-James requires at least JDK 11 and Maven 3.6.1 to build.
-Some parts of James are written in Scala so one might need to enable Scala plugin in IDE.
-
-We maintain link:examples/README.md[code examples] to help you write your own extensions and wire your own servers.
-
-link:docs/modules/development/pages/deployment-tests.adoc[This page] details how to run deployment Tests.
-
-== Know more about James design
-
-James comes with a https://james.apache.org/documentation.html[Documentation] and https://github.com/linagora/james-project/tree/master/src/adr[Architectural Decision Records].
-
-A more precise description of the *Distributed Server* architecture can be found
-link:https://james.staged.apache.org/james-distributed-app/{latest_james_version}/architecture/index.html[here].
-
-== Articles for James community
-
-* link:docs/modules/community/pages/website.adoc[How to build and publish the website]
-* link:docs/modules/community/pages/release.adoc[How to release via maven release plugin]
+exception	java.lang.OutOfMemoryError: Java heap space
+at org.apache.commons.io.IOUtils.byteArray(IOUtils.java:365)
+at org.apache.commons.io.output.AbstractByteArrayOutputStream.needNewBuffer(AbstractByteArrayOutputStream.java:140)
+at org.apache.commons.io.output.AbstractByteArrayOutputStream.writeImpl(AbstractByteArrayOutputStream.java:331)
+at org.apache.commons.io.output.UnsynchronizedByteArrayOutputStream.write(UnsynchronizedByteArrayOutputStream.java:197)
+at org.apache.commons.io.output.ThresholdingOutputStream.write(ThresholdingOutputStream.java:232)
+at org.apache.commons.io.IOUtils.copyLarge(IOUtils.java:1486)
+at org.apache.commons.io.IOUtils.copy(IOUtils.java:1105)
+at org.apache.commons.io.IOUtils.copyLarge(IOUtils.java:1458)
+at org.apache.commons.io.IOUtils.copy(IOUtils.java:1083)
+at org.apache.commons.io.IOUtils.toByteArray(IOUtils.java:2648)
+at org.apache.james.blob.aes.AESBlobStoreDAO$$Lambda/0x00007f60c90a9868.doApply(Unknown Source)
+at com.github.fge.lambdas.functions.FunctionChainer.doApply(FunctionChainer.java:20)
+at com.github.fge.lambdas.functions.ThrowingFunction.apply(ThrowingFunction.java:17)
+at reactor.core.publisher.FluxMap$MapSubscriber.onNext(FluxMap.java:106)
+at reactor.core.publisher.FluxMap$MapSubscriber.onNext(FluxMap.java:122)
+at reactor.core.publisher.FluxMap$MapSubscriber.onNext(FluxMap.java:122)
+at reactor.core.publisher.FluxOnErrorResume$ResumeSubscriber.onNext(FluxOnErrorResume.java:79)
+at reactor.core.publisher.FluxMap$MapSubscriber.onNext(FluxMap.java:122)
+at reactor.core.publisher.MonoPublishOn$PublishOnSubscriber.run(MonoPublishOn.java:181)
+at reactor.core.scheduler.SchedulerTask.call(SchedulerTask.java:68)
+at reactor.core.scheduler.SchedulerTask.call(SchedulerTask.java:28)
+at java.base/java.util.concurrent.FutureTask.run(Unknown Source)
+at java.base/java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(Unknown Source)
+at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(Unknown Source)
+at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(Unknown Source)
+at java.base/java.lang.Thread.runWith(Unknown Source)
+at java.base/java.lang.Thread.run(Unknown Source)
