@@ -33,10 +33,13 @@ import org.apache.james.blob.api.BucketName;
 import org.apache.james.blob.api.ObjectNotFoundException;
 import org.apache.james.blob.api.ObjectStoreIOException;
 import org.reactivestreams.Publisher;
+import org.slf4j.LoggerFactory;
 
 import com.github.fge.lambdas.Throwing;
 import com.google.common.base.Preconditions;
 import com.google.common.io.ByteSource;
+import com.google.common.io.ByteStreams;
+import com.google.common.io.CountingInputStream;
 import com.google.common.io.FileBackedOutputStream;
 import com.google.crypto.tink.subtle.AesGcmHkdfStreaming;
 
@@ -45,6 +48,7 @@ import reactor.core.publisher.Mono;
 public class AESBlobStoreDAO implements BlobStoreDAO {
     // For now, aligned with with MimeMessageInputStreamSource file threshold, detailed benchmarking might be conducted to challenge this choice
     public static final int FILE_THRESHOLD_100_KB = 100 * 1024;
+    public static final int MAXIMUM_BLOB_SIZE = 100 * 1024 * 1024;
     private final BlobStoreDAO underlying;
     private final AesGcmHkdfStreaming streamingAead;
 
@@ -67,7 +71,9 @@ public class AESBlobStoreDAO implements BlobStoreDAO {
     public InputStream decrypt(InputStream ciphertext) throws IOException {
         // We break symmetry and avoid allocating resources like files as we are not able, in higher level APIs (mailbox) to do resource cleanup.
         try {
-            return streamingAead.newDecryptingStream(ciphertext, PBKDF2StreamingAeadFactory.EMPTY_ASSOCIATED_DATA);
+            return ByteStreams.limit(
+                streamingAead.newDecryptingStream(ciphertext, PBKDF2StreamingAeadFactory.EMPTY_ASSOCIATED_DATA),
+                    MAXIMUM_BLOB_SIZE);
         } catch (GeneralSecurityException e) {
             throw new IOException("Incorrect crypto setup", e);
         }
@@ -91,9 +97,17 @@ public class AESBlobStoreDAO implements BlobStoreDAO {
     @Override
     public Publisher<byte[]> readBytes(BucketName bucketName, BlobId blobId) {
         return Mono.from(underlying.readBytes(bucketName, blobId))
-            .map(ByteArrayInputStream::new)
-            .map(Throwing.function(this::decrypt))
-            .map(Throwing.function(IOUtils::toByteArray));
+            .map(Throwing.function(bytes -> {
+                ByteArrayInputStream baos = new ByteArrayInputStream(bytes);
+                CountingInputStream countingInputStream = new CountingInputStream(baos);
+                try {
+                    return IOUtils.toByteArray(decrypt(countingInputStream));
+                } catch (OutOfMemoryError error) {
+                    LoggerFactory.getLogger(AESBlobStoreDAO.class)
+                        .error("OOM reading {}. Blob size read so far {} bytes.", blobId.asString(), countingInputStream.getCount());
+                    throw error;
+                }
+            }));
     }
 
     @Override
