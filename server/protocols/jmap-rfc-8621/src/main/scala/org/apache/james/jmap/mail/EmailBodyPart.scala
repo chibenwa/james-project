@@ -35,7 +35,7 @@ import org.apache.james.jmap.core.Properties
 import org.apache.james.jmap.mail.EmailBodyPart.{FILENAME_PREFIX, MDN_TYPE, MULTIPART_ALTERNATIVE, TEXT_HTML, TEXT_PLAIN, of}
 import org.apache.james.jmap.mail.PartId.PartIdValue
 import org.apache.james.mailbox.model.{Cid, MessageAttachmentMetadata, MessageResult}
-import org.apache.james.mime4j.Charsets.DEFAULT_CHARSET
+import org.apache.james.mime4j.Charsets.ISO_8859_1
 import org.apache.james.mime4j.codec.{DecodeMonitor, DecoderUtil}
 import org.apache.james.mime4j.dom.field.{ContentDispositionField, ContentLanguageField, ContentTypeField, FieldName}
 import org.apache.james.mime4j.dom.{Entity, Message, Multipart, SingleBody, TextBody => Mime4JTextBody}
@@ -284,7 +284,7 @@ case class EmailBodyPart(partId: PartId,
   def bodyContent: Try[Option[EmailBodyValue]] = entity.getBody match {
     case textBody: Mime4JTextBody =>
       for {
-        value <- Try(IOUtils.toString(textBody.getInputStream, Option(textBody.getCharset).getOrElse(DEFAULT_CHARSET)))
+        value <- Try(IOUtils.toString(textBody.getInputStream, Option(textBody.getCharset).getOrElse(ISO_8859_1)))
       } yield {
         Some(EmailBodyValue(value = value,
           isEncodingProblem = IsEncodingProblem(false),
