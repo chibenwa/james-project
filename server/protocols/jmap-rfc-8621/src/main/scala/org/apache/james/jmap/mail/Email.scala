@@ -23,12 +23,12 @@ import java.io.InputStream
 import java.nio.charset.StandardCharsets.US_ASCII
 import java.time.ZoneId
 import java.util.Date
-
 import cats.implicits._
 import com.google.common.collect.ImmutableMap
 import eu.timepit.refined
 import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
+
 import javax.inject.Inject
 import org.apache.commons.lang3.StringUtils
 import org.apache.james.jmap.api.model.Size.{Size, sanitizeSize}
@@ -43,14 +43,16 @@ import org.apache.james.jmap.mail.EmailHeaderName.{ADDRESSES_NAMES, DATE, MESSAG
 import org.apache.james.jmap.mail.FastViewWithAttachmentsMetadataReadLevel.supportedByFastViewWithAttachments
 import org.apache.james.jmap.mail.KeywordsFactory.LENIENT_KEYWORDS_FACTORY
 import org.apache.james.jmap.method.ZoneIdProvider
+import org.apache.james.jmap.mime4j.JamesBodyDescriptorBuilder
 import org.apache.james.mailbox.model.FetchGroup.{FULL_CONTENT, HEADERS, HEADERS_WITH_ATTACHMENTS_METADATA, MINIMAL}
 import org.apache.james.mailbox.model.{FetchGroup, MailboxId, MessageId, MessageResult, ThreadId => JavaThreadId}
 import org.apache.james.mailbox.{MailboxSession, MessageIdManager}
+import org.apache.james.mime4j.Charsets.ISO_8859_1
 import org.apache.james.mime4j.codec.DecodeMonitor
 import org.apache.james.mime4j.dom.field.{AddressListField, DateTimeField, MailboxField, MailboxListField}
-import org.apache.james.mime4j.dom.{Header, Message}
-import org.apache.james.mime4j.field.AddressListFieldLenientImpl
-import org.apache.james.mime4j.message.DefaultMessageBuilder
+import org.apache.james.mime4j.dom.{Header, Message, TextBody}
+import org.apache.james.mime4j.field.{AddressListFieldLenientImpl, DefaultFieldParser, LenientFieldParser}
+import org.apache.james.mime4j.message.{BasicBodyFactory, DefaultBodyDescriptorBuilder, DefaultMessageBuilder}
 import org.apache.james.mime4j.stream.{Field, MimeConfig, RawFieldParser}
 import org.apache.james.mime4j.util.MimeUtil
 import org.apache.james.util.AuditTrail
@@ -59,6 +61,7 @@ import org.slf4j.{Logger, LoggerFactory}
 import reactor.core.scala.publisher.{SFlux, SMono}
 import reactor.core.scheduler.Schedulers
 
+import java.nio.charset
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
 import scala.util.{Failure, Success, Try}
@@ -124,6 +127,8 @@ object Email {
     val defaultMessageBuilder = new DefaultMessageBuilder
     defaultMessageBuilder.setMimeEntityConfig(MimeConfig.PERMISSIVE)
     defaultMessageBuilder.setDecodeMonitor(DecodeMonitor.SILENT)
+    defaultMessageBuilder.setBodyDescriptorBuilder(new JamesBodyDescriptorBuilder(null, LenientFieldParser.getParser, DecodeMonitor.SILENT))
+    defaultMessageBuilder.setBodyFactory(new BasicBodyFactory(ISO_8859_1))
     val resultMessage = Try(defaultMessageBuilder.parseMessage(inputStream))
     resultMessage.fold(e => {
       Try(inputStream.close())
