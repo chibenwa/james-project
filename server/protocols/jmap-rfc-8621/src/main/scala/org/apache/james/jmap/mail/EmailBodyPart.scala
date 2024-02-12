@@ -20,7 +20,9 @@
 package org.apache.james.jmap.mail
 
 import java.io.OutputStream
+import java.nio.charset
 import java.time.ZoneId
+
 import cats.implicits._
 import com.google.common.io.CountingOutputStream
 import eu.timepit.refined.api.Refined
@@ -44,7 +46,6 @@ import org.apache.james.mime4j.message.{BasicBodyFactory, DefaultMessageBuilder,
 import org.apache.james.mime4j.stream.{Field, MimeConfig, RawField}
 import org.apache.james.util.html.HtmlTextExtractor
 
-import java.nio.charset
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
 import scala.util.{Failure, Success, Try}
@@ -287,7 +288,6 @@ case class EmailBodyPart(partId: PartId,
 
   def bodyContent: Try[Option[EmailBodyValue]] = entity.getBody match {
     case textBody: Mime4JTextBody =>
-      new Exception("" + textBody.getCharset).printStackTrace()
       for {
         value <- Try(IOUtils.toString(textBody.getInputStream, Option(textBody.getCharset).getOrElse(ISO_8859_1)))
       } yield {

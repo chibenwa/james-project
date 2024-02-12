@@ -20,15 +20,16 @@
 package org.apache.james.jmap.mail
 
 import java.io.InputStream
+import java.nio.charset
 import java.nio.charset.StandardCharsets.US_ASCII
 import java.time.ZoneId
 import java.util.Date
+
 import cats.implicits._
 import com.google.common.collect.ImmutableMap
 import eu.timepit.refined
 import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
-
 import javax.inject.Inject
 import org.apache.commons.lang3.StringUtils
 import org.apache.james.jmap.api.model.Size.{Size, sanitizeSize}
@@ -61,7 +62,6 @@ import org.slf4j.{Logger, LoggerFactory}
 import reactor.core.scala.publisher.{SFlux, SMono}
 import reactor.core.scheduler.Schedulers
 
-import java.nio.charset
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
 import scala.util.{Failure, Success, Try}
