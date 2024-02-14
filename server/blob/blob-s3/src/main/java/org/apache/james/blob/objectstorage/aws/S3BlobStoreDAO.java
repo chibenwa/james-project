@@ -327,6 +327,7 @@ public class S3BlobStoreDAO implements BlobStoreDAO, Startable, Closeable {
         BucketName resolvedBucketName = bucketNameResolver.resolve(bucketName);
 
         return Mono.fromCallable(content::size)
+            .subscribeOn(Schedulers.boundedElastic())
             .flatMap(contentLength ->
                 Mono.usingWhen(Mono.fromCallable(content::openStream).subscribeOn(Schedulers.boundedElastic()),
                     stream -> save(resolvedBucketName, blobId, stream, contentLength),
@@ -335,7 +336,6 @@ public class S3BlobStoreDAO implements BlobStoreDAO, Startable, Closeable {
             .onErrorMap(IOException.class, e -> new ObjectStoreIOException("Error saving blob", e))
             .onErrorMap(SdkClientException.class, e -> new ObjectStoreIOException("Error saving blob", e))
             .retryWhen(Retry.backoff(5, Duration.ofMillis(10)).jitter(0.5))
-            .publishOn(Schedulers.parallel())
             .then();
     }
 
