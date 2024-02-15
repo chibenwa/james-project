@@ -3019,36 +3019,6 @@
                     <version>3.3.2</version>
                 </plugin>
                 <plugin>
-                    <groupId>io.github.evis</groupId>
-                    <artifactId>scalafix-maven-plugin_2.13</artifactId>
-                    <version>0.1.8_0.11.0</version>
-                    <configuration>
-                        <config>${basedir}/.scalafix.conf</config>
-                        <mode>CHECK</mode>
-                    </configuration>
-                    <dependencies>
-                        <dependency>
-                            <groupId>ch.epfl.scala</groupId>
-                            <artifactId>scalafix-core_${scala.base}</artifactId>
-                            <version>0.11.0</version>
-                        </dependency>
-                        <dependency>
-                            <groupId>com.nequissimus</groupId>
-                            <artifactId>sort-imports_${scala.base}</artifactId>
-                            <version>0.6.1</version>
-                        </dependency>
-                    </dependencies>
-                    <executions>
-                        <execution>
-                            <id>scala-check-style</id>
-                            <goals>
-                                <goal>scalafix</goal>
-                            </goals>
-                            <phase>compile</phase>
-                        </execution>
-                    </executions>
-                </plugin>
-                <plugin>
                     <groupId>com.googlecode.maven-download-plugin</groupId>
                     <artifactId>download-maven-plugin</artifactId>
                     <version>1.6.8</version>
@@ -3139,11 +3109,6 @@
                         <statusIds>Resolved,Closed</statusIds>
                         <columnNames>Type,Key,Summary,Status,Resolution,Fix Version</columnNames>
                     </configuration>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-checkstyle-plugin</artifactId>
-                    <version>3.3.0</version>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -3584,33 +3549,6 @@
                         <version>1.12.0</version>
                     </dependency>
                 </dependencies>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-checkstyle-plugin</artifactId>
-                <configuration>
-                    <configLocation>checkstyle.xml</configLocation>
-                    <failOnViolation>true</failOnViolation>
-                    <logViolationsToConsole>true</logViolationsToConsole>
-                    <includeTestResources>true</includeTestResources>
-                    <suppressionsLocation>checkstyle-suppressions.xml</suppressionsLocation>
-                </configuration>
-                <dependencies>
-                    <dependency>
-                        <groupId>com.puppycrawl.tools</groupId>
-                        <artifactId>checkstyle</artifactId>
-                        <version>10.12.1</version>
-                    </dependency>
-                </dependencies>
-                <executions>
-                    <execution>
-                        <id>check-style</id>
-                        <goals>
-                            <goal>check</goal>
-                        </goals>
-                        <phase>compile</phase>
-                    </execution>
-                </executions>
             </plugin>
             <plugin>
                 <groupId>pl.project13.maven</groupId>
