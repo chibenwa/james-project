@@ -23,6 +23,8 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.channels.Channels;
+import java.nio.channels.WritableByteChannel;
 import java.security.GeneralSecurityException;
 import java.util.Collection;
 
@@ -39,10 +41,10 @@ import com.github.fge.lambdas.Throwing;
 import com.google.common.base.Preconditions;
 import com.google.common.io.ByteSource;
 import com.google.common.io.ByteStreams;
-import com.google.common.io.CountingInputStream;
 import com.google.common.io.FileBackedOutputStream;
 import com.google.crypto.tink.subtle.AesGcmHkdfStreaming;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
@@ -50,6 +52,7 @@ public class AESBlobStoreDAO implements BlobStoreDAO {
     // For now, aligned with with MimeMessageInputStreamSource file threshold, detailed benchmarking might be conducted to challenge this choice
     public static final int FILE_THRESHOLD_100_KB = 100 * 1024;
     public static final int MAXIMUM_BLOB_SIZE = 100 * 1024 * 1024;
+    public static final int FILE_THRESHOLD_100_KB_READ = 512 * 1024;
     private final BlobStoreDAO underlying;
     private final AesGcmHkdfStreaming streamingAead;
 
@@ -80,6 +83,32 @@ public class AESBlobStoreDAO implements BlobStoreDAO {
         }
     }
 
+    public Mono<byte[]> decryptReactiveByteSource(ReactiveByteSource ciphertext, BlobId blobId) {
+        if (ciphertext.getSize() > MAXIMUM_BLOB_SIZE) {
+            throw new RuntimeException(blobId.asString() + " exceeded maximum blob size");
+        }
+
+        FileBackedOutputStream encryptedContent = new FileBackedOutputStream(FILE_THRESHOLD_100_KB_READ);
+        WritableByteChannel channel = Channels.newChannel(encryptedContent);
+
+        return Flux.from(ciphertext.getContent())
+            .doOnNext(Throwing.consumer(channel::write))
+            .then(Mono.fromCallable(() -> {
+                try {
+                    return IOUtils.toByteArray(decrypt(encryptedContent.asByteSource().openStream()));
+                } catch (OutOfMemoryError error) {
+                    LoggerFactory.getLogger(AESBlobStoreDAO.class)
+                        .error("OOM reading {}. Blob size read so far {} bytes.", blobId.asString(), ciphertext.getSize());
+                    throw error;
+                }
+            }))
+            .doFinally(Throwing.consumer(any -> {
+                channel.close();
+                encryptedContent.reset();
+                encryptedContent.close();
+            }));
+    }
+
     @Override
     public InputStream read(BucketName bucketName, BlobId blobId) throws ObjectStoreIOException, ObjectNotFoundException {
         try {
@@ -97,18 +126,9 @@ public class AESBlobStoreDAO implements BlobStoreDAO {
 
     @Override
     public Publisher<byte[]> readBytes(BucketName bucketName, BlobId blobId) {
-        return Mono.from(underlying.readBytes(bucketName, blobId))
-            .map(Throwing.function(bytes -> {
-                ByteArrayInputStream baos = new ByteArrayInputStream(bytes);
-                CountingInputStream countingInputStream = new CountingInputStream(baos);
-                try {
-                    return IOUtils.toByteArray(decrypt(countingInputStream));
-                } catch (OutOfMemoryError error) {
-                    LoggerFactory.getLogger(AESBlobStoreDAO.class)
-                        .error("OOM reading {}. Blob size read so far {} bytes.", blobId.asString(), countingInputStream.getCount());
-                    throw error;
-                }
-            }));
+        return Mono.from(underlying.readAsByteSource(bucketName, blobId))
+            .flatMap(reactiveByteSource -> decryptReactiveByteSource(reactiveByteSource, blobId))
+            .subscribeOn(Schedulers.boundedElastic());
     }
 
     @Override
@@ -142,7 +162,8 @@ public class AESBlobStoreDAO implements BlobStoreDAO {
 
         return Mono.using(content::openStream,
             in -> Mono.from(save(bucketName, blobId, in)),
-            Throwing.consumer(InputStream::close));
+            Throwing.consumer(InputStream::close))
+            .subscribeOn(Schedulers.boundedElastic());
     }
 
     @Override
