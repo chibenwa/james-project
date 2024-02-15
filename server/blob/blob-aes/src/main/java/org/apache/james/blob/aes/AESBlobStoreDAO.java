@@ -23,6 +23,8 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.channels.Channels;
+import java.nio.channels.WritableByteChannel;
 import java.security.GeneralSecurityException;
 import java.util.Collection;
 
@@ -39,12 +41,14 @@ import com.google.common.base.Preconditions;
 import com.google.common.io.ByteSource;
 import com.google.common.io.FileBackedOutputStream;
 import com.google.crypto.tink.subtle.AesGcmHkdfStreaming;
-
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 public class AESBlobStoreDAO implements BlobStoreDAO {
     // For now, aligned with with MimeMessageInputStreamSource file threshold, detailed benchmarking might be conducted to challenge this choice
     public static final int FILE_THRESHOLD_100_KB = 100 * 1024;
+    public static final int FILE_THRESHOLD_100_KB_READ = 512 * 1024;
     private final BlobStoreDAO underlying;
     private final AesGcmHkdfStreaming streamingAead;
 
@@ -73,6 +77,21 @@ public class AESBlobStoreDAO implements BlobStoreDAO {
         }
     }
 
+    public Mono<byte[]> decryptReactiveByteSource(ReactiveByteSource ciphertext) {
+        FileBackedOutputStream encryptedContent = new FileBackedOutputStream(FILE_THRESHOLD_100_KB_READ);
+        WritableByteChannel channel = Channels.newChannel(encryptedContent);
+
+        return Flux.from(ciphertext.getContent())
+            .doOnNext(Throwing.consumer(channel::write))
+            .then(Mono.fromCallable(() -> decrypt(encryptedContent.asByteSource().openStream())))
+            .map(Throwing.function(input -> IOUtils.toByteArray(input)))
+            .doFinally(Throwing.consumer(any -> {
+                channel.close();
+                encryptedContent.reset();
+                encryptedContent.close();
+            }));
+    }
+
     @Override
     public InputStream read(BucketName bucketName, BlobId blobId) throws ObjectStoreIOException, ObjectNotFoundException {
         try {
@@ -90,10 +109,9 @@ public class AESBlobStoreDAO implements BlobStoreDAO {
 
     @Override
     public Publisher<byte[]> readBytes(BucketName bucketName, BlobId blobId) {
-        return Mono.from(underlying.readBytes(bucketName, blobId))
-            .map(ByteArrayInputStream::new)
-            .map(Throwing.function(this::decrypt))
-            .map(Throwing.function(IOUtils::toByteArray));
+        return Mono.from(underlying.readAsByteSource(bucketName, blobId))
+            .flatMap(Throwing.function(this::decryptReactiveByteSource))
+            .subscribeOn(Schedulers.boundedElastic());
     }
 
     @Override
