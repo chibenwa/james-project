@@ -21,7 +21,6 @@ package org.apache.james.jmap.mail
 
 import java.io.OutputStream
 import java.time.ZoneId
-
 import cats.implicits._
 import com.google.common.io.CountingOutputStream
 import eu.timepit.refined.api.Refined
@@ -34,14 +33,14 @@ import org.apache.james.jmap.api.model.Size.Size
 import org.apache.james.jmap.core.Properties
 import org.apache.james.jmap.mail.EmailBodyPart.{FILENAME_PREFIX, MDN_TYPE, MULTIPART_ALTERNATIVE, TEXT_HTML, TEXT_PLAIN, of}
 import org.apache.james.jmap.mail.PartId.PartIdValue
-import org.apache.james.jmap.mime4j.JamesBodyDescriptorBuilder
+import org.apache.james.jmap.mime4j.{FakeBinaryBody, JamesBodyDescriptorBuilder, SizeUtils}
 import org.apache.james.mailbox.model.{Cid, MessageAttachmentMetadata, MessageResult}
 import org.apache.james.mime4j.Charsets.ISO_8859_1
 import org.apache.james.mime4j.codec.{DecodeMonitor, DecoderUtil}
 import org.apache.james.mime4j.dom.field.{ContentDispositionField, ContentLanguageField, ContentTypeField, FieldName}
 import org.apache.james.mime4j.dom.{Entity, Message, Multipart, SingleBody, TextBody => Mime4JTextBody}
 import org.apache.james.mime4j.field.LenientFieldParser
-import org.apache.james.mime4j.message.{BasicBodyFactory, DefaultMessageBuilder, DefaultMessageWriter}
+import org.apache.james.mime4j.message.{BasicBodyFactory, BodyPart, DefaultMessageBuilder, DefaultMessageWriter}
 import org.apache.james.mime4j.stream.{Field, MimeConfig, RawField}
 import org.apache.james.util.html.HtmlTextExtractor
 
@@ -118,6 +117,8 @@ object EmailBodyPart {
 
   def of(properties: Option[Properties], zoneId: ZoneId, blobId: BlobId, message: Message): Try[EmailBodyPart] =
     of(properties, zoneId, blobId, PartId(1), message).map(_._1)
+  def ofMessage(properties: Option[Properties], zoneId: ZoneId, blobId: BlobId, message: Message, size: Long): Try[EmailBodyPart] =
+    ofMessage(properties, zoneId, blobId, PartId(1), message, size).map(_._1)
 
   private def of(properties: Option[Properties], zoneId: ZoneId, blobId: BlobId, partId: PartId, entity: Entity): Try[(EmailBodyPart, PartId)] =
     entity.getBody match {
@@ -139,6 +140,26 @@ object EmailBodyPart {
           .map(part => (part, partId))
     }
 
+  private def ofMessage(properties: Option[Properties], zoneId: ZoneId, blobId: BlobId, partId: PartId, entity: Entity, size: Long): Try[(EmailBodyPart, PartId)] =
+    entity.getBody match {
+      case multipart: Multipart =>
+        val scanResults: Try[List[(Option[EmailBodyPart], PartId)]] = multipart.getBodyParts
+          .asScala.toList
+          .scanLeft[Try[(Option[EmailBodyPart], PartId)]](Success((None, partId)))(traverse(properties, zoneId, blobId))
+          .sequence
+        val highestPartIdValidation: Try[PartId] = scanResults.map(list => list.map(_._2).reverse.headOption.getOrElse(partId))
+        val childrenValidation: Try[List[EmailBodyPart]] = scanResults.map(list => list.flatMap(_._1))
+
+        zip(childrenValidation, highestPartIdValidation)
+            .flatMap {
+              case (children, highestPartId) => of(properties, zoneId, None, partId, entity, Some(children), Some(size))
+                .map(part => (part, highestPartId))
+            }
+      case _ => BlobId.of(blobId, partId)
+          .flatMap(blobId => of(properties, zoneId, Some(blobId), partId, entity, None, Some(size)))
+          .map(part => (part, partId))
+    }
+
   private def traverse(properties: Option[Properties], zoneId: ZoneId, blobId: BlobId)(acc: Try[(Option[EmailBodyPart], PartId)], entity: Entity): Try[(Option[EmailBodyPart], PartId)] = {
     acc.flatMap {
       case (_, previousPartId) =>
@@ -156,8 +177,9 @@ object EmailBodyPart {
                  blobId: Option[BlobId],
                  partId: PartId,
                  entity: Entity,
-                 subParts: Option[List[EmailBodyPart]]): Try[EmailBodyPart] =
-    size(entity)
+                 subParts: Option[List[EmailBodyPart]],
+                 asize: Option[Long] = None): Try[EmailBodyPart] =
+    asize.map(v => refineSize(v)).getOrElse(size(entity))
       .map(size => EmailBodyPart(
           partId = partId,
           blobId = blobId,
@@ -181,15 +203,9 @@ object EmailBodyPart {
     .headOption
     .map(_.getBody)
 
-  private def size(entity: Entity): Try[Size] =
-    entity.getBody match {
-      case body: SingleBody => refineSize(body.size())
-      case body =>
-        val countingOutputStream: CountingOutputStream = new CountingOutputStream(OutputStream.nullOutputStream())
-        val writer = new DefaultMessageWriter
-        writer.writeBody(body, countingOutputStream)
-        refineSize(countingOutputStream.getCount)
-    }
+  private def size(entity: Entity): Try[Size] = {
+    refineSize(SizeUtils.sizeOf(entity))
+  }
 
   private def refineSize(l: Long): Try[Size] = refineV[NonNegative](l) match {
     case scala.Right(size) => Success(size)
@@ -287,7 +303,6 @@ case class EmailBodyPart(partId: PartId,
 
   def bodyContent: Try[Option[EmailBodyValue]] = entity.getBody match {
     case textBody: Mime4JTextBody =>
-      new Exception("" + textBody.getCharset).printStackTrace()
       for {
         value <- Try(IOUtils.toString(textBody.getInputStream, Option(textBody.getCharset).getOrElse(ISO_8859_1)))
       } yield {

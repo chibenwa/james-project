@@ -44,7 +44,7 @@ import org.apache.james.jmap.mail.EmailHeaderName.{ADDRESSES_NAMES, DATE, MESSAG
 import org.apache.james.jmap.mail.FastViewWithAttachmentsMetadataReadLevel.supportedByFastViewWithAttachments
 import org.apache.james.jmap.mail.KeywordsFactory.LENIENT_KEYWORDS_FACTORY
 import org.apache.james.jmap.method.ZoneIdProvider
-import org.apache.james.jmap.mime4j.JamesBodyDescriptorBuilder
+import org.apache.james.jmap.mime4j.{JamesBodyDescriptorBuilder, JamesBodyFactory}
 import org.apache.james.mailbox.model.FetchGroup.{FULL_CONTENT, HEADERS, HEADERS_WITH_ATTACHMENTS_METADATA, MINIMAL}
 import org.apache.james.mailbox.model.{FetchGroup, MailboxId, MessageId, MessageResult, ThreadId => JavaThreadId}
 import org.apache.james.mailbox.{MailboxSession, MessageIdManager}
@@ -52,7 +52,7 @@ import org.apache.james.mime4j.codec.DecodeMonitor
 import org.apache.james.mime4j.dom.field.{AddressListField, DateTimeField, MailboxField, MailboxListField}
 import org.apache.james.mime4j.dom.{Header, Message}
 import org.apache.james.mime4j.field.{AddressListFieldLenientImpl, LenientFieldParser}
-import org.apache.james.mime4j.message.{BasicBodyFactory, DefaultMessageBuilder}
+import org.apache.james.mime4j.message.DefaultMessageBuilder
 import org.apache.james.mime4j.stream.{Field, MimeConfig, RawFieldParser}
 import org.apache.james.mime4j.util.MimeUtil
 import org.apache.james.util.AuditTrail
@@ -131,7 +131,7 @@ object Email {
     defaultMessageBuilder.setMimeEntityConfig(MimeConfig.PERMISSIVE)
     defaultMessageBuilder.setDecodeMonitor(DecodeMonitor.SILENT)
     defaultMessageBuilder.setBodyDescriptorBuilder(new JamesBodyDescriptorBuilder(null, LenientFieldParser.getParser, DecodeMonitor.SILENT))
-    defaultMessageBuilder.setBodyFactory(new BasicBodyFactory(defaultCharset))
+    defaultMessageBuilder.setBodyFactory(new JamesBodyFactory(defaultCharset))
     val resultMessage = Try(defaultMessageBuilder.parseMessage(inputStream))
     resultMessage.fold(e => {
       Try(inputStream.close())
@@ -610,7 +610,7 @@ private class EmailFullViewFactory @Inject()(zoneIdProvider: ZoneIdProvider, pre
         .getOrElse(Failure(new IllegalArgumentException("No message supplied")))
       mime4JMessage <- Email.parseAsMime4JMessage(firstMessage)
       blobId <- BlobId.of(messageId)
-      bodyStructure <- EmailBodyPart.of(request.bodyProperties, zoneIdProvider.get(), blobId, mime4JMessage)
+      bodyStructure <- EmailBodyPart.ofMessage(request.bodyProperties, zoneIdProvider.get(), blobId, mime4JMessage, firstMessage.getSize)
       bodyValues <- extractBodyValues(htmlTextExtractor)(bodyStructure, request)
       preview <- Try(previewFactory.fromMime4JMessage(mime4JMessage))
       keywords <- LENIENT_KEYWORDS_FACTORY.fromFlags(firstMessage.getFlags)

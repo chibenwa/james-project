@@ -89,6 +89,7 @@ class EmailGetMethod @Inject() (readerFactory: EmailViewReaderFactory,
       case e: IllegalArgumentException => SMono.just(Invocation.error(ErrorCode.InvalidArguments, e.getMessage, invocation.invocation.methodCallId))
       case e: Throwable => SMono.error(e)
     }).map(invocationResult => InvocationWithContext(invocationResult, invocation.processingContext))
+      .doOnError(e => e.printStackTrace())
   }
 
   override def getRequest(mailboxSession: MailboxSession, invocation: Invocation): Either[IllegalArgumentException, EmailGetRequest] =

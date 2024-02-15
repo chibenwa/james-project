@@ -4591,7 +4591,7 @@ trait EmailGetMethodContract {
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .body(request)
     .when
-      .post
+      .post.prettyPeek()
     .`then`
       .statusCode(SC_OK)
       .contentType(JSON)
