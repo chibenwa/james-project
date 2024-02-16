@@ -41,6 +41,7 @@ import com.github.fge.lambdas.Throwing;
 import com.google.common.base.Preconditions;
 import com.google.common.io.ByteSource;
 import com.google.common.io.ByteStreams;
+import com.google.common.io.CountingOutputStream;
 import com.google.common.io.FileBackedOutputStream;
 import com.google.crypto.tink.subtle.AesGcmHkdfStreaming;
 
@@ -95,11 +96,21 @@ public class AESBlobStoreDAO implements BlobStoreDAO {
             .doOnNext(Throwing.consumer(channel::write))
             .then(Mono.fromCallable(() -> {
                 try {
-                    return IOUtils.toByteArray(decrypt(encryptedContent.asByteSource().openStream()));
+                    FileBackedOutputStream decryptedContent = new FileBackedOutputStream(FILE_THRESHOLD_100_KB_READ);
+                    try {
+                        CountingOutputStream countingOutputStream = new CountingOutputStream(decryptedContent);
+                        decrypt(encryptedContent.asByteSource().openStream()).transferTo(countingOutputStream);
+                        return IOUtils.toByteArray(
+                            decryptedContent.asByteSource().openStream(),
+                            countingOutputStream.getCount());
+                    } finally {
+                        decryptedContent.reset();
+                        decryptedContent.close();
+                    }
                 } catch (OutOfMemoryError error) {
                     LoggerFactory.getLogger(AESBlobStoreDAO.class)
                         .error("OOM reading {}. Blob size read so far {} bytes.", blobId.asString(), ciphertext.getSize());
-                    throw error;
+                    throw new RuntimeException(error);
                 }
             }))
             .doFinally(Throwing.consumer(any -> {
