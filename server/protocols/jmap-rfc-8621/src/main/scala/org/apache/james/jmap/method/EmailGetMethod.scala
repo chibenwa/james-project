@@ -19,8 +19,8 @@
 package org.apache.james.jmap.method
 
 import java.time.ZoneId
-
 import eu.timepit.refined.auto._
+
 import javax.inject.Inject
 import org.apache.james.jmap.api.change.{EmailChangeRepository, State => JavaState}
 import org.apache.james.jmap.api.model.{AccountId => JavaAccountId}
@@ -29,11 +29,12 @@ import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.UuidState.INSTANCE
 import org.apache.james.jmap.core.{AccountId, ErrorCode, Invocation, SessionTranslator, UuidState}
 import org.apache.james.jmap.json.EmailGetSerializer
-import org.apache.james.jmap.mail.{Email, EmailGetRequest, EmailGetResponse, EmailIds, EmailNotFound, EmailView, EmailViewReaderFactory, UnparsedEmailId}
+import org.apache.james.jmap.mail.{Email, EmailGetRequest, EmailGetResponse, EmailIds, EmailNotFound, EmailView, EmailViewReaderFactory, FullReadLevel, MetadataReadLevel, ReadLevel, UnparsedEmailId}
 import org.apache.james.jmap.routes.SessionSupplier
 import org.apache.james.mailbox.MailboxSession
 import org.apache.james.mailbox.model.MessageId
 import org.apache.james.metrics.api.MetricFactory
+import org.apache.james.util.MDCStructuredLogger
 import org.slf4j.{Logger, LoggerFactory}
 import play.api.libs.json.JsObject
 import reactor.core.scala.publisher.{SFlux, SMono}
@@ -89,7 +90,6 @@ class EmailGetMethod @Inject() (readerFactory: EmailViewReaderFactory,
       case e: IllegalArgumentException => SMono.just(Invocation.error(ErrorCode.InvalidArguments, e.getMessage, invocation.invocation.methodCallId))
       case e: Throwable => SMono.error(e)
     }).map(invocationResult => InvocationWithContext(invocationResult, invocation.processingContext))
-      .doOnError(e => e.printStackTrace())
   }
 
   override def getRequest(mailboxSession: MailboxSession, invocation: Invocation): Either[IllegalArgumentException, EmailGetRequest] =
@@ -154,14 +154,33 @@ class EmailGetMethod @Inject() (readerFactory: EmailViewReaderFactory,
     }
 
   private def retrieveEmails(ids: Seq[MessageId], mailboxSession: MailboxSession, request: EmailGetRequest): SFlux[EmailGetResults] = {
-    val foundResultsMono: SMono[Map[MessageId, EmailView]] =
-      readerFactory.selectReader(request)
-        .read(ids, request, mailboxSession)
-        .collectMap(_.metadata.id)
+    val readLevel: ReadLevel = request.properties
+      .getOrElse(Email.defaultProperties)
+      .value
+      .map(ReadLevel.of)
+      .reduceOption(ReadLevel.combine)
+      .getOrElse(MetadataReadLevel)
 
-    foundResultsMono.flatMapIterable(foundResults => ids
-      .map(id => foundResults.get(id)
-        .map(EmailGetResults.found)
-        .getOrElse(EmailGetResults.notFound(id))))
+    if (readLevel.equals(FullReadLevel) && ids.size > 5) {
+      SFlux.error(new RuntimeException(s"Too many items in an email read at level FULL. Got ${ids.size} items instead of maximum 5."))
+    } else {
+      MDCStructuredLogger.forLogger(LoggerFactory.getLogger(classOf[EmailGetMethod]))
+        .field("protocol", "JMAP")
+        .field("username", mailboxSession.getUser.asString())
+        .field("method", "Email/get")
+        .field("ids", ids.mkString)
+        .field("readLevel", "FULL")
+        .log(logger => logger.info("Preparing to read JMAP messages"))
+
+      val foundResultsMono: SMono[Map[MessageId, EmailView]] =
+        readerFactory.selectReader(request)
+          .read(ids, request, mailboxSession)
+          .collectMap(_.metadata.id)
+
+      foundResultsMono.flatMapIterable(foundResults => ids
+        .map(id => foundResults.get(id)
+          .map(EmailGetResults.found)
+          .getOrElse(EmailGetResults.notFound(id))))
+    }
   }
 }
