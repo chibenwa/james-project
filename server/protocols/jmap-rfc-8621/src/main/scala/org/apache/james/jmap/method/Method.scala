@@ -28,7 +28,9 @@ import org.apache.james.jmap.routes.{ProcessingContext, SessionSupplier}
 import org.apache.james.mailbox.MailboxSession
 import org.apache.james.mailbox.exception.MailboxNotFoundException
 import org.apache.james.metrics.api.MetricFactory
+import org.apache.james.util.{MDCStructuredLogger, StructuredLogger}
 import org.reactivestreams.Publisher
+import org.slf4j.LoggerFactory
 import reactor.core.scala.publisher.SFlux
 
 case class AccountNotFoundException() extends IllegalArgumentException
@@ -62,7 +64,12 @@ trait MethodRequiringAccountId[REQUEST <: WithAccountId] extends Method {
       translatedMailboxSession = sessionTranslator.delegateIfNeeded(mailboxSession, request.accountId)
     } yield {
       translatedMailboxSession.flatMapMany(translatedSession =>
-        SFlux(doProcess(capabilities, invocation, translatedSession, request)))
+        SFlux(doProcess(capabilities, invocation, translatedSession, request))
+          .doOnError(e => MDCStructuredLogger.forLogger(LoggerFactory.getLogger(classOf[Method]))
+            .field("protocol", "JMAP")
+            .field("username", mailboxSession.getUser.asString())
+            .field("method", invocation.invocation.methodName.value.value)
+            .log(logger => logger.error("Failed executing a JMAP method", e))))
     }
 
     val result: SFlux[InvocationWithContext] = SFlux.fromPublisher(either.fold(e => SFlux.error[InvocationWithContext](e), r => r))
