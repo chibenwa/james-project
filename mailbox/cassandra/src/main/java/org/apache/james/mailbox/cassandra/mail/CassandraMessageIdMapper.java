@@ -124,7 +124,7 @@ public class CassandraMessageIdMapper implements MessageIdMapper {
         return Flux.fromIterable(messageIds)
             .flatMap(messageId -> imapUidDAO.retrieve((CassandraMessageId) messageId, Optional.empty(), chooseReadConsistency()),
                 batchSizes.forFetchType(fetchType))
-            .flatMap(metadata -> toMailboxMessage(metadata, fetchType), batchSizes.forFetchType(fetchType))
+            .flatMap(metadata -> toMailboxMessage(metadata, fetchType), batchSizes.forFetchType(fetchType), batchSizes.forFetchType(fetchType))
             .groupBy(MailboxMessage::getMailboxId)
             .flatMap(this::keepMessageIfMailboxExists, ReactorUtils.DEFAULT_CONCURRENCY);
     }
