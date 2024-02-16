@@ -95,13 +95,7 @@ public class EhloCmdHandler extends AbstractHookableCmdHandler<HeloHook> impleme
     }
 
     private boolean isValid(String argument) {
-        String hostname = unquote(argument);
-
-        // Without [] Guava attempt to parse IPV4
-        return InetAddresses.isUriInetAddress(hostname)
-            // Guava tries parsing IPv6 if and only if wrapped by []
-            || InetAddresses.isUriInetAddress("[" + hostname + "]")
-            || InternetDomainName.isValid(hostname);
+        return true;
     }
 
     private String unquote(String argument) {
