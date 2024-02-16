@@ -55,6 +55,8 @@ import org.apache.james.mailbox.exception.MessageRangeException;
 import org.apache.james.mailbox.model.FetchGroup;
 import org.apache.james.mailbox.model.MessageRange;
 import org.apache.james.mailbox.model.MessageResult;
+import org.apache.james.mailbox.store.mail.FetchGroupConverter;
+import org.apache.james.mailbox.store.mail.MessageMapper;
 import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.util.AuditTrail;
 import org.apache.james.util.MDCBuilder;
@@ -184,11 +186,24 @@ public class FetchProcessor extends AbstractMailboxProcessor<FetchRequest> {
             return Flux.fromIterable(consolidate(selected, ranges, fetch))
                 .concatMap(range -> {
                     auditTrail(mailbox, mailboxSession, resultToFetch, range);
-                    return Flux.from(mailbox.getMessagesReactive(range, resultToFetch, mailboxSession))
-                        .filter(ids -> !fetch.contains(Item.MODSEQ) || ids.getModSeq().asLong() > fetch.getChangedSince())
-                        .concatMap(result -> toResponse(mailbox, fetch, mailboxSession, builder, selected, result))
-                        .doOnNext(responder::respond)
-                        .then();
+
+                    MessageMapper.FetchType fetchType = FetchGroupConverter.getFetchType(resultToFetch);
+
+                    if (fetchType == MessageMapper.FetchType.FULL) {
+                        return Flux.from(mailbox.listMessagesMetadata(range, mailboxSession))
+                            .concatMap(message -> Mono.from(mailbox.getMessagesReactive(MessageRange.one(message.getComposedMessageId().getUid()),
+                                resultToFetch, mailboxSession))
+                                .filter(ids -> !fetch.contains(Item.MODSEQ) || ids.getModSeq().asLong() > fetch.getChangedSince())
+                                .flatMap(result -> toResponse(mailbox, fetch, mailboxSession, builder, selected, result))
+                                .doOnNext(responder::respond)
+                                .then()).then();
+                    } else {
+                        return Flux.from(mailbox.getMessagesReactive(range, resultToFetch, mailboxSession))
+                            .filter(ids -> !fetch.contains(Item.MODSEQ) || ids.getModSeq().asLong() > fetch.getChangedSince())
+                            .concatMap(result -> toResponse(mailbox, fetch, mailboxSession, builder, selected, result))
+                            .doOnNext(responder::respond)
+                            .then();
+                    }
                 })
                 .then();
         }
