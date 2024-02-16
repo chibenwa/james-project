@@ -99,10 +99,12 @@ public class AESBlobStoreDAO implements BlobStoreDAO {
                     FileBackedOutputStream decryptedContent = new FileBackedOutputStream(FILE_THRESHOLD_100_KB_READ);
                     try {
                         CountingOutputStream countingOutputStream = new CountingOutputStream(decryptedContent);
-                        decrypt(encryptedContent.asByteSource().openStream()).transferTo(countingOutputStream);
-                        return IOUtils.toByteArray(
-                            decryptedContent.asByteSource().openStream(),
-                            countingOutputStream.getCount());
+                        try (InputStream ciphertextStream = encryptedContent.asByteSource().openStream()) {
+                            decrypt(ciphertextStream).transferTo(countingOutputStream);
+                        }
+                        try (InputStream decryptedStream = decryptedContent.asByteSource().openStream()) {
+                            return IOUtils.toByteArray(decryptedStream, countingOutputStream.getCount());
+                        }
                     } finally {
                         decryptedContent.reset();
                         decryptedContent.close();
