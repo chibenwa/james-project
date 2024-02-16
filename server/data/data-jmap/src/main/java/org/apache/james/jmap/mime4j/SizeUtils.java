@@ -59,11 +59,14 @@ public class SizeUtils {
         if (body instanceof SingleBody) {
             return ((SingleBody) body).size();
         }
-        System.out.println(body.getClass());
-        CountingOutputStream countingOutputStream = new CountingOutputStream(OutputStream.nullOutputStream());
-        DefaultMessageWriter defaultMessageWriter = new DefaultMessageWriter();
-        defaultMessageWriter.writeBody(body, countingOutputStream);
-        return countingOutputStream.getCount();
+        try {
+            CountingOutputStream countingOutputStream = new CountingOutputStream(OutputStream.nullOutputStream());
+            DefaultMessageWriter defaultMessageWriter = new DefaultMessageWriter();
+            defaultMessageWriter.writeBody(body, countingOutputStream);
+            return countingOutputStream.getCount();
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     /*
