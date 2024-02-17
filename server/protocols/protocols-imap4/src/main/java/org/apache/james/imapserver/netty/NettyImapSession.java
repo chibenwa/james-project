@@ -124,7 +124,7 @@ public class NettyImapSession implements ImapSession, NettyConstants {
     @Override
     public Mono<Void> deselect() {
         this.state = ImapSessionState.AUTHENTICATED;
-        this.selectedMailbox.set(null);
+//        this.selectedMailbox.set(null);
         return closeMailbox();
     }
 
