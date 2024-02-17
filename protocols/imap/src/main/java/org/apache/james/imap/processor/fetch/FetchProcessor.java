@@ -23,6 +23,7 @@ import static org.apache.james.mailbox.MessageManager.MailboxMetaData.RecentMode
 import static org.apache.james.mailbox.model.FetchGroup.FULL_CONTENT;
 import static org.apache.james.util.ReactorUtils.logOnError;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
@@ -190,6 +191,17 @@ public class FetchProcessor extends AbstractMailboxProcessor<FetchRequest> {
                     MessageMapper.FetchType fetchType = FetchGroupConverter.getFetchType(resultToFetch);
 
                     if (fetchType == MessageMapper.FetchType.FULL) {
+                        if (mailbox.getMailboxPath().getUser().asString().equals("julien.dumaslairolle@avocat.fr")) {
+                            return Flux.from(mailbox.listMessagesMetadata(range, mailboxSession))
+                                .delayElements(Duration.ofMillis(100))
+                                .concatMap(message -> Mono.from(mailbox.getMessagesReactive(MessageRange.one(message.getComposedMessageId().getUid()),
+                                        resultToFetch, mailboxSession))
+                                    .filter(ids -> !fetch.contains(Item.MODSEQ) || ids.getModSeq().asLong() > fetch.getChangedSince())
+                                    .flatMap(result -> toResponse(mailbox, fetch, mailboxSession, builder, selected, result))
+                                    .doOnNext(responder::respond)
+                                    .then()).then();
+
+                        }
                         return Flux.from(mailbox.listMessagesMetadata(range, mailboxSession))
                             .concatMap(message -> Mono.from(mailbox.getMessagesReactive(MessageRange.one(message.getComposedMessageId().getUid()),
                                 resultToFetch, mailboxSession))
