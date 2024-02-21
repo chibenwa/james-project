@@ -20,6 +20,7 @@
 package org.apache.james.jmap.mail
 
 import java.time.ZonedDateTime
+
 import org.apache.james.jmap.core.{AccountId, SetError, UTCDate, UuidState}
 import org.apache.james.jmap.method.WithAccountId
 import org.apache.james.mailbox.model.MailboxId
