@@ -23,15 +23,12 @@ import static org.apache.james.mailbox.MessageManager.MailboxMetaData.RecentMode
 import static org.apache.james.mailbox.model.FetchGroup.FULL_CONTENT;
 import static org.apache.james.util.ReactorUtils.logOnError;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
-
-import javax.inject.Inject;
 
 import org.apache.james.core.Username;
 import org.apache.james.imap.api.ImapConstants;
@@ -57,8 +54,6 @@ import org.apache.james.mailbox.exception.MessageRangeException;
 import org.apache.james.mailbox.model.FetchGroup;
 import org.apache.james.mailbox.model.MessageRange;
 import org.apache.james.mailbox.model.MessageResult;
-import org.apache.james.mailbox.store.mail.FetchGroupConverter;
-import org.apache.james.mailbox.store.mail.MessageMapper;
 import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.util.AuditTrail;
 import org.apache.james.util.MDCBuilder;
@@ -71,9 +66,9 @@ import org.slf4j.LoggerFactory;
 import com.github.fge.lambdas.Throwing;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongList;
+import javax.inject.Inject;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;

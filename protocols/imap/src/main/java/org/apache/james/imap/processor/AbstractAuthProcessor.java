@@ -86,25 +86,18 @@ public abstract class AbstractAuthProcessor<R extends ImapRequest> extends Abstr
                     final MailboxSession mailboxSession = mailboxManager.authenticate(authenticationAttempt.getAuthenticationId(),
                         authenticationAttempt.getPassword())
                         .withoutDelegation();
-
-                    if (mailboxSession.getUser().asString().equals("julien.dumaslairolle@avocat.fr")) {
-                        no(request, responder, HumanReadableText.GENERIC_FAILURE_DURING_PROCESSING);
-                        responder.flush();
-                        LOGGER.error("REJECTING {}", "julien.dumaslairolle@avocat.fr");
-                    } else {
-                        session.authenticated();
-                        session.setMailboxSession(mailboxSession);
-                        provisionInbox(session, mailboxManager, mailboxSession);
-                        AuditTrail.entry()
-                            .username(() -> mailboxSession.getUser().asString())
-                            .sessionId(() -> session.sessionId().asString())
-                            .protocol("IMAP")
-                            .action("AUTH")
-                            .log("IMAP Authentication succeeded.");
-                        okComplete(request, responder);
-                        responder.flush();
-                        session.stopDetectingCommandInjection();
-                    }
+                    session.authenticated();
+                    session.setMailboxSession(mailboxSession);
+                    provisionInbox(session, mailboxManager, mailboxSession);
+                    AuditTrail.entry()
+                        .username(() -> mailboxSession.getUser().asString())
+                        .sessionId(() -> session.sessionId().asString())
+                        .protocol("IMAP")
+                        .action("AUTH")
+                        .log("IMAP Authentication succeeded.");
+                    okComplete(request, responder);
+                    responder.flush();
+                    session.stopDetectingCommandInjection();
                 } catch (BadCredentialsException e) {
                     authFailure = true;
                     AuditTrail.entry()
