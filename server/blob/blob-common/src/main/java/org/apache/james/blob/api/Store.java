@@ -29,6 +29,7 @@ import java.util.stream.Stream;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.james.blob.api.BlobStore.StoragePolicy;
+import org.apache.james.core.JamesFileBackedOutputStream;
 import org.apache.james.util.ReactorUtils;
 import org.reactivestreams.Publisher;
 
@@ -40,7 +41,6 @@ import com.google.common.io.ByteProcessor;
 import com.google.common.io.ByteSink;
 import com.google.common.io.ByteSource;
 import com.google.common.io.CharSource;
-import com.google.common.io.FileBackedOutputStream;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -118,7 +118,7 @@ public interface Store<T, I> {
         private Mono<CloseableByteSource> readByteSource(BucketName bucketName, BlobId blobId, StoragePolicy storagePolicy) {
             return Mono.usingWhen(blobStore.readReactive(bucketName, blobId, storagePolicy),
                 Throwing.function(in -> {
-                    FileBackedOutputStream out = new FileBackedOutputStream(FILE_THRESHOLD);
+                    JamesFileBackedOutputStream out = new JamesFileBackedOutputStream("DelegateCloseableByteSource", FILE_THRESHOLD);
                     long size = in.transferTo(out);
                     return Mono.just(new DelegateCloseableByteSource(out.asByteSource(), out::reset, size));
                 }),

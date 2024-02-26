@@ -46,6 +46,7 @@ import org.apache.james.blob.api.BlobStoreDAO;
 import org.apache.james.blob.api.BucketName;
 import org.apache.james.blob.api.ObjectNotFoundException;
 import org.apache.james.blob.api.ObjectStoreIOException;
+import org.apache.james.core.JamesFileBackedOutputStream;
 import org.apache.james.lifecycle.api.Startable;
 import org.apache.james.util.ReactorUtils;
 import org.reactivestreams.Publisher;
@@ -56,7 +57,6 @@ import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.ByteSource;
-import com.google.common.io.FileBackedOutputStream;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -105,10 +105,10 @@ public class S3BlobStoreDAO implements BlobStoreDAO, Startable, Closeable {
     };
 
     private static class FileBackedOutputStreamByteSource extends ByteSource {
-        private final FileBackedOutputStream stream;
+        private final JamesFileBackedOutputStream stream;
         private final long size;
 
-        private FileBackedOutputStreamByteSource(FileBackedOutputStream stream, long size) {
+        private FileBackedOutputStreamByteSource(JamesFileBackedOutputStream stream, long size) {
             Preconditions.checkArgument(size >= 0, "'size' must be positive");
             this.stream = stream;
             this.size = size;
@@ -322,11 +322,11 @@ public class S3BlobStoreDAO implements BlobStoreDAO, Startable, Closeable {
 
     private Mono<Void> uploadUsingFile(BucketName bucketName, BlobId blobId, InputStream inputStream) {
         return Mono.using(
-            () -> new FileBackedOutputStream(FILE_THRESHOLD),
+            () -> new JamesFileBackedOutputStream("S3", FILE_THRESHOLD),
             fileBackedOutputStream ->
                 Mono.fromCallable(() -> IOUtils.copy(inputStream, fileBackedOutputStream))
                     .flatMap(size -> save(bucketName, blobId, new FileBackedOutputStreamByteSource(fileBackedOutputStream, size))),
-            Throwing.consumer(FileBackedOutputStream::reset),
+            Throwing.consumer(JamesFileBackedOutputStream::reset),
             LAZY)
             .onErrorMap(IOException.class, e -> new ObjectStoreIOException("Error saving blob", e))
             .publishOn(Schedulers.parallel());

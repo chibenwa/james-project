@@ -23,16 +23,16 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 
+import org.apache.james.core.JamesFileBackedOutputStream;
 import org.apache.james.mailbox.exception.MailboxException;
 
 import com.google.common.io.ByteSource;
-import com.google.common.io.FileBackedOutputStream;
 
 public class ByteSourceContent implements Content, Closeable {
     private static final int FILE_THRESHOLD = 1024 * 100;
 
     public static ByteSourceContent of(InputStream stream) throws IOException {
-        FileBackedOutputStream out = new FileBackedOutputStream(FILE_THRESHOLD);
+        JamesFileBackedOutputStream out = new JamesFileBackedOutputStream("ByteSourceContent", FILE_THRESHOLD);
         try {
             stream.transferTo(out);
             return new ByteSourceContent(out.asByteSource(), out::reset);

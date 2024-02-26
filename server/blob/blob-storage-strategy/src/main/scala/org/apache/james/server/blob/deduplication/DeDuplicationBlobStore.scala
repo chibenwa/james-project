@@ -21,13 +21,14 @@ package org.apache.james.server.blob.deduplication
 
 import java.io.InputStream
 import java.util.concurrent.Callable
-
 import com.google.common.base.Preconditions
 import com.google.common.hash.{Hashing, HashingInputStream}
-import com.google.common.io.{ByteSource, FileBackedOutputStream}
+import com.google.common.io.{ByteSource}
+
 import javax.inject.{Inject, Named}
 import org.apache.commons.io.IOUtils
 import org.apache.james.blob.api.{BlobId, BlobStore, BlobStoreDAO, BucketName}
+import org.apache.james.core.JamesFileBackedOutputStream
 import org.reactivestreams.Publisher
 import reactor.core.publisher.{Flux, Mono}
 import reactor.core.scala.publisher.SMono
@@ -69,18 +70,18 @@ class DeDuplicationBlobStore @Inject()(blobStoreDAO: BlobStoreDAO,
     Preconditions.checkNotNull(bucketName)
     Preconditions.checkNotNull(data)
     val hashingInputStream = new HashingInputStream(Hashing.sha256, data)
-    val sourceSupplier: FileBackedOutputStream => Mono[BlobId] = (fileBackedOutputStream: FileBackedOutputStream) => saveAndGenerateBlobId(bucketName, hashingInputStream, fileBackedOutputStream).asJava()
-    val ressourceSupplier: Callable[FileBackedOutputStream] = () => new FileBackedOutputStream(DeDuplicationBlobStore.FILE_THRESHOLD)
+    val sourceSupplier: JamesFileBackedOutputStream => Mono[BlobId] = (fileBackedOutputStream: JamesFileBackedOutputStream) => saveAndGenerateBlobId(bucketName, hashingInputStream, fileBackedOutputStream).asJava()
+    val ressourceSupplier: Callable[JamesFileBackedOutputStream] = () => new JamesFileBackedOutputStream("dedup", DeDuplicationBlobStore.FILE_THRESHOLD)
 
     Mono.using(
       ressourceSupplier,
       sourceSupplier.asJava,
-      ((fileBackedOutputStream: FileBackedOutputStream) => fileBackedOutputStream.reset()).asJava,
+      ((fileBackedOutputStream: JamesFileBackedOutputStream) => fileBackedOutputStream.reset()).asJava,
       DeDuplicationBlobStore.LAZY_RESOURCE_CLEANUP)
       .subscribeOn(Schedulers.boundedElastic())
   }
 
-  private def saveAndGenerateBlobId(bucketName: BucketName, hashingInputStream: HashingInputStream, fileBackedOutputStream: FileBackedOutputStream): SMono[BlobId] =
+  private def saveAndGenerateBlobId(bucketName: BucketName, hashingInputStream: HashingInputStream, fileBackedOutputStream: JamesFileBackedOutputStream): SMono[BlobId] =
     SMono.fromCallable(() => {
       IOUtils.copy(hashingInputStream, fileBackedOutputStream)
       Tuples.of(blobIdFactory.from(hashingInputStream.hash.toString), fileBackedOutputStream.asByteSource)

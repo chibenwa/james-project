@@ -34,6 +34,7 @@ import org.apache.james.blob.api.BlobStoreDAO;
 import org.apache.james.blob.api.BucketName;
 import org.apache.james.blob.api.ObjectNotFoundException;
 import org.apache.james.blob.api.ObjectStoreIOException;
+import org.apache.james.core.JamesFileBackedOutputStream;
 import org.reactivestreams.Publisher;
 import org.slf4j.LoggerFactory;
 
@@ -42,7 +43,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.io.ByteSource;
 import com.google.common.io.ByteStreams;
 import com.google.common.io.CountingOutputStream;
-import com.google.common.io.FileBackedOutputStream;
 import com.google.crypto.tink.subtle.AesGcmHkdfStreaming;
 
 import reactor.core.publisher.Flux;
@@ -62,8 +62,8 @@ public class AESBlobStoreDAO implements BlobStoreDAO {
         this.streamingAead = PBKDF2StreamingAeadFactory.newAesGcmHkdfStreaming(cryptoConfig);
     }
 
-    public FileBackedOutputStream encrypt(InputStream input) {
-        try (FileBackedOutputStream encryptedContent = new FileBackedOutputStream(FILE_THRESHOLD_100_KB)) {
+    public JamesFileBackedOutputStream encrypt(InputStream input) {
+        try (JamesFileBackedOutputStream encryptedContent = new JamesFileBackedOutputStream("aesencrypt", FILE_THRESHOLD_100_KB)) {
             OutputStream outputStream = streamingAead.newEncryptingStream(encryptedContent, PBKDF2StreamingAeadFactory.EMPTY_ASSOCIATED_DATA);
             input.transferTo(outputStream);
             outputStream.close();
@@ -89,14 +89,14 @@ public class AESBlobStoreDAO implements BlobStoreDAO {
             throw new RuntimeException(blobId.asString() + " exceeded maximum blob size");
         }
 
-        FileBackedOutputStream encryptedContent = new FileBackedOutputStream(FILE_THRESHOLD_100_KB_READ);
+        JamesFileBackedOutputStream encryptedContent = new JamesFileBackedOutputStream("aes-decrypt-outer", FILE_THRESHOLD_100_KB_READ);
         WritableByteChannel channel = Channels.newChannel(encryptedContent);
 
         return Flux.from(ciphertext.getContent())
             .doOnNext(Throwing.consumer(channel::write))
             .then(Mono.fromCallable(() -> {
                 try {
-                    FileBackedOutputStream decryptedContent = new FileBackedOutputStream(FILE_THRESHOLD_100_KB_READ);
+                    JamesFileBackedOutputStream decryptedContent = new JamesFileBackedOutputStream("aes-decrypt-inner", FILE_THRESHOLD_100_KB_READ);
                     try {
                         CountingOutputStream countingOutputStream = new CountingOutputStream(decryptedContent);
                         try (InputStream ciphertextStream = encryptedContent.asByteSource().openStream()) {
@@ -162,7 +162,7 @@ public class AESBlobStoreDAO implements BlobStoreDAO {
         return Mono.using(
                 () -> encrypt(inputStream),
                 fileBackedOutputStream -> Mono.from(underlying.save(bucketName, blobId, fileBackedOutputStream.asByteSource())),
-                Throwing.consumer(FileBackedOutputStream::reset))
+                Throwing.consumer(JamesFileBackedOutputStream::reset))
             .subscribeOn(Schedulers.boundedElastic())
             .onErrorMap(e -> new ObjectStoreIOException("Exception occurred while saving bytearray", e));
     }
