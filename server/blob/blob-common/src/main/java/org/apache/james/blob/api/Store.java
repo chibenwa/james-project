@@ -119,8 +119,14 @@ public interface Store<T, I> {
             return Mono.usingWhen(blobStore.readReactive(bucketName, blobId, storagePolicy),
                 Throwing.function(in -> {
                     JamesFileBackedOutputStream out = new JamesFileBackedOutputStream("DelegateCloseableByteSource", FILE_THRESHOLD);
-                    long size = in.transferTo(out);
-                    return Mono.just(new DelegateCloseableByteSource(out.asByteSource(), out::reset, size));
+                    try {
+                        long size = in.transferTo(out);
+                        return Mono.just(new DelegateCloseableByteSource(out.asByteSource(), out::reset, size));
+                    } catch (Exception e) {
+                        out.reset();
+                        out.close();
+                        throw e;
+                    }
                 }),
                 stream -> Mono.fromRunnable(Throwing.runnable(stream::close)));
         }
