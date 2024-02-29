@@ -61,13 +61,13 @@ object MailboxSetUpdatePerformer {
         LOGGER.info("Mailbox already exists: {}", e.getMessage)
         SetError.invalidArguments(SetErrorDescription(e.getMessage), filter(Properties("name", "parentId")))
       case e: UnsupportedPropertyUpdatedException =>
-        LOGGER.info("Unsupported properties in Mailbox/set update: {}", e.getMessage)
+        LOGGER.info("Unsupported properties in Mailbox/set update: {}", e.property.value)
         SetError.invalidArguments(SetErrorDescription(s"${e.property} property do not exist thus cannot be updated"), Some(Properties(e.property)))
       case e: InvalidUpdateException =>
         LOGGER.info("Invalid update in Mailbox/set update: {}", e.getMessage)
         SetError.invalidArguments(SetErrorDescription(s"${e.cause}"), Some(Properties(e.property)))
       case e: ServerSetPropertyException =>
-        LOGGER.info("Unsupported server-set properties in Mailbox/set update: {}", e.getMessage)
+        LOGGER.info("Unsupported server-set properties in Mailbox/set update: {}", e.property.value)
         SetError.invalidArguments(SetErrorDescription("Can not modify server-set properties"), Some(Properties(e.property)))
       case e: InvalidPropertyException =>
         LOGGER.info("Invalid properties in Mailbox/set update: {}", e.getMessage)
