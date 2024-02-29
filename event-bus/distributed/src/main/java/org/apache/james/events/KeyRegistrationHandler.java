@@ -206,6 +206,7 @@ class KeyRegistrationHandler {
 
         return listenerExecutor.execute(listener, mdcBuilder, event)
             .doOnError(e -> structuredLogger(event, key)
+                .field("listener", listener.getClass().getCanonicalName())
                 .log(logger -> logger.error("Exception happens when handling event", e)))
             .onErrorResume(e -> Mono.empty())
             .then();
