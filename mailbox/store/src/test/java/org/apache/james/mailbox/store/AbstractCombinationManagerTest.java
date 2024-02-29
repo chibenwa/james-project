@@ -52,6 +52,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -537,7 +538,7 @@ public abstract class AbstractCombinationManagerTest {
             .appendMessage(MessageManager.AppendCommand.from(mailContent), session)
             .getId().getMessageId();
 
-        Mono.from(messageIdManager.delete(ImmutableList.of(messageId1, messageId2), session))
+        Mono.from(messageIdManager.delete(ImmutableSet.of(messageId1, messageId2), session))
             .subscribeOn(Schedulers.newSingle("test"))
             .block();
 
