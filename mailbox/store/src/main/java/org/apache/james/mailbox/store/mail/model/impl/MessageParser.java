@@ -109,7 +109,7 @@ public class MessageParser {
         defaultMessageBuilder.setBodyFactory(bodyFactory);
         try {
             Message message = defaultMessageBuilder.parseMessage(fullContent);
-            return new ParsingResult(retrieveAttachments(message), message::dispose);
+            return new ParsingResult(retrieveAttachments(message), bodyFactory::dispose);
         } catch (Exception e) {
             // Release associated temporary files
             bodyFactory.dispose();
