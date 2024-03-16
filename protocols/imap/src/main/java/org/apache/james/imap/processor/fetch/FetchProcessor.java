@@ -225,14 +225,13 @@ public class FetchProcessor extends AbstractMailboxProcessor<FetchRequest> {
      * {@link org.apache.james.imap.api.process.ImapProcessor.Responder}
      */
     private Mono<Void> processMessageRanges(SelectedMailbox selected, MessageManager mailbox, List<MessageRange> ranges, FetchData fetch, MailboxSession mailboxSession, Responder responder, ImapSession imapSession) {
-        FetchResponseBuilder builder = new FetchResponseBuilder(new EnvelopeBuilder());
         FetchGroup resultToFetch = FetchDataConverter.getFetchGroup(fetch);
 
         if (fetch.isOnlyFlags()) {
             return Flux.fromIterable(consolidate(selected, ranges, fetch))
                 .concatMap(range -> Flux.from(mailbox.listMessagesMetadata(range, mailboxSession)))
                 .filter(ids -> !fetch.contains(Item.MODSEQ) || ids.getModSeq().asLong() > fetch.getChangedSince())
-                .concatMap(result -> toResponse(mailbox, fetch, mailboxSession, builder, selected, result))
+                .concatMap(result -> toResponse(mailbox, fetch, mailboxSession, selected, result))
                 .doOnNext(responder::respond)
                 .then();
         } else {
@@ -243,7 +242,7 @@ public class FetchProcessor extends AbstractMailboxProcessor<FetchRequest> {
 
                     return Flux.from(mailbox.getMessagesReactive(range, resultToFetch, mailboxSession))
                         .filter(ids -> !fetch.contains(Item.MODSEQ) || ids.getModSeq().asLong() > fetch.getChangedSince())
-                        .concatMap(result -> toResponse(mailbox, fetch, mailboxSession, builder, selected, result));
+                        .concatMap(result -> toResponse(mailbox, fetch, mailboxSession, selected, result));
                 })
                 .subscribe(fetchSubscriber);
 
@@ -264,9 +263,9 @@ public class FetchProcessor extends AbstractMailboxProcessor<FetchRequest> {
         return MessageRange.toRanges(filter.longStream().mapToObj(MessageUid::of).collect(ImmutableList.toImmutableList()));
     }
 
-    private Mono<FetchResponse> toResponse(MessageManager mailbox, FetchData fetch, MailboxSession mailboxSession, FetchResponseBuilder builder, SelectedMailbox selected, org.apache.james.mailbox.model.ComposedMessageIdWithMetaData result) {
+    private Mono<FetchResponse> toResponse(MessageManager mailbox, FetchData fetch, MailboxSession mailboxSession, SelectedMailbox selected, org.apache.james.mailbox.model.ComposedMessageIdWithMetaData result) {
         try {
-            return builder.build(fetch, result, mailbox, selected, mailboxSession);
+            return new FetchResponseBuilder(new EnvelopeBuilder()).build(fetch, result, mailbox, selected, mailboxSession);
         } catch (MessageRangeException e) {
             // we can't for whatever reason find the message so
             // just skip it and log it to debug
@@ -283,9 +282,9 @@ public class FetchProcessor extends AbstractMailboxProcessor<FetchRequest> {
         }
     }
 
-    private Mono<FetchResponse> toResponse(MessageManager mailbox, FetchData fetch, MailboxSession mailboxSession, FetchResponseBuilder builder, SelectedMailbox selected, MessageResult result) {
+    private Mono<FetchResponse> toResponse(MessageManager mailbox, FetchData fetch, MailboxSession mailboxSession, SelectedMailbox selected, MessageResult result) {
         try {
-            return builder.build(fetch, result, mailbox, selected, mailboxSession);
+            return new FetchResponseBuilder(new EnvelopeBuilder()).build(fetch, result, mailbox, selected, mailboxSession);
         } catch (MessageRangeException e) {
             // we can't for whatever reason find the message so
             // just skip it and log it to debug
