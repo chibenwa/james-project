@@ -2501,6 +2501,26 @@ class IMAPServerTest {
             // Then the FETCH
             readStringUntil(clientConnection, s -> s.contains("A2 OK FETCH completed."));
         }
+
+        @Test
+        void testBackpressure() throws Exception {
+            String msgIn = "MIME-Version: 1.0\r\n\r\nCONTENT\r\n\r\n" + "0123456789\r\n0123456789\r\n0123456789\r\n".repeat(64000);
+            System.out.println(msgIn.length());
+            IntStream.range(0, 100)
+                .forEach(Throwing.intConsumer(i -> inbox.appendMessage(MessageManager.AppendCommand.builder()
+                    .build(msgIn), mailboxSession)));
+
+            clientConnection.write(ByteBuffer.wrap(String.format("a0 LOGIN %s %s\r\n", USER.asString(), USER_PASS).getBytes(StandardCharsets.UTF_8)));
+            readBytes(clientConnection);
+
+            clientConnection.write(ByteBuffer.wrap(("A1 SELECT INBOX\r\n").getBytes(StandardCharsets.UTF_8)));
+            // Select completes first
+            readStringUntil(clientConnection, s -> s.contains("A1 OK [READ-WRITE] SELECT completed."));
+            clientConnection.write(ByteBuffer.wrap(("A2 UID FETCH 1:1000 (BODY[])\r\n").getBytes(StandardCharsets.UTF_8)));
+
+            Thread.sleep(10000);
+            readStringUntil(clientConnection, s -> s.contains("A2 OK FETCH completed."));
+        }
     }
 
     private byte[] readBytes(SocketChannel channel) throws IOException {

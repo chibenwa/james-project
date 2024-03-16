@@ -122,6 +122,7 @@ public final class FetchResponseBuilder {
 
     public Mono<FetchResponse> build(FetchData fetch, MessageResult result, MessageManager mailbox, SelectedMailbox selectedMailbox, MailboxSession mailboxSession) throws MessageRangeException, MailboxException {
         final MessageUid resultUid = result.getUid();
+        System.out.println("FETCH " + resultUid);
         return selectedMailbox.msn(resultUid).fold(() -> {
             throw new MessageRangeException("No such message found with uid " + resultUid);
         }, msn -> {
