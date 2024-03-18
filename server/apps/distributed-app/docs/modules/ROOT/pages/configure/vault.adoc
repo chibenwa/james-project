@@ -24,6 +24,13 @@ to get some examples and hints.
 |===
 | Property name | explanation
 
+| enabled
+| Whether to enable the deleted message vault. Boolean, defaults to false.
+
+| workQueueEnabled
+| Boolean, defaults to false. Whether or not to to enable the workqueue to asynchronously process deleted items. If enabled,
+processing bigger deletes in a time efficient and reliable manner becomes possible, but the use of deduplication is required.
+
 | retentionPeriod
 | Deleted messages stored in the Deleted Messages Vault are expired after this period (default: 1 year). It can be expressed in *y* years, *d* days, *h* hours, ...
 

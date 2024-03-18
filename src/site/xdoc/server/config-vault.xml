@@ -51,6 +51,19 @@
                     to get some examples and hints.</p>
                 <br/>
                 <dl>
+                    <dt><strong>enabled</strong></dt>
+                    <dd>
+                        Whether to enable the deleted message vault. Boolean, defaults to false.
+                    </dd>
+                </dl>
+                <dl>
+                    <dt><strong>workQueueEnabled</strong></dt>
+                    <dd>
+                        Boolean, defaults to false. Whether or not to to enable the workqueue to asynchronously process deleted items. If enabled,
+                        processing bigger deletes in a time efficient and reliable manner becomes possible, but the use of deduplication is required.
+                    </dd>
+                </dl>
+                <dl>
                     <dt><strong>retentionPeriod</strong></dt>
                     <dd>
                         Deleted messages stored in the Deleted Messages Vault are expired after this period (default: 1 year).
