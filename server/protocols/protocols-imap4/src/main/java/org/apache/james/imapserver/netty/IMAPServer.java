@@ -53,6 +53,7 @@ import com.google.common.collect.ImmutableSet;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelPipeline;
+import io.netty.channel.WriteBufferWaterMark;
 import io.netty.handler.codec.haproxy.HAProxyMessageDecoder;
 import io.netty.handler.stream.ChunkedWriteHandler;
 
@@ -242,6 +243,7 @@ public class IMAPServer extends AbstractConfigurableAsyncServer implements ImapC
 
             @Override
             public void initChannel(Channel channel) {
+                channel.config().setWriteBufferWaterMark(new WriteBufferWaterMark(100 * 1024, 500 * 1024));
                 ChannelPipeline pipeline = channel.pipeline();
                 pipeline.addLast(TIMEOUT_HANDLER, new ImapIdleStateHandler(timeout));
 
