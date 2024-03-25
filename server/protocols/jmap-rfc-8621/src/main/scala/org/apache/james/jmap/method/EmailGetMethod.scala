@@ -169,7 +169,7 @@ class EmailGetMethod @Inject() (readerFactory: EmailViewReaderFactory,
         .field("username", mailboxSession.getUser.asString())
         .field("method", "Email/get")
         .field("ids", ids.mkString)
-        .field("readLevel", "FULL")
+        .field("readLevel", readLevel.toString)
         .log(logger => logger.info("Preparing to read JMAP messages"))
 
       val foundResultsMono: SMono[Map[MessageId, EmailView]] =
