@@ -81,17 +81,13 @@ public class ChannelImapResponseWriter implements ImapResponseWriter {
             if (literal.asBytesSequence().isPresent()) {
                 if (literal.size() > 10 * 1024 * 1024 * 1024) {
                     LoggerFactory.getLogger(this.getClass())
-                        .warn("Writing  {} bytes litteral {} with content {} as a byte array", literal.size(), literal,
+                        .warn("Writing  {} bytes litteral {} with content {} as a byte array", literal.getInputStream(), literal,
                         literal.asMailboxContent());
                 }
                 channel.writeAndFlush(Unpooled.wrappedBuffer(literal.asBytesSequence().get()));
                 return;
             }
             InputStream in = literal.getInputStream();
-            if (literal.size() > 100 * 1024 * 1024) {
-                LoggerFactory.getLogger(this.getClass()).warn("Writing  {} bytes litteral {} with content {} as an InputStream - this might result in OOM", literal.size(), literal,
-                    literal.asMailboxContent());
-            }
             if (in instanceof FileInputStream) {
                 FileChannel fc = ((FileInputStream) in).getChannel();
                 // Zero-copy is only possible if no SSL/TLS  and no COMPRESS is in place
