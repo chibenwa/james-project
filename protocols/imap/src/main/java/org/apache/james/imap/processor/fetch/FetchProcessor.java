@@ -77,7 +77,6 @@ import reactor.core.publisher.Sinks;
 public class FetchProcessor extends AbstractMailboxProcessor<FetchRequest> {
     static class FetchSubscriber implements Subscriber<FetchResponse> {
         private final AtomicReference<Subscription> subscription = new AtomicReference<>();
-        private final AtomicBoolean requested = new AtomicBoolean(false);
         private final Sinks.One<Void> sink = Sinks.one();
         private final ImapSession imapSession;
         private final Responder responder;
@@ -95,21 +94,26 @@ public class FetchProcessor extends AbstractMailboxProcessor<FetchRequest> {
 
         @Override
         public void onNext(FetchResponse fetchResponse) {
-            requested.getAndSet(false);
-            responder.respond(fetchResponse);
-            if (imapSession.backpressureNeeded(this::requestOne)) {
-                LOGGER.debug("Applying backpressure as we encounter a slow reader");
-            } else {
-                requestOne();
-            }
+            imapSession.executeSafely(() -> {
+                AtomicBoolean mustRequestOne = new AtomicBoolean(true);
+
+                responder.respond(fetchResponse);
+                Runnable requestOne = () -> {
+                    if (mustRequestOne.getAndSet(false)) {
+                        requestOne();
+                    }
+                };
+                if (imapSession.backpressureNeeded(requestOne)) {
+                    LOGGER.debug("Applying backpressure as we encounter a slow reader");
+                } else {
+                    requestOne.run();
+                }
+            });
         }
 
         private void requestOne() {
-            boolean alreadyRequested = requested.getAndSet(true);
-            if (!alreadyRequested) {
-                Optional.ofNullable(subscription.get())
-                    .ifPresent(s -> s.request(1));
-            }
+            Optional.ofNullable(subscription.get())
+                .ifPresent(s -> s.request(1));
         }
 
         @Override
@@ -121,7 +125,7 @@ public class FetchProcessor extends AbstractMailboxProcessor<FetchRequest> {
         @Override
         public void onComplete() {
             subscription.set(null);
-            sink.tryEmitEmpty();
+            imapSession.executeSafely(sink::tryEmitEmpty);
         }
 
         public Mono<Void> completionMono() {
