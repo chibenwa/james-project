@@ -773,7 +773,7 @@ public class StoreMessageManager implements MessageManager {
         FetchType fetchType = FetchGroupConverter.getFetchType(fetchGroup);
         return Flux.from(mapperFactory.getMessageMapper(mailboxSession)
             .findInMailboxReactive(mailbox, set, fetchType, -1))
-            .publishOn(forFetchType(fetchType))
+            .publishOn(forFetchType(fetchType), false, 1)
             .map(Throwing.<MailboxMessage, MessageResult>function(message -> ResultUtils.loadMessageResult(message, fetchGroup)).sneakyThrow());
     }
 
