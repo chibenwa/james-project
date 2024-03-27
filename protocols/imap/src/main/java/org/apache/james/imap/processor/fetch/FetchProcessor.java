@@ -94,21 +94,18 @@ public class FetchProcessor extends AbstractMailboxProcessor<FetchRequest> {
 
         @Override
         public void onNext(FetchResponse fetchResponse) {
-            imapSession.executeSafely(() -> {
-                AtomicBoolean mustRequestOne = new AtomicBoolean(true);
-
-                responder.respond(fetchResponse);
-                Runnable requestOne = () -> {
-                    if (mustRequestOne.getAndSet(false)) {
-                        requestOne();
-                    }
-                };
-                if (imapSession.backpressureNeeded(requestOne)) {
-                    LOGGER.debug("Applying backpressure as we encounter a slow reader");
-                } else {
-                    requestOne.run();
+            AtomicBoolean mustRequestOne = new AtomicBoolean(true);
+            responder.respond(fetchResponse);
+            Runnable requestOne = () -> {
+                if (mustRequestOne.getAndSet(false)) {
+                    requestOne();
                 }
-            });
+            };
+            if (imapSession.backpressureNeeded(requestOne)) {
+                LOGGER.debug("Applying backpressure as we encounter a slow reader");
+            } else {
+                requestOne.run();
+            }
         }
 
         private void requestOne() {
@@ -125,7 +122,7 @@ public class FetchProcessor extends AbstractMailboxProcessor<FetchRequest> {
         @Override
         public void onComplete() {
             subscription.set(null);
-            imapSession.executeSafely(sink::tryEmitEmpty);
+            sink.tryEmitEmpty();
         }
 
         public Mono<Void> completionMono() {
