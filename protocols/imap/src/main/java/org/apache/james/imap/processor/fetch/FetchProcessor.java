@@ -102,7 +102,7 @@ public class FetchProcessor extends AbstractMailboxProcessor<FetchRequest> {
                 }
             };
             if (imapSession.backpressureNeeded(requestOne)) {
-                LOGGER.debug("Applying backpressure as we encounter a slow reader");
+                LOGGER.warn("Applying backpressure as we encounter a slow reader - user: {}", imapSession.getUserName().asString());
             } else {
                 requestOne.run();
             }
