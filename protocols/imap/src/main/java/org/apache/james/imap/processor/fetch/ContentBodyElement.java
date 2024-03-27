@@ -62,4 +62,9 @@ class ContentBodyElement implements BodyElement {
     public InputStream getInputStream() throws IOException {
         return content.getInputStream();
     }
+
+    @Override
+    public Content asMailboxContent() {
+        return content;
+    }
 }

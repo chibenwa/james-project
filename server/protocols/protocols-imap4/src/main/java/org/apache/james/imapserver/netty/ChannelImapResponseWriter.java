@@ -26,6 +26,7 @@ import java.nio.channels.FileChannel;
 
 import org.apache.james.imap.encode.ImapResponseWriter;
 import org.apache.james.imap.message.Literal;
+import org.slf4j.LoggerFactory;
 
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
@@ -82,6 +83,10 @@ public class ChannelImapResponseWriter implements ImapResponseWriter {
                 return;
             }
             InputStream in = literal.getInputStream();
+            if (literal.size() > 100 * 1024 * 1024) {
+                LoggerFactory.getLogger(this.getClass()).warn("Writing  {} bytes litteral {} with content {} as an InputStream - this might result in OOM", literal.getInputStream(), literal,
+                    literal.asMailboxContent());
+            }
             if (in instanceof FileInputStream) {
                 FileChannel fc = ((FileInputStream) in).getChannel();
                 // Zero-copy is only possible if no SSL/TLS  and no COMPRESS is in place
