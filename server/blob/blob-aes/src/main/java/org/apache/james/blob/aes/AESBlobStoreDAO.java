@@ -97,6 +97,7 @@ public class AESBlobStoreDAO implements BlobStoreDAO {
         WritableByteChannel channel = Channels.newChannel(encryptedContent);
 
         return Flux.from(ciphertext.getContent())
+            .publishOn(Schedulers.boundedElastic())
             .doOnNext(Throwing.consumer(channel::write))
             .then(Mono.fromCallable(() -> {
                 try {
@@ -163,10 +164,10 @@ public class AESBlobStoreDAO implements BlobStoreDAO {
         Preconditions.checkNotNull(blobId);
         Preconditions.checkNotNull(inputStream);
 
-        return Mono.using(
-                () -> encrypt(inputStream),
-                fileBackedOutputStream -> Mono.from(underlying.save(bucketName, blobId, fileBackedOutputStream.asByteSource())),
-                Throwing.consumer(JamesFileBackedOutputStream::reset))
+        return Mono.usingWhen(
+            Mono.fromCallable(() -> encrypt(inputStream)),
+            fileBackedOutputStream -> Mono.from(underlying.save(bucketName, blobId, fileBackedOutputStream.asByteSource())),
+            Throwing.function(pair -> Mono.fromRunnable(Throwing.runnable(pair::reset)).subscribeOn(Schedulers.boundedElastic())))
             .subscribeOn(Schedulers.boundedElastic())
             .onErrorMap(e -> new ObjectStoreIOException("Exception occurred while saving bytearray", e));
     }
