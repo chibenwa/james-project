@@ -23,8 +23,6 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.channels.Channels;
-import java.nio.channels.WritableByteChannel;
 import java.security.GeneralSecurityException;
 import java.util.Collection;
 
@@ -35,6 +33,7 @@ import org.apache.james.blob.api.BucketName;
 import org.apache.james.blob.api.ObjectNotFoundException;
 import org.apache.james.blob.api.ObjectStoreIOException;
 import org.apache.james.core.JamesFileBackedOutputStream;
+import org.apache.james.util.ReactorUtils;
 import org.reactivestreams.Publisher;
 import org.slf4j.LoggerFactory;
 
@@ -93,18 +92,12 @@ public class AESBlobStoreDAO implements BlobStoreDAO {
             throw new RuntimeException(blobId.asString() + " exceeded maximum blob size");
         }
 
-        JamesFileBackedOutputStream encryptedContent = new JamesFileBackedOutputStream("aes-decrypt-outer", FILE_THRESHOLD_100_KB_READ);
-        WritableByteChannel channel = Channels.newChannel(encryptedContent);
-
-        return Flux.from(ciphertext.getContent())
-            .publishOn(Schedulers.boundedElastic())
-            .doOnNext(Throwing.consumer(channel::write))
-            .then(Mono.fromCallable(() -> {
+        return Mono.fromCallable(() -> {
                 try {
                     JamesFileBackedOutputStream decryptedContent = new JamesFileBackedOutputStream("aes-decrypt-inner", FILE_THRESHOLD_100_KB_READ);
                     try {
                         CountingOutputStream countingOutputStream = new CountingOutputStream(decryptedContent);
-                        try (InputStream ciphertextStream = encryptedContent.asByteSource().openStream()) {
+                        try (InputStream ciphertextStream = ReactorUtils.toInputStream(Flux.from(ciphertext.getContent()))) {
                             decrypt(ciphertextStream).transferTo(countingOutputStream);
                         }
                         try (InputStream decryptedStream = decryptedContent.asByteSource().openStream()) {
@@ -119,12 +112,7 @@ public class AESBlobStoreDAO implements BlobStoreDAO {
                         .error("OOM reading {}. Blob size read so far {} bytes.", blobId.asString(), ciphertext.getSize());
                     throw new RuntimeException(error);
                 }
-            }))
-            .doFinally(Throwing.consumer(any -> {
-                channel.close();
-                encryptedContent.reset();
-                encryptedContent.close();
-            }));
+            });
     }
 
     @Override
@@ -146,7 +134,7 @@ public class AESBlobStoreDAO implements BlobStoreDAO {
     public Publisher<byte[]> readBytes(BucketName bucketName, BlobId blobId) {
         return Mono.from(underlying.readAsByteSource(bucketName, blobId))
             .flatMap(reactiveByteSource -> decryptReactiveByteSource(reactiveByteSource, blobId))
-            .subscribeOn(Schedulers.boundedElastic());
+            .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER);
     }
 
     @Override
