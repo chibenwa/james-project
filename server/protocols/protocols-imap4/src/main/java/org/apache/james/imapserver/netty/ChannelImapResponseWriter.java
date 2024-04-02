@@ -79,11 +79,6 @@ public class ChannelImapResponseWriter implements ImapResponseWriter {
         flushCallback.run();
         if (channel.isActive()) {
             if (literal.asBytesSequence().isPresent()) {
-                if (literal.size() > 10 * 1024 * 1024 * 1024) {
-                    LoggerFactory.getLogger(this.getClass())
-                        .warn("Writing  {} bytes litteral {} with content {} as a byte array", literal.getInputStream(), literal,
-                        literal.asMailboxContent());
-                }
                 channel.writeAndFlush(Unpooled.wrappedBuffer(literal.asBytesSequence().get()));
                 return;
             }
