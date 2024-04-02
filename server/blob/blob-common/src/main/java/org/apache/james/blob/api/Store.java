@@ -121,7 +121,10 @@ public interface Store<T, I> {
                     JamesFileBackedOutputStream out = new JamesFileBackedOutputStream("DelegateCloseableByteSource", FILE_THRESHOLD);
                     try {
                         long size = in.transferTo(out);
-                        return Mono.just(new DelegateCloseableByteSource(out.asByteSource(), out::reset, size));
+                        return Mono.just(new DelegateCloseableByteSource(out.asByteSource(), () -> {
+                            out.reset();
+                            out.close();
+                        }, size));
                     } catch (Exception e) {
                         out.reset();
                         out.close();
