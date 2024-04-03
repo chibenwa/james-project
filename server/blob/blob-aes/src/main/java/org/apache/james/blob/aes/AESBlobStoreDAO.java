@@ -27,6 +27,8 @@ import java.security.GeneralSecurityException;
 import java.util.Collection;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.io.output.ThresholdingOutputStream;
+import org.apache.commons.io.output.UnsynchronizedByteArrayOutputStream;
 import org.apache.james.blob.api.BlobId;
 import org.apache.james.blob.api.BlobStoreDAO;
 import org.apache.james.blob.api.BucketName;
@@ -132,9 +134,16 @@ public class AESBlobStoreDAO implements BlobStoreDAO {
 
     @Override
     public Publisher<byte[]> readBytes(BucketName bucketName, BlobId blobId) {
-        return Mono.from(underlying.readAsByteSource(bucketName, blobId))
-            .publishOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
-            .flatMap(reactiveByteSource -> decryptReactiveByteSource(reactiveByteSource, blobId));
+        return Mono.from(underlying.readBytes(bucketName, blobId))
+            .map(bytes -> {
+                InputStream inputStream = decrypt(new ByteArrayInputStream(bytes));
+                try (UnsynchronizedByteArrayOutputStream outputStream = UnsynchronizedByteArrayOutputStream.builder()
+                    .setBufferSize(bytes.length + 128)
+                    .get()) {
+                    IOUtils.copy(inputStream, outputStream);
+                    return outputStream.toByteArray();
+                }
+            });
     }
 
     @Override
