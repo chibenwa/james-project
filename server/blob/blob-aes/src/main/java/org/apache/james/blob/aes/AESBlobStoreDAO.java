@@ -135,15 +135,16 @@ public class AESBlobStoreDAO implements BlobStoreDAO {
     @Override
     public Publisher<byte[]> readBytes(BucketName bucketName, BlobId blobId) {
         return Mono.from(underlying.readBytes(bucketName, blobId))
-            .map(bytes -> {
+            .map(Throwing.function(bytes -> {
                 InputStream inputStream = decrypt(new ByteArrayInputStream(bytes));
+                int aesPadding = 128;
                 try (UnsynchronizedByteArrayOutputStream outputStream = UnsynchronizedByteArrayOutputStream.builder()
-                    .setBufferSize(bytes.length + 128)
+                    .setBufferSize(bytes.length + aesPadding)
                     .get()) {
                     IOUtils.copy(inputStream, outputStream);
                     return outputStream.toByteArray();
                 }
-            });
+            }));
     }
 
     @Override
