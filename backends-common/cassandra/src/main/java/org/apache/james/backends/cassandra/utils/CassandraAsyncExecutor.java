@@ -20,7 +20,11 @@
 package org.apache.james.backends.cassandra.utils;
 
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Function;
+
+import org.apache.james.util.concurrent.NamedThreadFactory;
 
 import javax.inject.Inject;
 
@@ -34,8 +38,13 @@ import com.datastax.oss.driver.api.core.cql.Statement;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Scheduler;
+import reactor.core.scheduler.Schedulers;
 
 public class CassandraAsyncExecutor {
+    public static final ExecutorService EXECUTOR_SERVICE = Executors.newFixedThreadPool(16, NamedThreadFactory.withName("cassandra-driver-post-request"));
+    public static final Scheduler SCHEDULER = Schedulers.fromExecutorService(EXECUTOR_SERVICE);
+
     public class CassandraAsyncExecutorException extends RuntimeException {
         public CassandraAsyncExecutorException(Statement statement, Throwable e) {
             super("Failed executing " + asString(statement), e);
@@ -67,6 +76,7 @@ public class CassandraAsyncExecutor {
 
     public Mono<Boolean> executeReturnApplied(Statement statement) {
         return Mono.defer(() -> Mono.from(execute(statement)))
+            .publishOn(SCHEDULER)
             .map(ReactiveRow::wasApplied)
             .onErrorMap(withStatement(statement));
     }
@@ -77,17 +87,22 @@ public class CassandraAsyncExecutor {
 
     public Mono<Void> executeVoid(Statement statement) {
         return Mono.defer(() -> Mono.from(execute(statement)))
+            .publishOn(SCHEDULER)
             .then()
             .onErrorMap(withStatement(statement));
     }
 
     public Mono<Row> executeSingleRow(Statement statement) {
-        Mono<Row> result = Mono.defer(() -> Mono.from(execute(statement)));
+        Mono<Row> result = Mono.defer(() -> Mono.from(execute(statement)))
+            .publishOn(SCHEDULER)
+            .map(ro -> (Row) ro);
         return result.onErrorMap(withStatement(statement));
     }
 
     public Flux<Row> executeRows(Statement statement) {
-        Flux<Row> result = Flux.defer(() -> Flux.from(execute(statement)));
+        Flux<Row> result = Flux.defer(() -> Flux.from(execute(statement)))
+            .publishOn(SCHEDULER)
+            .map(ro -> (Row) ro);
         return result.onErrorMap(withStatement(statement));
     }
 
