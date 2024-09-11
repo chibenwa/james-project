@@ -44,6 +44,7 @@ import com.google.inject.Module;
 import com.google.inject.util.Modules;
 
 public class CustomJamesServerMain implements JamesServerMain {
+
     public static final Module PROTOCOLS = Modules.combine(
         new IMAPServerModule(),
         new ProtocolHandlerModule(),
@@ -60,22 +61,29 @@ public class CustomJamesServerMain implements JamesServerMain {
         new MemoryMailQueueModule(),
         new TaskManagerModule(),
         new RawPostDequeueDecoratorModule(),
-        binder -> binder.bind(MailetContainerModule.DefaultProcessorsConfigurationSupplier.class)
-            .toInstance(BaseHierarchicalConfiguration::new));
+        binder -> binder.bind(
+                MailetContainerModule
+                    .DefaultProcessorsConfigurationSupplier.class
+            ).toInstance(BaseHierarchicalConfiguration::new));
 
     public static final Module CUSTOM_SERVER_AGGREGATE_MODULE = Modules.combine(
         CUSTOM_SERVER_MODULE,
         PROTOCOLS);
 
     public static void main(String[] args) throws Exception {
-        MemoryJamesConfiguration configuration = MemoryJamesConfiguration.builder()
+        MemoryJamesConfiguration configuration = MemoryJamesConfiguration
+            .builder()
             .useWorkingDirectoryEnvProperty()
             .build();
 
         JamesServerMain.main(GuiceJamesServer.forConfiguration(configuration)
             .combineWith(CUSTOM_SERVER_AGGREGATE_MODULE)
-            .combineWith(new UsersRepositoryModuleChooser(new MemoryUsersRepositoryModule())
-                .chooseModules(configuration.getUsersRepositoryImplementation()))
+            .combineWith(new UsersRepositoryModuleChooser(
+                new MemoryUsersRepositoryModule()
+            )
+            .chooseModules(configuration
+                .getUsersRepositoryImplementation()
+            ))
         );
     }
 }
