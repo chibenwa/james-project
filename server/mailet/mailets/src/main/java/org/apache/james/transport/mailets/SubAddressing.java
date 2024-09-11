@@ -19,22 +19,33 @@
 
 package org.apache.james.transport.mailets;
 
-import com.github.fge.lambdas.Throwing;
-import com.google.common.collect.ImmutableList;
 import jakarta.inject.Inject;
+import jakarta.inject.Named;
 import jakarta.mail.MessagingException;
-import org.apache.james.core.MailAddress;
+
+import org.apache.james.core.Username;
+import org.apache.james.mailbox.MailboxManager;
+import org.apache.james.mailbox.MailboxSession;
+import org.apache.james.mailbox.model.MailboxACL;
+import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.user.api.UsersRepository;
 import org.apache.mailet.Mail;
 import org.apache.mailet.StorageDirective;
 import org.apache.mailet.base.GenericMailet;
 
+import com.github.fge.lambdas.Throwing;
+import com.google.common.collect.ImmutableList;
+
 public class SubAddressing extends GenericMailet {
     private final UsersRepository usersRepository;
+    private final MailboxManager mailboxManager;
+    private MailboxSession session;
 
     @Inject
-    public SubAddressing(UsersRepository usersRepository) {
+    public SubAddressing(UsersRepository usersRepository, @Named("mailboxmanager") MailboxManager mailboxManager, MailboxSession session) {
         this.usersRepository = usersRepository;
+        this.mailboxManager = mailboxManager;
+        this.session = session;
     }
 
     @Override
@@ -42,10 +53,24 @@ public class SubAddressing extends GenericMailet {
         mail.getRecipients().forEach(recipient ->
             recipient.getLocalPartDetails("+")
                 .ifPresent(
-                    Throwing.consumer(details ->
-                    StorageDirective.builder().targetFolders(ImmutableList.of(details)).build()
-                        .encodeAsAttributes(usersRepository.getUsername(recipient))
-                        .forEach(mail::setAttribute))
-                ));
+                    Throwing.consumer(details -> {
+
+                        boolean hasRight = mailboxManager.hasRight(
+                            MailboxPath.forUser(
+                                Username.fromMailAddress(recipient.stripDetails("+")),
+                                details
+                            ),
+                            MailboxACL.Right.Post,
+                            session
+                        );
+
+                        String targetFolder = hasRight ? details : "inbox";
+
+                        StorageDirective.builder().targetFolders(ImmutableList.of(targetFolder)).build()
+                            .encodeAsAttributes(usersRepository.getUsername(recipient))
+                            .forEach(mail::setAttribute);
+                    })
+                )
+        );
     }
 }

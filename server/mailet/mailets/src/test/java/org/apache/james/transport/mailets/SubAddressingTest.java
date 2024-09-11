@@ -19,39 +19,104 @@
 
 package org.apache.james.transport.mailets;
 
+import static org.apache.james.transport.mailets.WithStorageDirectiveTest.NO_DOMAIN_LIST;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+
+import java.util.Collection;
+
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.james.core.MailAddress;
+import org.apache.james.core.Username;
+import org.apache.james.mailbox.MailboxManager;
+import org.apache.james.mailbox.MailboxSession;
+import org.apache.james.mailbox.exception.MailboxException;
+import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources;
+import org.apache.james.mailbox.model.MailboxACL;
+import org.apache.james.mailbox.model.MailboxId;
+import org.apache.james.mailbox.model.MailboxPath;
+import org.apache.james.metrics.api.MetricFactory;
+import org.apache.james.metrics.tests.RecordingMetricFactory;
+import org.apache.james.user.api.UsersRepository;
+import org.apache.james.user.api.model.User;
 import org.apache.james.user.memory.MemoryUsersRepository;
 import org.apache.mailet.Attribute;
 import org.apache.mailet.AttributeName;
 import org.apache.mailet.AttributeValue;
-import org.apache.mailet.base.MailAddressFixture;
 import org.apache.mailet.base.test.FakeMail;
+import org.apache.mailet.base.test.FakeMailContext;
 import org.apache.mailet.base.test.FakeMailetConfig;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
 
-import java.util.Collection;
-
-import static org.apache.james.transport.mailets.WithStorageDirectiveTest.NO_DOMAIN_LIST;
-import static org.assertj.core.api.Assertions.assertThat;
 
 public class SubAddressingTest {
+
+    private UsersRepository usersRepository;
+    private MailboxManager mailboxManager;
+    private SubAddressing testee;
+
+    @BeforeEach
+    void setUp() throws MailboxException {
+        usersRepository = mock(UsersRepository.class);
+        mailboxManager = InMemoryIntegrationResources.defaultResources().getMailboxManager();
+        MailboxSession session = mailboxManager.createSystemSession(Username.of("recipient"));
+
+        mailboxManager.createMailbox(MailboxPath.forUser(Username.of("recipient"), "any"), session);
+
+        testee = new SubAddressing(usersRepository, mailboxManager, session);
+
+    }
+
+
     @Test
     void shouldAddStorageDirectiveMatchingDetails() throws Exception {
-        SubAddressing testee = new SubAddressing(MemoryUsersRepository.withVirtualHosting(NO_DOMAIN_LIST));
         testee.init(FakeMailetConfig.builder()
             .build());
 
         FakeMail mail = FakeMail.builder()
             .name("name")
-            .recipient("recipient1+any@localhost")
+            .recipient("recipient+any@localhost")
             .build();
 
         testee.service(mail);
 
-        AttributeName recipient1 = AttributeName.of("DeliveryPaths_recipient1@localhost");
+        AttributeName recipient = AttributeName.of("DeliveryPaths_recipient@localhost");
         assertThat(mail.attributes().map(this::unbox))
-            .containsOnly(Pair.of(recipient1, "any"));
+            .containsOnly(Pair.of(recipient, "any"));
+    }
+
+    @Test
+    void shouldAddStorageDirectiveMatchingDetailsAndRights() throws Exception {
+
+        testee.init(FakeMailetConfig.builder()
+            .build());
+
+        FakeMail mail = FakeMail.builder()
+            .name("name")
+            .recipient("recipient+any@localhost")
+            .build();
+
+
+        mailboxManager.setRights(
+            MailboxPath.inbox(Username.of("recipient")),
+            MailboxACL.EMPTY.apply(
+                MailboxACL.command()
+                .forUser(Username.of("sender"))
+                .rights(MailboxACL.Right.Post)
+                .asAddition()
+            ),
+
+            mailboxManager.createSystemSession(Username.of("recipient"))
+        );
+
+
+        testee.service(mail);
+
+        AttributeName recipient = AttributeName.of("DeliveryPaths_recipient@localhost");
+        assertThat(mail.attributes().map(this::unbox))
+            .containsOnly(Pair.of(recipient, "any"));
     }
 
     Pair<AttributeName, String> unbox(Attribute attribute) {
