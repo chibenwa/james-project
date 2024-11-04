@@ -76,10 +76,11 @@ public class ReactiveThrottler {
         }
         int requestNumber = concurrentRequests.incrementAndGet();
 
+        Mono<Void> taskWithRequestDone = Mono.from(task)
+            .doFinally(any -> onRequestDone());
         if (requestNumber <= maxConcurrentRequests) {
             // We have capacity for one more concurrent request
-            return Mono.from(task)
-                .doFinally(any -> onRequestDone());
+            return taskWithRequestDone;
         } else if (requestNumber <= maxQueueSize + maxConcurrentRequests) {
             // Queue the request for later
             AtomicBoolean cancelled = new AtomicBoolean(false);
@@ -89,7 +90,7 @@ public class ReactiveThrottler {
                     if (cancel) {
                         return Mono.empty();
                     }
-                    return Mono.from(task);
+                    return Mono.from(taskWithRequestDone);
                 })
                 .then(Mono.fromRunnable(() -> one.emitEmpty(Sinks.EmitFailureHandler.FAIL_FAST))));
             queue.add(taskHolder);
@@ -123,9 +124,6 @@ public class ReactiveThrottler {
         TaskHolder throttled = queue.poll();
         if (throttled != null) {
             Disposable disposable = Mono.from(throttled.task)
-                .doFinally(any -> {
-                    onRequestDone();
-                })
                 .subscribe();
             throttled.disposable.set(disposable);
         }
