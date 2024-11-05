@@ -144,7 +144,7 @@ public class IdleProcessor extends AbstractMailboxProcessor<IdleRequest> impleme
         // Write the response after the listener was add
         // IMAP-341
         responder.respond(new ContinuationResponse(HumanReadableText.IDLING));
-        return unsolicitedResponses(session, responder, false);
+        return Mono.empty();
     }
 
     @Override
