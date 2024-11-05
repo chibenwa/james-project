@@ -33,6 +33,7 @@ import org.reactivestreams.Publisher;
 import reactor.core.Disposable;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
+import reactor.core.scheduler.Schedulers;
 
 public class ReactiveThrottler {
     private static class TaskHolder {
@@ -62,12 +63,24 @@ public class ReactiveThrottler {
     // In flight + executing
     private final AtomicInteger concurrentRequests = new AtomicInteger(0);
     private final Queue<TaskHolder> queue = new ConcurrentLinkedQueue<>();
+    private final Sinks.Many<TaskHolder> sink;
 
     public ReactiveThrottler(GaugeRegistry gaugeRegistry, int maxConcurrentRequests, int maxQueueSize) {
         gaugeRegistry.register("imap.request.queue.size", () -> Math.max(concurrentRequests.get() - maxConcurrentRequests, 0));
 
         this.maxConcurrentRequests = maxConcurrentRequests;
         this.maxQueueSize = maxQueueSize;
+        this.sink = Sinks.many().multicast()
+            .onBackpressureBuffer();
+
+        sink.asFlux()
+            .subscribeOn(Schedulers.parallel())
+            .subscribe(taskHolder -> {
+                    Disposable disposable = Mono.from(taskHolder.task)
+                        .doFinally(any -> onRequestDone())
+                        .subscribe();
+                    taskHolder.disposable.set(disposable);
+                });
     }
 
     public Mono<Void> throttle(Publisher<Void> task, ImapMessage imapMessage) {
@@ -76,11 +89,10 @@ public class ReactiveThrottler {
         }
         int requestNumber = concurrentRequests.incrementAndGet();
 
-        Mono<Void> taskWithRequestDone = Mono.from(task)
-            .doFinally(any -> onRequestDone());
         if (requestNumber <= maxConcurrentRequests) {
             // We have capacity for one more concurrent request
-            return taskWithRequestDone;
+            return Mono.from(task)
+                .doFinally(any -> onRequestDone());
         } else if (requestNumber <= maxQueueSize + maxConcurrentRequests) {
             // Queue the request for later
             AtomicBoolean cancelled = new AtomicBoolean(false);
@@ -90,7 +102,7 @@ public class ReactiveThrottler {
                     if (cancel) {
                         return Mono.empty();
                     }
-                    return Mono.from(taskWithRequestDone);
+                    return Mono.from(task);
                 })
                 .then(Mono.fromRunnable(() -> one.emitEmpty(Sinks.EmitFailureHandler.FAIL_FAST))));
             queue.add(taskHolder);
@@ -123,9 +135,9 @@ public class ReactiveThrottler {
         concurrentRequests.getAndDecrement();
         TaskHolder throttled = queue.poll();
         if (throttled != null) {
-            Disposable disposable = Mono.from(throttled.task)
-                .subscribe();
-            throttled.disposable.set(disposable);
+            synchronized (sink) {
+                sink.emitNext(throttled, Sinks.EmitFailureHandler.FAIL_FAST);
+            }
         }
     }
 }
