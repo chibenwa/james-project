@@ -65,6 +65,7 @@ import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.model.MessageRange;
 import org.apache.james.mailbox.model.UidValidity;
 import org.apache.james.metrics.api.MetricFactory;
+import org.apache.james.util.MDCStructuredLogger;
 import org.apache.james.util.ReactorUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -96,6 +97,11 @@ abstract class AbstractSelectionProcessor<R extends AbstractMailboxSelectionRequ
 
     @Override
     protected Mono<Void> processRequestReactive(R request, ImapSession session, Responder responder) {
+
+        MDCStructuredLogger.forLogger(LOGGER)
+            .field("user", session.getUserName().asString())
+            .log(LOGGER -> LOGGER.info("Client issued SELECT"));
+
         String mailboxName = request.getMailboxName();
         MailboxPath fullMailboxPath = PathConverter.forSession(session).buildFullPath(mailboxName);
 

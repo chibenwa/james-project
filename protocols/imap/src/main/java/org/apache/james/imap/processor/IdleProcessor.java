@@ -46,6 +46,8 @@ import org.apache.james.mailbox.events.MailboxEvents.Expunged;
 import org.apache.james.mailbox.events.MailboxEvents.FlagsUpdated;
 import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.util.MDCBuilder;
+import org.apache.james.util.MDCStructuredLogger;
+import org.apache.james.util.StructuredLogger;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -83,6 +85,11 @@ public class IdleProcessor extends AbstractMailboxProcessor<IdleRequest> impleme
         if (sm != null) {
             sm.registerIdle(new IdleMailboxListener(session, responder));
         }
+
+        MDCStructuredLogger.forLogger(LOGGER)
+            .field("user", session.getUserName().asString())
+            .field("mailboxid", session.getSelected().getMailboxId().serialize())
+            .log(LOGGER -> LOGGER.info("Client issued IDLE"));
 
         final AtomicBoolean idleActive = new AtomicBoolean(true);
 
