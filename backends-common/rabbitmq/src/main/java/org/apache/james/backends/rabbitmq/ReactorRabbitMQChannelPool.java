@@ -799,6 +799,16 @@ public class ReactorRabbitMQChannelPool implements ChannelPool, Startable {
     public Mono<Void> createWorkQueue(QueueSpecification queueSpecification) {
         Preconditions.checkArgument(queueSpecification.getName() != null, "WorkQueue pattern do not make sense for unnamed queues");
 
+        return queueExist(queueSpecification.getName())
+            .flatMap(exists -> {
+                if (!exists) {
+                    return doCreateWorkQueue(queueSpecification);
+                }
+                return Mono.empty();
+            });
+    }
+
+    private Mono<Void> doCreateWorkQueue(QueueSpecification queueSpecification) {
         return Mono.using(this::createSender,
             managementSender -> managementSender.declareQueue(queueSpecification),
             Sender::close)
@@ -812,6 +822,30 @@ public class ReactorRabbitMQChannelPool implements ChannelPool, Startable {
                     return Mono.empty();
                 })
             .then();
+    }
+
+    Mono<Boolean> queueExist(String name) {
+        return getChannelMono()
+            .flatMap(c -> Mono.fromCallable(() -> {
+                try {
+                    c.queueDeclarePassive(name);
+                    return true;
+                } catch (IOException e) {
+                    if (isNotFound(e)) {
+                        return false;
+                    }
+                    throw e;
+                }
+            }).subscribeOn(Schedulers.boundedElastic()));
+    }
+
+    private boolean isNotFound(Throwable e) {
+        if (Optional.ofNullable(e.getMessage()).map(message -> message.contains("reply-code=404")).orElse(false)) {
+            return true;
+        }
+        return Optional.ofNullable(e.getCause())
+            .map(this::isNotFound)
+            .orElse(false);
     }
 
     @PreDestroy
