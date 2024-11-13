@@ -28,10 +28,6 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 
-import io.netty.buffer.Unpooled;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.group.DefaultChannelGroup;
-import io.netty.util.concurrent.GlobalEventExecutor;
 import jakarta.inject.Inject;
 
 import org.apache.commons.configuration2.HierarchicalConfiguration;
@@ -60,7 +56,12 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.ImmutableSet;
 
+import io.netty.buffer.Unpooled;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.channel.group.DefaultChannelGroup;
+import io.netty.util.concurrent.GlobalEventExecutor;
+
 
 /**
  * NIO SMTPServer which use Netty
