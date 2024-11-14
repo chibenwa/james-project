@@ -452,9 +452,12 @@ public class StoreMailboxManager implements MailboxManager {
     }
 
     private Mono<Void> inheritRightsReactive(MailboxSession mailboxSession, MailboxPath path) {
-        return nearestExistingParent(mailboxSession, path)
-            .flatMap(parent -> Mono.from(listRightsReactive(parent, mailboxSession)))
-            .flatMap(acl -> storeRightManager.setRightsReactiveWithoutAccessControl(path, acl, mailboxSession));
+        if (!path.belongsTo(mailboxSession)) {
+            return nearestExistingParent(mailboxSession, path)
+                .flatMap(parent -> Mono.from(listRightsReactive(parent, mailboxSession)))
+                .flatMap(acl -> storeRightManager.setRightsReactiveWithoutAccessControl(path, acl, mailboxSession));
+        }
+        return Mono.empty();
     }
 
     @Override
