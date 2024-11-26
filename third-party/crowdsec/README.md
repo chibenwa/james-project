@@ -73,7 +73,21 @@ The EHLO hook will block banned clients with `554 Email rejected` whereas the co
 ```
 mvn clean install -DskipTests
 ```
-then run it: `docker-compose up`
+
+Customise the crowdsec image:
+
+```
+docker build -t apache/james:memory-crowdsec .
+```
+
+Download extra dependencies:
+
+```
+$ wget https://repo1.maven.org/maven2/ch/qos/logback/contrib/logback-jackson/0.1.5/logback-jackson-0.1.5.jar
+$ wget https://repo1.maven.org/maven2/ch/qos/logback/contrib/logback-json-core/0.1.5/logback-json-core-0.1.5.jar
+```
+
+Then run it: `docker-compose up`
 
 ## Crowdsec endpoints
 
