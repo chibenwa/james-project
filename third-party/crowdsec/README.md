@@ -17,6 +17,12 @@ This module is for developing and delivering extensions to James for the [Crowds
 guice.extension.module=org.apache.james.crowdsec.module.CrowdsecModule
 ```
 
+- Mount the configuration file onto the classpath
+
+You can find a `logback.xml` configuration file in the `sample-configuration` directory. \
+To use this configuration at runtime, ensure the file is available in the application's classpath by placing it in a directory accessible by the application.
+Use a `-Dlogback.configurationFile` JVM argument to specify the file's location when starting the application.
+
 ### CrowdSec support for SMTP
 - Declare the Crowdsec EhloHook in `smtpserver.xml`. Eg:
 
