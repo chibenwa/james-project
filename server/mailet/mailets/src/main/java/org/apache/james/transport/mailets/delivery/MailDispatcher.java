@@ -170,7 +170,9 @@ public class MailDispatcher {
         MimeMessage message = mail.getMessage();
         // Set Return-Path and remove all other Return-Path headers from the message
         // This only works because there is a placeholder inserted by MimeMessageWrapper
-        message.setHeader(RFC2822Headers.RETURN_PATH, mail.getMaybeSender().asPrettyString());
+
+        // Mime message modifications breaks UTF-8 encoding
+        // message.setHeader(RFC2822Headers.RETURN_PATH, mail.getMaybeSender().asPrettyString());
 
         return deliver(mail, message);
     }

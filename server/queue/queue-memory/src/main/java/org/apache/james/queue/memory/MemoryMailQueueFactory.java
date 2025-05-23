@@ -195,6 +195,7 @@ public class MemoryMailQueueFactory implements MailQueueFactory<MemoryMailQueueF
         }
 
         private Mail cloneMail(Mail mail) throws MessagingException {
+            // This fucks up UTF-8 mime headers...
             MailImpl mailImpl = MailImpl.duplicate(mail);
             mailImpl.setName(mail.getName());
             mailImpl.setState(mail.getState());
