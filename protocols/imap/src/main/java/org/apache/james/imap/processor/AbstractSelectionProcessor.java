@@ -19,10 +19,12 @@
 
 package org.apache.james.imap.processor;
 
+import static org.apache.james.imap.processor.IdProcessor.USER_AGENT;
 import static org.apache.james.mailbox.MessageManager.MailboxMetaData.RecentMode.IGNORE;
 import static org.apache.james.mailbox.MessageManager.MailboxMetaData.RecentMode.RESET;
 import static org.apache.james.mailbox.MessageManager.MailboxMetaData.RecentMode.RETRIEVE;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -108,15 +110,23 @@ abstract class AbstractSelectionProcessor<R extends AbstractMailboxSelectionRequ
         String mailboxName = request.getMailboxName();
         MailboxPath fullMailboxPath = pathConverterFactory.forSession(session).buildFullPath(mailboxName);
 
-        return respond(session, fullMailboxPath, request, responder)
-            .onErrorResume(MailboxNotFoundException.class, e -> {
-                responder.respond(statusResponseFactory.taggedNo(request.getTag(), request.getCommand(), HumanReadableText.FAILURE_NO_SUCH_MAILBOX));
-                return ReactorUtils.logAsMono(() -> LOGGER.debug("Select failed as mailbox does not exist {}", mailboxName, e));
-            })
-            .onErrorResume(MailboxException.class, e -> {
-                no(request, responder, HumanReadableText.FAILED);
-                return ReactorUtils.logAsMono(() -> LOGGER.error("Select failed for mailbox {}", mailboxName, e));
-            });
+        return delayIfMicrosoft365(session)
+            .then(respond(session, fullMailboxPath, request, responder)
+                .onErrorResume(MailboxNotFoundException.class, e -> {
+                    responder.respond(statusResponseFactory.taggedNo(request.getTag(), request.getCommand(), HumanReadableText.FAILURE_NO_SUCH_MAILBOX));
+                    return ReactorUtils.logAsMono(() -> LOGGER.debug("Select failed as mailbox does not exist {}", mailboxName, e));
+                })
+                .onErrorResume(MailboxException.class, e -> {
+                    no(request, responder, HumanReadableText.FAILED);
+                    return ReactorUtils.logAsMono(() -> LOGGER.error("Select failed for mailbox {}", mailboxName, e));
+                }));
+    }
+
+    private Mono<Void> delayIfMicrosoft365(ImapSession session) {
+        if (session.getAttribute(USER_AGENT) instanceof String userAgent && userAgent.contains("Microsoft Office 365")) {
+            return Mono.delay(Duration.ofMillis(250)).then();
+        }
+        return Mono.empty();
     }
 
     private Mono<Void> respond(ImapSession session, MailboxPath fullMailboxPath, AbstractMailboxSelectionRequest request, Responder responder) {
