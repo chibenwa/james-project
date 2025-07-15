@@ -19,15 +19,18 @@
 
 package org.apache.james.imap.processor;
 
+import static org.apache.james.imap.processor.IdProcessor.USER_AGENT;
 import static org.apache.james.mailbox.MessageManager.MailboxMetaData.RecentMode.IGNORE;
 import static org.apache.james.mailbox.MessageManager.MailboxMetaData.RecentMode.RESET;
 import static org.apache.james.mailbox.MessageManager.MailboxMetaData.RecentMode.RETRIEVE;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -68,6 +71,7 @@ import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.model.MessageRange;
 import org.apache.james.mailbox.model.UidValidity;
 import org.apache.james.metrics.api.MetricFactory;
+import org.apache.james.util.MDCStructuredLogger;
 import org.apache.james.util.ReactorUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -108,7 +112,30 @@ abstract class AbstractSelectionProcessor<R extends AbstractMailboxSelectionRequ
         String mailboxName = request.getMailboxName();
         MailboxPath fullMailboxPath = pathConverterFactory.forSession(session).buildFullPath(mailboxName);
 
-        return respond(session, fullMailboxPath, request, responder)
+
+        String key = "SELECT-counter";
+        AtomicLong atomicLong = Optional.ofNullable(session.getAttribute(key))
+            .filter(AtomicLong.class::isInstance)
+            .map(AtomicLong.class::cast)
+            .orElseGet(() -> {
+                AtomicLong res = new AtomicLong(0);
+                session.setAttribute(key, res);
+                session.schedule(() -> session.setAttribute(key, new AtomicLong(0)), Duration.ofMinutes(10));
+                return res;
+            });
+
+        long selectCount = atomicLong.getAndIncrement();
+        Duration delay = Duration.ofMillis(delayMS(selectCount));
+        MDCStructuredLogger.forLogger(LOGGER)
+            .field("username", session.getUserName().asString())
+            .field("userAgent", Optional.ofNullable(session.getAttribute(USER_AGENT))
+                .filter(String.class::isInstance)
+                .map(String.class::cast)
+                .orElse(""))
+            .log(logger -> logger.warn("SELECT performed on an IMAP session. Delay " + delay.toMillis() + " ms"));
+
+        return Mono.delay(delay)
+            .then(respond(session, fullMailboxPath, request, responder))
             .onErrorResume(MailboxNotFoundException.class, e -> {
                 responder.respond(statusResponseFactory.taggedNo(request.getTag(), request.getCommand(), HumanReadableText.FAILURE_NO_SUCH_MAILBOX));
                 return ReactorUtils.logAsMono(() -> LOGGER.debug("Select failed as mailbox does not exist {}", mailboxName, e));
@@ -117,6 +144,16 @@ abstract class AbstractSelectionProcessor<R extends AbstractMailboxSelectionRequ
                 no(request, responder, HumanReadableText.FAILED);
                 return ReactorUtils.logAsMono(() -> LOGGER.error("Select failed for mailbox {}", mailboxName, e));
             });
+    }
+
+    private static long delayMS(long selectCount) {
+        if (selectCount < 25) {
+            return 0;
+        }
+        if (selectCount > 500) {
+            return 1000;
+        }
+        return selectCount * 2;
     }
 
     private Mono<Void> respond(ImapSession session, MailboxPath fullMailboxPath, AbstractMailboxSelectionRequest request, Responder responder) {
