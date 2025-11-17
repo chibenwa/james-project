@@ -30,10 +30,7 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import jakarta.inject.Inject;
-import jakarta.mail.Address;
 import jakarta.mail.MessagingException;
-import jakarta.mail.internet.AddressException;
-import jakarta.mail.internet.InternetAddress;
 
 import org.apache.commons.configuration2.Configuration;
 import org.apache.james.core.Domain;
@@ -43,6 +40,8 @@ import org.apache.james.jdkim.api.PublicKeyRecordRetriever;
 import org.apache.james.jdkim.api.SignatureRecord;
 import org.apache.james.jdkim.exceptions.FailException;
 import org.apache.james.jdkim.mailets.DKIMVerifier;
+import org.apache.james.mime4j.dom.address.AddressList;
+import org.apache.james.mime4j.field.address.LenientAddressParser;
 import org.apache.james.protocols.smtp.SMTPSession;
 import org.apache.james.protocols.smtp.hook.HookResult;
 import org.apache.james.protocols.smtp.hook.HookReturnCode;
@@ -109,13 +108,12 @@ public class DKIMHook implements JamesMessageHook {
         static DKIMCheckNeeded onlyForHeaderFromDomain(Domain domain) {
             return mail -> {
                 try {
-                    return StreamUtils.ofNullable(mail.getMessage().getFrom())
+                    return StreamUtils.ofNullable(mail.getMessage().getHeader("From"))
+                        .map(LenientAddressParser.DEFAULT::parseAddressList)
+                        .map(AddressList::flatten)
+                        .flatMap(Collection::stream)
                         .distinct()
-                        .flatMap(DKIMCheckNeeded::parseMailAddress)
-                        .findFirst()
-                        .map(MailAddress::getDomain)
-                        .map(domain::equals)
-                        .orElse(false);
+                        .anyMatch(address -> domain.asString().equalsIgnoreCase(address.getDomain()));
                 } catch (MessagingException me) {
                     try {
                         LOGGER.info("Unable to parse the \"FROM\" header {}; ignoring.", mail.getMessage().getHeader("From"));
@@ -127,20 +125,7 @@ public class DKIMHook implements JamesMessageHook {
             };
         }
 
-        private static Stream<MailAddress> parseMailAddress(Address from) {
-            if (from instanceof InternetAddress internetAddress) {
-                try {
-                    return Stream.of(new MailAddress(internetAddress.getAddress()));
-                } catch (AddressException e) {
-                    // Never happens as valid InternetAddress are valid MailAddress
-                    throw new RuntimeException(e);
-                }
-            }
-            return Stream.empty();
-        }
-
         DKIMCheckNeeded ALL = any -> true;
-        DKIMCheckNeeded NONE = any -> false;
     }
 
     @FunctionalInterface
