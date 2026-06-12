@@ -21,9 +21,9 @@ package org.apache.james.modules.protocols;
 
 import org.apache.commons.configuration2.HierarchicalConfiguration;
 import org.apache.commons.configuration2.tree.ImmutableNode;
-import org.apache.james.protocols.api.sasl.OauthBearerSaslMechanism;
-import org.apache.james.protocols.api.sasl.PlainSaslMechanism;
-import org.apache.james.protocols.api.sasl.XOauth2SaslMechanism;
+import org.apache.james.protocols.api.sasl.OauthBearerSaslMechanismFactory;
+import org.apache.james.protocols.api.sasl.PlainSaslMechanismFactory;
+import org.apache.james.protocols.api.sasl.XOauth2SaslMechanismFactory;
 
 import com.google.common.collect.ImmutableList;
 
@@ -31,8 +31,8 @@ public class JamesDefaultImapSaslMechanismClassNamesProvider implements DefaultI
     @Override
     public ImmutableList<String> resolve(HierarchicalConfiguration<ImmutableNode> configuration) {
         return ImmutableList.of(
-            PlainSaslMechanism.class.getSimpleName(),
-            OauthBearerSaslMechanism.class.getSimpleName(),
-            XOauth2SaslMechanism.class.getSimpleName());
+            PlainSaslMechanismFactory.class.getSimpleName(),
+            OauthBearerSaslMechanismFactory.class.getSimpleName(),
+            XOauth2SaslMechanismFactory.class.getSimpleName());
     }
 }

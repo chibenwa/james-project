@@ -28,8 +28,8 @@ class DefaultSaslMechanismNamingSchemeTest {
     void asNamingSchemeShouldResolveSimpleNameAgainstDefaultSaslPackage() {
         // avoid breaking changes for default SASL package
         assertThat(DefaultSaslMechanismNamingScheme.asNamingScheme()
-            .toFullyQualifiedClassNames(new ClassName("TestingDefaultPackageSaslMechanism"))
+            .toFullyQualifiedClassNames(new ClassName("TestingDefaultPackageSaslMechanismFactory"))
             .map(FullyQualifiedClassName::getName))
-            .contains("org.apache.james.protocols.api.sasl.TestingDefaultPackageSaslMechanism");
+            .contains("org.apache.james.protocols.api.sasl.TestingDefaultPackageSaslMechanismFactory");
     }
 }

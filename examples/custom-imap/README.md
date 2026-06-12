@@ -17,12 +17,13 @@ Note that when `imapPackages` is not provided, James will implicit use
 # Creating your own IMAP SASL mechanisms
 
 This example also demonstrates how to add a custom IMAP SASL mechanism.
-The `EXAMPLE-TOKEN` mechanism is declared through `auth.saslMechanisms`,
-while `auth.exampleToken` is a custom configuration block owned by the extension:
+The `EXAMPLE-TOKEN` mechanism is contributed by listing its `SaslMechanismFactory`
+in `auth.saslMechanisms`, while `auth.exampleToken` is a custom configuration
+block owned by the extension:
 
 ```xml
 <auth>
-    <saslMechanisms>PlainSaslMechanism,org.apache.james.examples.imap.sasl.ExampleTokenSaslMechanism</saslMechanisms>
+    <saslMechanisms>PlainSaslMechanismFactory,org.apache.james.examples.imap.sasl.ExampleTokenSaslMechanismFactory</saslMechanisms>
     <exampleToken>
         <expectedToken>secret-token</expectedToken>
         <authorizedUser>bob@domain.tld</authorizedUser>
@@ -30,15 +31,13 @@ while `auth.exampleToken` is a custom configuration block owned by the extension
 </auth>
 ```
 
-The extension module is declared in `extensions.properties`:
+James instantiates each configured factory through Guice (extension factories may
+use `@Inject` constructors) and the factory creates the mechanism from that IMAP
+server's configuration block: no extension module declaration is needed.
 
-```properties
-guice.extension.module=org.apache.james.examples.imap.sasl.ExampleTokenSaslModule
-```
-
-The module binds a `SaslMechanismFactory` for `ExampleTokenSaslMechanism`.
-James still uses `auth.saslMechanisms` to select the mechanism for one IMAP
-server, and the factory reads that server's `auth.exampleToken` block.
+A SASL mechanism owns the whole authentication exchange: it parses client
+responses, verifies the credentials and returns either a verified identity or a
+failure. Protocol servers only encode the outcome.
 
 ## Running the example
 

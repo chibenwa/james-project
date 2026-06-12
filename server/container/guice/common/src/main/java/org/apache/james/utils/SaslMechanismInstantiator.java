@@ -19,10 +19,8 @@
 
 package org.apache.james.utils;
 
-import org.apache.james.protocols.api.sasl.SaslMechanism;
+import org.apache.james.protocols.api.sasl.SaslMechanismFactory;
 
 public interface SaslMechanismInstantiator {
-    Class<? extends SaslMechanism> locate(ClassName className) throws ClassNotFoundException;
-
-    SaslMechanism instantiate(ClassName className) throws ClassNotFoundException;
+    SaslMechanismFactory instantiate(ClassName className) throws ClassNotFoundException;
 }

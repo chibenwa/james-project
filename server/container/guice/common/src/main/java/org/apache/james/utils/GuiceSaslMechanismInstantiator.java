@@ -21,23 +21,18 @@ package org.apache.james.utils;
 
 import jakarta.inject.Inject;
 
-import org.apache.james.protocols.api.sasl.SaslMechanism;
+import org.apache.james.protocols.api.sasl.SaslMechanismFactory;
 
 public class GuiceSaslMechanismInstantiator implements SaslMechanismInstantiator {
-    private final GuiceLoader.InvocationPerformer<SaslMechanism> mechanismLoader;
+    private final GuiceLoader.InvocationPerformer<SaslMechanismFactory> factoryLoader;
 
     @Inject
     public GuiceSaslMechanismInstantiator(GuiceLoader guiceLoader) {
-        this.mechanismLoader = guiceLoader.withNamingSheme(DefaultSaslMechanismNamingScheme.asNamingScheme());
+        this.factoryLoader = guiceLoader.withNamingSheme(DefaultSaslMechanismNamingScheme.asNamingScheme());
     }
 
     @Override
-    public Class<? extends SaslMechanism> locate(ClassName className) throws ClassNotFoundException {
-        return mechanismLoader.locateClass(className);
-    }
-
-    @Override
-    public SaslMechanism instantiate(ClassName className) throws ClassNotFoundException {
-        return mechanismLoader.instantiate(className);
+    public SaslMechanismFactory instantiate(ClassName className) throws ClassNotFoundException {
+        return factoryLoader.instantiate(className);
     }
 }

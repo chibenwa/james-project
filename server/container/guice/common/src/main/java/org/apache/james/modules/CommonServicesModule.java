@@ -26,6 +26,7 @@ import org.apache.james.filesystem.api.JamesDirectoriesProvider;
 import org.apache.james.modules.server.DNSServiceModule;
 import org.apache.james.modules.server.DropWizardMetricsModule;
 import org.apache.james.onami.lifecycle.PreDestroyModule;
+import org.apache.james.protocols.api.sasl.SaslAuthenticator;
 import org.apache.james.server.core.configuration.Configuration;
 import org.apache.james.server.core.configuration.ConfigurationProvider;
 import org.apache.james.server.core.configuration.FileConfigurationProvider;
@@ -36,6 +37,7 @@ import org.apache.james.utils.GuiceProbe;
 import org.apache.james.utils.GuiceSaslMechanismInstantiator;
 import org.apache.james.utils.PropertiesProvider;
 import org.apache.james.utils.SaslMechanismInstantiator;
+import org.apache.james.utils.UsersRepositorySaslAuthenticator;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
@@ -70,6 +72,7 @@ public class CommonServicesModule extends AbstractModule {
         bind(FileSystem.class).toInstance(fileSystem);
         bind(Configuration.class).toInstance(configuration);
         bind(SaslMechanismInstantiator.class).to(GuiceSaslMechanismInstantiator.class);
+        bind(SaslAuthenticator.class).to(UsersRepositorySaslAuthenticator.class);
 
         bind(ConfigurationProvider.class).toInstance(new FileConfigurationProvider(fileSystem, configuration));
 

@@ -22,7 +22,7 @@ package org.apache.james.utils;
 import org.apache.james.protocols.api.sasl.SaslMechanism;
 
 /**
- * Resolves simple SASL mechanism class names against James' default SASL SPI package.
+ * Resolves simple SASL mechanism factory class names against James' default SASL SPI package.
  */
 public final class DefaultSaslMechanismNamingScheme {
     private static final PackageName DEFAULT_SASL_PACKAGE = PackageName.of(SaslMechanism.class.getPackageName());

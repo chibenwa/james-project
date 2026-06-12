@@ -43,7 +43,7 @@ class IMAPServerModuleTest {
 
         // THEN existing James IMAP defaults are preserved
         assertThat(mechanismClassNames)
-            .containsExactly("PlainSaslMechanism", "OauthBearerSaslMechanism", "XOauth2SaslMechanism");
+            .containsExactly("PlainSaslMechanismFactory", "OauthBearerSaslMechanismFactory", "XOauth2SaslMechanismFactory");
     }
 
     @Test
@@ -52,14 +52,14 @@ class IMAPServerModuleTest {
         // This allows community custom IMAP packages with custom authentication to provide
         // their own default SASL list and avoid breaking changes when auth.saslMechanisms is absent.
         BaseHierarchicalConfiguration configuration = new BaseHierarchicalConfiguration();
-        DefaultImapSaslMechanismClassNamesProvider communityDefaultProvider = ignored -> ImmutableList.of("com.example.CustomSaslMechanism");
+        DefaultImapSaslMechanismClassNamesProvider communityDefaultProvider = ignored -> ImmutableList.of("com.example.CustomSaslMechanismFactory");
 
         // WHEN auth.saslMechanisms is absent
         ImmutableList<String> mechanismClassNames = testee.retrieveSaslMechanismClassNames(configuration, communityDefaultProvider);
 
         // THEN IMAP uses the configured community default provider instead of James default mechanisms
         assertThat(mechanismClassNames)
-            .containsExactly("com.example.CustomSaslMechanism");
+            .containsExactly("com.example.CustomSaslMechanismFactory");
     }
 
     @Test
@@ -67,14 +67,14 @@ class IMAPServerModuleTest {
         // GIVEN an explicit server-specific SASL mechanism list
         BaseHierarchicalConfiguration configuration = new BaseHierarchicalConfiguration();
         configuration.addProperty("auth.saslMechanisms",
-            "PlainSaslMechanism,com.example.CustomSaslMechanism,PlainSaslMechanism");
+            "PlainSaslMechanismFactory,com.example.CustomSaslMechanismFactory,PlainSaslMechanismFactory");
 
         // WHEN IMAP resolves configured class names
         ImmutableList<String> mechanismClassNames = testee.retrieveSaslMechanismClassNames(configuration, JAMES_DEFAULT_PROVIDER);
 
         // THEN the exact configured order is passed to the resolver
         assertThat(mechanismClassNames)
-            .containsExactly("PlainSaslMechanism", "com.example.CustomSaslMechanism", "PlainSaslMechanism");
+            .containsExactly("PlainSaslMechanismFactory", "com.example.CustomSaslMechanismFactory", "PlainSaslMechanismFactory");
     }
 
     @Test
@@ -93,7 +93,7 @@ class IMAPServerModuleTest {
     void retrieveSaslMechanismClassNamesShouldRejectBlankEntry() {
         // GIVEN auth.saslMechanisms contains a blank entry
         BaseHierarchicalConfiguration configuration = new BaseHierarchicalConfiguration();
-        configuration.addProperty("auth.saslMechanisms", "PlainSaslMechanism,,XOauth2SaslMechanism");
+        configuration.addProperty("auth.saslMechanisms", "PlainSaslMechanismFactory,,XOauth2SaslMechanismFactory");
 
         // WHEN resolving class names
         // THEN startup fails with an invalid configured list

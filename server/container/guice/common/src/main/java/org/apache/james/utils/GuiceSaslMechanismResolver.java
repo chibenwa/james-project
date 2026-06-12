@@ -22,7 +22,6 @@ package org.apache.james.utils;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Locale;
-import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -37,6 +36,9 @@ import org.apache.james.protocols.api.sasl.SaslMechanismFactory;
 import com.github.fge.lambdas.Throwing;
 import com.google.common.collect.ImmutableList;
 
+/**
+ * Creates the SASL mechanisms of one server from its configured {@link SaslMechanismFactory} class names.
+ */
 public class GuiceSaslMechanismResolver {
     private final SaslMechanismInstantiator instantiator;
 
@@ -45,13 +47,12 @@ public class GuiceSaslMechanismResolver {
         this.instantiator = instantiator;
     }
 
-    public ImmutableList<SaslMechanism> resolve(Collection<String> mechanismClassNames,
-                                                HierarchicalConfiguration<ImmutableNode> serverConfiguration,
-                                                Map<Class<? extends SaslMechanism>, SaslMechanismFactory> factories) throws ConfigurationException {
+    public ImmutableList<SaslMechanism> resolve(Collection<String> factoryClassNames,
+                                                HierarchicalConfiguration<ImmutableNode> serverConfiguration) throws ConfigurationException {
         try {
-            return mechanismClassNames.stream()
+            return factoryClassNames.stream()
                 .map(ClassName::new)
-                .map(Throwing.function(className -> resolve(className, serverConfiguration, factories)))
+                .map(Throwing.function(className -> create(className, serverConfiguration)))
                 .collect(Collectors.toMap(
                     mechanism -> normalize(mechanism.name()),
                     Function.identity(),
@@ -68,31 +69,16 @@ public class GuiceSaslMechanismResolver {
         }
     }
 
-    private SaslMechanism resolve(ClassName mechanismClassName,
-                                  HierarchicalConfiguration<ImmutableNode> serverConfiguration,
-                                  Map<Class<? extends SaslMechanism>, SaslMechanismFactory> factories) throws ConfigurationException {
-        Class<? extends SaslMechanism> mechanismClass = locate(mechanismClassName);
-        SaslMechanismFactory factory = factories.get(mechanismClass);
-        if (factory != null) {
-            return factory.create(serverConfiguration);
-        }
-        // Fall back to direct instantiation for mechanisms that do not need server-specific configuration.
-        return instantiate(mechanismClassName);
+    private SaslMechanism create(ClassName factoryClassName,
+                                 HierarchicalConfiguration<ImmutableNode> serverConfiguration) throws ConfigurationException {
+        return instantiate(factoryClassName).create(serverConfiguration);
     }
 
-    private Class<? extends SaslMechanism> locate(ClassName mechanismClassName) throws ConfigurationException {
+    private SaslMechanismFactory instantiate(ClassName factoryClassName) throws ConfigurationException {
         try {
-            return instantiator.locate(mechanismClassName);
+            return instantiator.instantiate(factoryClassName);
         } catch (Exception e) {
-            throw new ConfigurationException("Can not load SASL mechanism " + mechanismClassName.getName(), e);
-        }
-    }
-
-    private SaslMechanism instantiate(ClassName mechanismClassName) throws ConfigurationException {
-        try {
-            return instantiator.instantiate(mechanismClassName);
-        } catch (Exception e) {
-            throw new ConfigurationException("Can not load SASL mechanism " + mechanismClassName.getName(), e);
+            throw new ConfigurationException("Can not load SASL mechanism factory " + factoryClassName.getName(), e);
         }
     }
 

@@ -19,7 +19,6 @@
 package org.apache.james.modules.protocols;
 
 import java.util.Arrays;
-import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -74,9 +73,7 @@ import org.apache.james.imapserver.netty.IMAPServerFactory;
 import org.apache.james.lifecycle.api.ConfigurationSanitizer;
 import org.apache.james.metrics.api.GaugeRegistry;
 import org.apache.james.metrics.api.MetricFactory;
-import org.apache.james.modules.SaslMechanismFactories;
 import org.apache.james.protocols.api.sasl.SaslMechanism;
-import org.apache.james.protocols.api.sasl.SaslMechanismFactory;
 import org.apache.james.protocols.lib.netty.CertificateReloadable;
 import org.apache.james.protocols.netty.Encryption;
 import org.apache.james.server.core.configuration.ConfigurationProvider;
@@ -93,20 +90,13 @@ import com.github.fge.lambdas.functions.ThrowingFunction;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.inject.AbstractModule;
-import com.google.inject.Key;
-import com.google.inject.Provider;
 import com.google.inject.Provides;
 import com.google.inject.Scopes;
 import com.google.inject.Singleton;
-import com.google.inject.TypeLiteral;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
 
 public class IMAPServerModule extends AbstractModule {
-    private static final Key<Map<Class<? extends SaslMechanism>, Provider<SaslMechanismFactory>>> SASL_MECHANISM_FACTORY_PROVIDERS =
-        Key.get(new TypeLiteral<>() {
-        }, SaslMechanismFactories.class);
-
     private static Stream<Pair<Class, AbstractProcessor>> asPairStream(AbstractProcessor p) {
         return p.acceptableClasses()
             .stream().map(clazz -> Pair.of(clazz, p));
@@ -152,28 +142,10 @@ public class IMAPServerModule extends AbstractModule {
                                            GaugeRegistry gaugeRegistry,
                                            ConnectionCheckFactory connectionCheckFactory,
                                            Encryption.Factory encryptionFactory) {
-        Map<Class<? extends SaslMechanism>, SaslMechanismFactory> saslMechanismFactories = retrieveSaslMechanismFactories(guiceLoader);
         IMAPServerFactory factory = new IMAPServerFactory(fileSystem, imapSuiteLoader(guiceLoader, saslMechanismResolver,
-            saslMechanismFactories, defaultImapSaslMechanismClassNamesProvider, statusResponseFactory), metricFactory, gaugeRegistry, connectionCheckFactory);
+            defaultImapSaslMechanismClassNamesProvider, statusResponseFactory), metricFactory, gaugeRegistry, connectionCheckFactory);
         factory.setEncryptionFactory(encryptionFactory);
         return factory;
-    }
-
-    private Map<Class<? extends SaslMechanism>, SaslMechanismFactory> retrieveSaslMechanismFactories(GuiceLoader guiceLoader) {
-        return retrieveSaslMechanismFactoryProviders(guiceLoader)
-            .entrySet()
-            .stream()
-            .collect(ImmutableMap.toImmutableMap(Map.Entry::getKey, entry -> entry.getValue().get()));
-    }
-
-    private Map<Class<? extends SaslMechanism>, Provider<SaslMechanismFactory>> retrieveSaslMechanismFactoryProviders(GuiceLoader guiceLoader) {
-        try {
-            // Optional extension point: custom modules can contribute SASL mechanism factories through this annotated map.
-            return guiceLoader.getInstance(SASL_MECHANISM_FACTORY_PROVIDERS);
-        } catch (com.google.inject.ConfigurationException e) {
-            // No custom factory map was bound; resolver will fall back to direct SASL mechanism instantiation.
-            return ImmutableMap.of();
-        }
     }
 
     DefaultProcessor provideClassImapProcessors(ImapPackage imapPackage, GuiceLoader guiceLoader,
@@ -231,11 +203,10 @@ public class IMAPServerModule extends AbstractModule {
     }
 
     private ImmutableList<SaslMechanism> retrieveSaslMechanisms(GuiceSaslMechanismResolver saslMechanismResolver,
-                                                                Map<Class<? extends SaslMechanism>, SaslMechanismFactory> saslMechanismFactories,
                                                                 DefaultImapSaslMechanismClassNamesProvider defaultImapSaslMechanismClassNamesProvider,
                                                                 HierarchicalConfiguration<ImmutableNode> configuration) throws ConfigurationException {
-        ImmutableList<String> mechanismClassNames = retrieveSaslMechanismClassNames(configuration, defaultImapSaslMechanismClassNamesProvider);
-        return saslMechanismResolver.resolve(mechanismClassNames, configuration, saslMechanismFactories);
+        ImmutableList<String> factoryClassNames = retrieveSaslMechanismClassNames(configuration, defaultImapSaslMechanismClassNamesProvider);
+        return saslMechanismResolver.resolve(factoryClassNames, configuration);
     }
 
     ImmutableList<String> retrieveSaslMechanismClassNames(HierarchicalConfiguration<ImmutableNode> configuration,
@@ -257,12 +228,11 @@ public class IMAPServerModule extends AbstractModule {
 
     private ThrowingFunction<HierarchicalConfiguration<ImmutableNode>, ImapSuite> imapSuiteLoader(GuiceLoader guiceLoader,
                                                                                                   GuiceSaslMechanismResolver saslMechanismResolver,
-                                                                                                  Map<Class<? extends SaslMechanism>, SaslMechanismFactory> saslMechanismFactories,
                                                                                                   DefaultImapSaslMechanismClassNamesProvider defaultImapSaslMechanismClassNamesProvider,
                                                                                                   StatusResponseFactory statusResponseFactory) {
         return configuration -> {
             ImapPackage imapPackage = retrievePackages(guiceLoader, configuration);
-            ImmutableList<SaslMechanism> saslMechanisms = retrieveSaslMechanisms(saslMechanismResolver, saslMechanismFactories,
+            ImmutableList<SaslMechanism> saslMechanisms = retrieveSaslMechanisms(saslMechanismResolver,
                 defaultImapSaslMechanismClassNamesProvider, configuration);
             DefaultProcessor processor = provideClassImapProcessors(imapPackage, guiceLoader, saslMechanisms, statusResponseFactory);
             ImapEncoder encoder = provideImapEncoder(imapPackage, guiceLoader);
