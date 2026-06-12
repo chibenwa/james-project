@@ -21,10 +21,12 @@ package org.apache.james.protocols.api.sasl;
 
 import java.util.Optional;
 
+import org.apache.james.core.Username;
+
 /**
  * Server step produced by a SASL exchange.
  */
-public sealed interface SaslStep permits SaslStep.Challenge, SaslStep.Credentials, SaslStep.Success, SaslStep.Failure {
+public sealed interface SaslStep permits SaslStep.Challenge, SaslStep.Success, SaslStep.Failure {
     /**
      * Server challenge to send back to the client.
      */
@@ -42,13 +44,8 @@ public sealed interface SaslStep permits SaslStep.Challenge, SaslStep.Credential
     }
 
     /**
-     * Parsed credentials to be applied by the protocol handler.
-     */
-    record Credentials(SaslCredentials credentials) implements SaslStep {
-    }
-
-    /**
-     * Successful SASL exchange result.
+     * Successful SASL exchange result. Credentials were verified by the mechanism:
+     * protocols only need to establish a session for the supplied identity.
      */
     record Success(SaslIdentity identity, Optional<byte[]> serverData) implements SaslStep {
         public Success(SaslIdentity identity, Optional<byte[]> serverData) {
@@ -66,7 +63,24 @@ public sealed interface SaslStep permits SaslStep.Challenge, SaslStep.Credential
 
     /**
      * Failed SASL exchange result.
+     *
+     * @param reason human readable failure reason for audit logging
+     * @param cause failure category protocols can map to their own response codes
+     * @param authenticationId identity that attempted to authenticate, when known, for audit logging
+     * @param authorizationId identity that was requested for protocol access, when known, for audit logging
      */
-    record Failure(String reason) implements SaslStep {
+    record Failure(String reason, Cause cause, Optional<Username> authenticationId, Optional<Username> authorizationId) implements SaslStep {
+        public enum Cause {
+            MALFORMED_COMMAND,
+            INVALID_CREDENTIALS,
+            DELEGATION_FORBIDDEN,
+            UNKNOWN_USER,
+            AUTHENTICATION_FAILED,
+            SERVER_ERROR
+        }
+
+        public Failure(String reason) {
+            this(reason, Cause.AUTHENTICATION_FAILED, Optional.empty(), Optional.empty());
+        }
     }
 }

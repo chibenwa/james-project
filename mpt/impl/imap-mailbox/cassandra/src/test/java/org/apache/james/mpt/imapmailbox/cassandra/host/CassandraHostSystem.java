@@ -132,7 +132,7 @@ public class CassandraHostSystem extends JamesImapHostSystem {
 
         configure(new DefaultImapDecoderFactory().buildImapDecoder(),
                 new DefaultImapEncoderFactory().buildImapEncoder(),
-                DefaultImapProcessorFactory.createDefaultProcessor(mailboxManager, eventBus, subscriptionManager, quotaManager, quotaRootResolver, new DefaultMetricFactory()));
+                DefaultImapProcessorFactory.createDefaultProcessor(mailboxManager, authenticator, authorizator, eventBus, subscriptionManager, quotaManager, quotaRootResolver, new DefaultMetricFactory()));
     }
 
     @Override

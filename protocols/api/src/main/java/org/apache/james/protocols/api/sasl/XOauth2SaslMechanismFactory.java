@@ -19,29 +19,24 @@
 
 package org.apache.james.protocols.api.sasl;
 
-import java.util.Optional;
+import jakarta.inject.Inject;
 
-import org.apache.james.jwt.OidcSASLConfiguration;
+import org.apache.commons.configuration2.HierarchicalConfiguration;
+import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.apache.commons.configuration2.tree.ImmutableNode;
 import org.apache.james.mailbox.Authorizator;
 
-public class OauthBearerSaslMechanism implements SaslMechanism {
-    public static final String NAME = "OAUTHBEARER";
-
-    private final Optional<OidcSASLConfiguration> oidcConfiguration;
+public class XOauth2SaslMechanismFactory implements SaslMechanismFactory {
     private final Authorizator authorizator;
 
-    public OauthBearerSaslMechanism(Optional<OidcSASLConfiguration> oidcConfiguration, Authorizator authorizator) {
-        this.oidcConfiguration = oidcConfiguration;
+    @Inject
+    public XOauth2SaslMechanismFactory(Authorizator authorizator) {
         this.authorizator = authorizator;
     }
 
     @Override
-    public String name() {
-        return NAME;
-    }
-
-    @Override
-    public SaslExchange start(SaslInitialRequest request) {
-        return OidcSaslMechanisms.start(request.initialResponse(), oidcConfiguration, authorizator);
+    public SaslMechanism create(HierarchicalConfiguration<ImmutableNode> serverConfiguration) throws ConfigurationException {
+        return new XOauth2SaslMechanism(OidcSaslMechanisms.parseConfiguration(serverConfiguration),
+            SaslDelegation.withConfiguredAdminUsers(authorizator, serverConfiguration));
     }
 }

@@ -34,6 +34,8 @@ import org.apache.james.imap.main.PathConverter;
 import org.apache.james.imap.processor.base.AbstractProcessor;
 import org.apache.james.imap.processor.base.ImapResponseMessageProcessor;
 import org.apache.james.imap.processor.fetch.FetchProcessor;
+import org.apache.james.mailbox.Authenticator;
+import org.apache.james.mailbox.Authorizator;
 import org.apache.james.mailbox.MailboxCounterCorrector;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.SubscriptionManager;
@@ -50,6 +52,8 @@ public class DefaultProcessor implements ImapProcessor {
 
     public static ImapProcessor createDefaultProcessor(ImapProcessor chainEndProcessor,
                                                        MailboxManager mailboxManager,
+                                                       Authenticator authenticator,
+                                                       Authorizator authorizator,
                                                        EventBus eventBus,
                                                        SubscriptionManager subscriptionManager,
                                                        StatusResponseFactory statusResponseFactory,
@@ -76,7 +80,7 @@ public class DefaultProcessor implements ImapProcessor {
         builder.add(new UnsubscribeProcessor(mailboxManager, subscriptionManager, statusResponseFactory, metricFactory, pathConverterFactory));
         builder.add(new SubscribeProcessor(mailboxManager, subscriptionManager, statusResponseFactory, metricFactory, pathConverterFactory));
         builder.add(new CopyProcessor(mailboxManager, statusResponseFactory, metricFactory, pathConverterFactory));
-        builder.add(new AuthenticateProcessor(mailboxManager, statusResponseFactory, metricFactory, pathConverterFactory));
+        builder.add(new AuthenticateProcessor(mailboxManager, authenticator, authorizator, statusResponseFactory, metricFactory, pathConverterFactory));
         builder.add(new ExpungeProcessor(mailboxManager, statusResponseFactory, metricFactory));
         builder.add(new ReplaceProcessor(mailboxManager, statusResponseFactory, metricFactory, pathConverterFactory));
         builder.add(new ExamineProcessor(mailboxManager, eventBus, statusResponseFactory, metricFactory, pathConverterFactory, mailboxCounterCorrector));

@@ -19,29 +19,47 @@
 
 package org.apache.james.protocols.api.sasl;
 
-import java.util.Optional;
+import org.apache.commons.configuration2.HierarchicalConfiguration;
+import org.apache.commons.configuration2.tree.ImmutableNode;
 
-import org.apache.james.jwt.OidcSASLConfiguration;
-import org.apache.james.mailbox.Authorizator;
-
-public class OauthBearerSaslMechanism implements SaslMechanism {
-    public static final String NAME = "OAUTHBEARER";
-
-    private final Optional<OidcSASLConfiguration> oidcConfiguration;
-    private final Authorizator authorizator;
-
-    public OauthBearerSaslMechanism(Optional<OidcSASLConfiguration> oidcConfiguration, Authorizator authorizator) {
-        this.oidcConfiguration = oidcConfiguration;
-        this.authorizator = authorizator;
+/**
+ * Test factory living in James' default SASL package to validate simple class name resolution.
+ */
+public class TestingDefaultPackageSaslMechanismFactory implements SaslMechanismFactory {
+    @Override
+    public SaslMechanism create(HierarchicalConfiguration<ImmutableNode> serverConfiguration) {
+        return new TestingDefaultPackageSaslMechanism();
     }
 
-    @Override
-    public String name() {
-        return NAME;
+    public static class TestingDefaultPackageSaslMechanism implements SaslMechanism {
+        @Override
+        public String name() {
+            return "DEFAULT";
+        }
+
+        @Override
+        public SaslExchange start(SaslInitialRequest request) {
+            return new FixedStepExchange(new SaslStep.Failure("not implemented"));
+        }
     }
 
-    @Override
-    public SaslExchange start(SaslInitialRequest request) {
-        return OidcSaslMechanisms.start(request.initialResponse(), oidcConfiguration, authorizator);
+    private record FixedStepExchange(SaslStep step) implements SaslExchange {
+        @Override
+        public SaslStep firstStep() {
+            return step;
+        }
+
+        @Override
+        public SaslStep onResponse(byte[] clientResponse) {
+            return step;
+        }
+
+        @Override
+        public void abort() {
+        }
+
+        @Override
+        public void close() {
+        }
     }
 }

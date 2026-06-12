@@ -19,29 +19,25 @@
 
 package org.apache.james.protocols.api.sasl;
 
-import java.util.Optional;
+import jakarta.inject.Inject;
 
-import org.apache.james.jwt.OidcSASLConfiguration;
+import org.apache.commons.configuration2.HierarchicalConfiguration;
+import org.apache.commons.configuration2.tree.ImmutableNode;
+import org.apache.james.mailbox.Authenticator;
 import org.apache.james.mailbox.Authorizator;
 
-public class OauthBearerSaslMechanism implements SaslMechanism {
-    public static final String NAME = "OAUTHBEARER";
-
-    private final Optional<OidcSASLConfiguration> oidcConfiguration;
+public class PlainSaslMechanismFactory implements SaslMechanismFactory {
+    private final Authenticator authenticator;
     private final Authorizator authorizator;
 
-    public OauthBearerSaslMechanism(Optional<OidcSASLConfiguration> oidcConfiguration, Authorizator authorizator) {
-        this.oidcConfiguration = oidcConfiguration;
+    @Inject
+    public PlainSaslMechanismFactory(Authenticator authenticator, Authorizator authorizator) {
+        this.authenticator = authenticator;
         this.authorizator = authorizator;
     }
 
     @Override
-    public String name() {
-        return NAME;
-    }
-
-    @Override
-    public SaslExchange start(SaslInitialRequest request) {
-        return OidcSaslMechanisms.start(request.initialResponse(), oidcConfiguration, authorizator);
+    public SaslMechanism create(HierarchicalConfiguration<ImmutableNode> serverConfiguration) {
+        return new PlainSaslMechanism(authenticator, SaslDelegation.withConfiguredAdminUsers(authorizator, serverConfiguration));
     }
 }

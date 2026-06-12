@@ -112,6 +112,8 @@ abstract class AbstractIMAPServerTest {
             new DefaultImapEncoderFactory().buildImapEncoder(),
             DefaultImapProcessorFactory.createXListSupportingProcessor(
                 mailboxManager,
+                memoryIntegrationResources.getAuthenticator(),
+                memoryIntegrationResources.getAuthorizator(),
                 memoryIntegrationResources.getEventBus(),
                 new StoreSubscriptionManager(mailboxManager.getMapperFactory(),
                     mailboxManager.getMapperFactory(),

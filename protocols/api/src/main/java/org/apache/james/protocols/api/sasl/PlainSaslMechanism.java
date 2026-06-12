@@ -22,9 +22,11 @@ package org.apache.james.protocols.api.sasl;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Optional;
-import java.util.function.Function;
 
 import org.apache.james.core.Username;
+import org.apache.james.mailbox.Authenticator;
+import org.apache.james.mailbox.Authorizator;
+import org.apache.james.mailbox.exception.MailboxException;
 
 import com.google.common.collect.ImmutableList;
 
@@ -38,6 +40,14 @@ public class PlainSaslMechanism implements SaslMechanism {
         return new PlainCredentials(authorizationId, authenticationId, password);
     }
 
+    private final Authenticator authenticator;
+    private final Authorizator authorizator;
+
+    public PlainSaslMechanism(Authenticator authenticator, Authorizator authorizator) {
+        this.authenticator = authenticator;
+        this.authorizator = authorizator;
+    }
+
     @Override
     public String name() {
         return NAME;
@@ -45,22 +55,20 @@ public class PlainSaslMechanism implements SaslMechanism {
 
     @Override
     public SaslExchange start(SaslInitialRequest request) {
-        return new PlainSaslExchange(request.initialResponse(), this::parse);
+        return new PlainSaslExchange(request.initialResponse());
     }
 
-    private static class PlainSaslExchange implements SaslExchange {
+    private class PlainSaslExchange implements SaslExchange {
         private final Optional<byte[]> initialResponse;
-        private final Function<byte[], Optional<PlainCredentials>> credentialsParser;
 
-        private PlainSaslExchange(Optional<byte[]> initialResponse, Function<byte[], Optional<PlainCredentials>> credentialsParser) {
+        private PlainSaslExchange(Optional<byte[]> initialResponse) {
             this.initialResponse = initialResponse;
-            this.credentialsParser = credentialsParser;
         }
 
         @Override
         public SaslStep firstStep() {
             return initialResponse
-                .map(this::authenticate)
+                .map(PlainSaslMechanism.this::authenticate)
                 .orElseGet(() -> new SaslStep.Challenge(Optional.empty()));
         }
 
@@ -76,12 +84,27 @@ public class PlainSaslMechanism implements SaslMechanism {
         @Override
         public void close() {
         }
+    }
 
-        private SaslStep authenticate(byte[] clientResponse) {
-            return credentialsParser.apply(clientResponse)
-                .map(credentials -> (SaslStep) new SaslStep.Credentials(new SaslCredentials.Password(
-                    credentials.authenticationId(), credentials.authorizationId(), credentials.password())))
-                .orElseGet(() -> new SaslStep.Failure("Malformed authentication command."));
+    private SaslStep authenticate(byte[] clientResponse) {
+        return parse(clientResponse)
+            .map(this::verify)
+            .orElseGet(() -> new SaslStep.Failure("Malformed authentication command.",
+                SaslStep.Failure.Cause.MALFORMED_COMMAND, Optional.empty(), Optional.empty()));
+    }
+
+    private SaslStep verify(PlainCredentials credentials) {
+        try {
+            return authenticator.isAuthentic(credentials.authenticationId(), credentials.password())
+                .map(authenticatedUser -> SaslDelegation.authorize(authorizator, authenticatedUser,
+                    credentials.authorizationId().orElse(authenticatedUser)))
+                .orElseGet(() -> new SaslStep.Failure("Password authentication failed because of bad credentials.",
+                    SaslStep.Failure.Cause.INVALID_CREDENTIALS,
+                    Optional.of(credentials.authenticationId()), credentials.authorizationId()));
+        } catch (MailboxException e) {
+            return new SaslStep.Failure("Unexpected error while verifying credentials",
+                SaslStep.Failure.Cause.SERVER_ERROR,
+                Optional.of(credentials.authenticationId()), credentials.authorizationId());
         }
     }
 

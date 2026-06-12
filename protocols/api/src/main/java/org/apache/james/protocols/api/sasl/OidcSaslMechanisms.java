@@ -19,15 +19,39 @@
 
 package org.apache.james.protocols.api.sasl;
 
+import java.net.MalformedURLException;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
+import org.apache.commons.configuration2.HierarchicalConfiguration;
+import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.apache.commons.configuration2.tree.ImmutableNode;
 import org.apache.james.core.Username;
+import org.apache.james.jwt.OidcJwtTokenVerifier;
+import org.apache.james.jwt.OidcSASLConfiguration;
+import org.apache.james.mailbox.Authorizator;
 import org.apache.james.protocols.api.OIDCSASLParser;
 
 public final class OidcSaslMechanisms {
-    static SaslExchange start(Optional<byte[]> initialResponse) {
-        return new OidcSaslExchange(initialResponse);
+    private static final String OIDC_PATH = "auth.oidc";
+
+    static SaslExchange start(Optional<byte[]> initialResponse, Optional<OidcSASLConfiguration> oidcConfiguration, Authorizator authorizator) {
+        return new OidcSaslExchange(initialResponse, oidcConfiguration, authorizator);
+    }
+
+    /**
+     * Parses the optional OIDC declaration of one server configuration block.
+     */
+    public static Optional<OidcSASLConfiguration> parseConfiguration(HierarchicalConfiguration<ImmutableNode> serverConfiguration) throws ConfigurationException {
+        if (serverConfiguration.immutableConfigurationsAt(OIDC_PATH).isEmpty()) {
+            return Optional.empty();
+        }
+        try {
+            return Optional.of(OidcSASLConfiguration.parse(serverConfiguration.configurationAt(OIDC_PATH)));
+        } catch (MalformedURLException | URISyntaxException e) {
+            throw new ConfigurationException("Invalid OIDC SASL configuration", e);
+        }
     }
 
     private OidcSaslMechanisms() {
@@ -35,9 +59,13 @@ public final class OidcSaslMechanisms {
 
     private static class OidcSaslExchange implements SaslExchange {
         private final Optional<byte[]> initialResponse;
+        private final Optional<OidcSASLConfiguration> oidcConfiguration;
+        private final Authorizator authorizator;
 
-        private OidcSaslExchange(Optional<byte[]> initialResponse) {
+        private OidcSaslExchange(Optional<byte[]> initialResponse, Optional<OidcSASLConfiguration> oidcConfiguration, Authorizator authorizator) {
             this.initialResponse = initialResponse;
+            this.oidcConfiguration = oidcConfiguration;
+            this.authorizator = authorizator;
         }
 
         @Override
@@ -62,9 +90,17 @@ public final class OidcSaslMechanisms {
 
         private SaslStep authenticate(byte[] clientResponse) {
             return OIDCSASLParser.parseDecoded(new String(clientResponse, StandardCharsets.US_ASCII))
-                .map(response -> (SaslStep) new SaslStep.Credentials(new SaslCredentials.BearerToken(
-                    response.getToken(), Username.of(response.getAssociatedUser()))))
-                .orElseGet(() -> new SaslStep.Failure("Malformed authentication command."));
+                .map(response -> verify(response.getToken(), Username.of(response.getAssociatedUser())))
+                .orElseGet(() -> new SaslStep.Failure("Malformed authentication command.",
+                    SaslStep.Failure.Cause.MALFORMED_COMMAND, Optional.empty(), Optional.empty()));
+        }
+
+        private SaslStep verify(String token, Username authorizationId) {
+            return oidcConfiguration
+                .flatMap(configuration -> new OidcJwtTokenVerifier(configuration).validateToken(token))
+                .map(authenticatedUser -> SaslDelegation.authorize(authorizator, authenticatedUser, authorizationId))
+                .orElseGet(() -> new SaslStep.Failure("OAuth authentication failed.",
+                    SaslStep.Failure.Cause.AUTHENTICATION_FAILED, Optional.empty(), Optional.of(authorizationId)));
         }
     }
 }

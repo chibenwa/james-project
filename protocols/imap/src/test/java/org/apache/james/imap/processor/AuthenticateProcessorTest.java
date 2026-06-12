@@ -36,6 +36,8 @@ import org.apache.james.imap.encode.FakeImapSession;
 import org.apache.james.imap.main.PathConverter;
 import org.apache.james.imap.message.request.AuthenticateRequest;
 import org.apache.james.imap.message.response.UnpooledStatusResponseFactory;
+import org.apache.james.mailbox.Authenticator;
+import org.apache.james.mailbox.Authorizator;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.metrics.tests.RecordingMetricFactory;
 import org.apache.james.protocols.api.sasl.SaslExchange;
@@ -174,6 +176,8 @@ class AuthenticateProcessorTest {
 
     private final AuthenticateProcessor testee = new AuthenticateProcessor(
         mock(MailboxManager.class),
+        mock(Authenticator.class),
+        mock(Authorizator.class),
         new UnpooledStatusResponseFactory(),
         new RecordingMetricFactory(),
         PathConverter.Factory.DEFAULT);

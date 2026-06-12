@@ -64,7 +64,7 @@ public class InMemoryHostSystem extends JamesImapHostSystem {
         this.mailboxManager = resources.getMailboxManager();
         this.perUserMaxQuotaManager = resources.getMaxQuotaManager();
 
-        ImapProcessor defaultImapProcessorFactory = DefaultImapProcessorFactory.createDefaultProcessor(mailboxManager,  mailboxManager.getEventBus(), new StoreSubscriptionManager(mailboxManager.getMapperFactory(),
+        ImapProcessor defaultImapProcessorFactory = DefaultImapProcessorFactory.createDefaultProcessor(mailboxManager, authenticator, authorizator, mailboxManager.getEventBus(), new StoreSubscriptionManager(mailboxManager.getMapperFactory(),
                 mailboxManager.getMapperFactory(),
                 mailboxManager.getEventBus()),
             mailboxManager.getQuotaComponents().getQuotaManager(), mailboxManager.getQuotaComponents().getQuotaRootResolver(), new DefaultMetricFactory());

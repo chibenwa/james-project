@@ -34,12 +34,14 @@
     <bean id="imapProcessor" class="org.apache.james.imap.processor.main.DefaultImapProcessorFactory"
           factory-method="createXListSupportingProcessor">
         <constructor-arg index="0" ref="mailboxmanager"/>
-        <constructor-arg index="1" ref="event-bus"/>
-        <constructor-arg index="2" ref="subscriptionManager"/>
-        <constructor-arg index="3" ref="mailboxTyper"/>
-        <constructor-arg index="4" ref="quotaManager"/>
-        <constructor-arg index="5" ref="quotaRootResolver"/>
-        <constructor-arg index="6" ref="timeMetricFactory"/>
+        <constructor-arg index="1" ref="authenticator"/>
+        <constructor-arg index="2" ref="authorizator"/>
+        <constructor-arg index="3" ref="event-bus"/>
+        <constructor-arg index="4" ref="subscriptionManager"/>
+        <constructor-arg index="5" ref="mailboxTyper"/>
+        <constructor-arg index="6" ref="quotaManager"/>
+        <constructor-arg index="7" ref="quotaRootResolver"/>
+        <constructor-arg index="8" ref="timeMetricFactory"/>
     </bean>
 
     <bean id="mailboxTyper" class="org.apache.james.imap.api.process.DefaultMailboxTyper"/>

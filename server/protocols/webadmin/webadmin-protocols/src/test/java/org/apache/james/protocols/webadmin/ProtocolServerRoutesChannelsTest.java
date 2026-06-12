@@ -95,6 +95,8 @@ class ProtocolServerRoutesChannelsTest {
             new DefaultImapEncoderFactory().buildImapEncoder(),
             DefaultImapProcessorFactory.createXListSupportingProcessor(
                 resources.getMailboxManager(),
+                resources.getAuthenticator(),
+                resources.getAuthorizator(),
                 resources.getEventBus(),
                 new StoreSubscriptionManager(
                     resources.getMailboxManager().getMapperFactory(),

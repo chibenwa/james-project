@@ -25,6 +25,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
 import org.apache.james.core.Username;
+import org.apache.james.mailbox.Authenticator;
+import org.apache.james.mailbox.Authorizator;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -34,9 +36,13 @@ class SaslMechanismContractTest {
     private static final Username AUTHENTICATION_ID = Username.of("authentication@example.com");
     private static final Username AUTHORIZATION_ID = Username.of("authorization@example.com");
     private static final String PASSWORD = "secret";
-    private static final String TOKEN = "access-token";
     private static final SaslIdentity SAME_USER_IDENTITY = new SaslIdentity(AUTHENTICATION_ID, AUTHENTICATION_ID);
     private static final SaslIdentity DELEGATED_IDENTITY = new SaslIdentity(AUTHENTICATION_ID, AUTHORIZATION_ID);
+    private static final Authenticator AUTHENTICATOR = (userid, passwd) ->
+        Optional.of(userid)
+            .filter(AUTHENTICATION_ID::equals)
+            .filter(any -> PASSWORD.contentEquals(passwd));
+    private static final Authorizator AUTHORIZATOR = (userId, otherUserId) -> Authorizator.AuthorizationState.ALLOWED;
 
     /**
      * Models one-step mechanisms that can immediately succeed or fail on the first server step.
@@ -134,9 +140,15 @@ class SaslMechanismContractTest {
     }
 
     /**
-     * Models generic password mechanisms that parse SASL payloads but leave verification to the protocol.
+     * Models generic password mechanisms that parse SASL payloads and verify them through the embedded authenticator.
      */
     private static class PasswordLikeMechanism implements SaslMechanism {
+        private final Authenticator authenticator;
+
+        private PasswordLikeMechanism(Authenticator authenticator) {
+            this.authenticator = authenticator;
+        }
+
         @Override
         public String name() {
             return "PASSWORD_LIKE";
@@ -145,16 +157,23 @@ class SaslMechanismContractTest {
         @Override
         public SaslExchange start(SaslInitialRequest request) {
             return new FixedStepExchange(request.initialResponse()
-                .map(this::credentials)
+                .map(this::verify)
                 .orElseGet(() -> new SaslStep.Challenge(Optional.empty())));
         }
 
-        private SaslStep credentials(byte[] payload) {
+        private SaslStep verify(byte[] payload) {
             String[] parts = new String(payload, StandardCharsets.UTF_8).split("\u0000", -1);
-            return new SaslStep.Credentials(new SaslCredentials.Password(
-                Username.of(parts[1]),
-                Optional.of(parts[0]).filter(value -> !value.isEmpty()).map(Username::of),
-                parts[2]));
+            Username authenticationId = Username.of(parts[1]);
+            Optional<Username> authorizationId = Optional.of(parts[0]).filter(value -> !value.isEmpty()).map(Username::of);
+            try {
+                return authenticator.isAuthentic(authenticationId, parts[2])
+                    .map(authenticatedUser -> (SaslStep) new SaslStep.Success(
+                        new SaslIdentity(authenticatedUser, authorizationId.orElse(authenticatedUser)), Optional.empty()))
+                    .orElseGet(() -> new SaslStep.Failure("bad credentials",
+                        SaslStep.Failure.Cause.INVALID_CREDENTIALS, Optional.of(authenticationId), authorizationId));
+            } catch (org.apache.james.mailbox.exception.MailboxException e) {
+                return new SaslStep.Failure("server error", SaslStep.Failure.Cause.SERVER_ERROR, Optional.of(authenticationId), authorizationId);
+            }
         }
     }
 
@@ -199,50 +218,43 @@ class SaslMechanismContractTest {
     }
 
     @Test
-    void passwordLikeMechanismShouldReturnProtocolNeutralCredentials() {
+    void passwordLikeMechanismShouldSucceedWithVerifiedIdentity() {
         // GIVEN a password-like mechanism and a PLAIN-like initial response
-        SaslExchange exchange = new PasswordLikeMechanism()
+        SaslExchange exchange = new PasswordLikeMechanism(AUTHENTICATOR)
             .start(initialRequest(Optional.of(bytes("\u0000" + AUTHENTICATION_ID.asString() + "\u0000" + PASSWORD))));
 
         // WHEN the generic mechanism consumes the initial response
         SaslStep firstStep = exchange.firstStep();
 
-        // THEN it returns credentials without depending on IMAP or SMTP authentication services
-        assertThat(firstStep).isEqualTo(new SaslStep.Credentials(new SaslCredentials.Password(
-            AUTHENTICATION_ID, Optional.empty(), PASSWORD)));
+        // THEN verification happens inside the SASL layer without IMAP or SMTP involvement
+        assertThat(firstStep).isEqualTo(new SaslStep.Success(SAME_USER_IDENTITY, Optional.empty()));
     }
 
     @Test
-    void passwordLikeMechanismShouldPreserveDelegatedIdentityInCredentials() {
+    void passwordLikeMechanismShouldPreserveDelegatedIdentity() {
         // GIVEN a PLAIN-like initial response with distinct authorization and authentication identities
-        SaslExchange exchange = new PasswordLikeMechanism()
+        SaslExchange exchange = new PasswordLikeMechanism(AUTHENTICATOR)
             .start(initialRequest(Optional.of(bytes(AUTHORIZATION_ID.asString() + "\u0000" + AUTHENTICATION_ID.asString() + "\u0000" + PASSWORD))));
 
         // WHEN the generic mechanism consumes the initial response
         SaslStep firstStep = exchange.firstStep();
 
-        // THEN the credentials carry both identities for protocol-level delegation handling
-        assertThat(firstStep).isEqualTo(new SaslStep.Credentials(new SaslCredentials.Password(
-            AUTHENTICATION_ID, Optional.of(AUTHORIZATION_ID), PASSWORD)));
+        // THEN the success identity carries both users for protocol-level session establishment
+        assertThat(firstStep).isEqualTo(new SaslStep.Success(DELEGATED_IDENTITY, Optional.empty()));
     }
 
     @Test
-    void credentialsToStringShouldRedactSecrets() {
-        // GIVEN credentials carrying sensitive password and bearer token values
-        SaslCredentials.Password password = new SaslCredentials.Password(AUTHENTICATION_ID, Optional.of(AUTHORIZATION_ID), PASSWORD);
-        SaslCredentials.BearerToken bearerToken = new SaslCredentials.BearerToken(TOKEN, AUTHORIZATION_ID);
+    void passwordLikeMechanismShouldFailWithAttemptedIdentitiesForAuditing() {
+        // GIVEN a PLAIN-like initial response carrying a wrong password
+        SaslExchange exchange = new PasswordLikeMechanism(AUTHENTICATOR)
+            .start(initialRequest(Optional.of(bytes(AUTHORIZATION_ID.asString() + "\u0000" + AUTHENTICATION_ID.asString() + "\u0000wrong"))));
 
-        // WHEN credentials are converted to strings, for example by accidental logging
-        String passwordString = password.toString();
-        String bearerTokenString = bearerToken.toString();
+        // WHEN the generic mechanism consumes the initial response
+        SaslStep firstStep = exchange.firstStep();
 
-        // THEN the sensitive fields are redacted while identity fields remain useful for diagnostics
-        assertThat(passwordString)
-            .contains("password=******", AUTHENTICATION_ID.asString(), AUTHORIZATION_ID.asString())
-            .doesNotContain(PASSWORD);
-        assertThat(bearerTokenString)
-            .contains("token=******", AUTHORIZATION_ID.asString())
-            .doesNotContain(TOKEN);
+        // THEN the failure keeps the attempted identities and a category protocols can map to response codes
+        assertThat(firstStep).isEqualTo(new SaslStep.Failure("bad credentials",
+            SaslStep.Failure.Cause.INVALID_CREDENTIALS, Optional.of(AUTHENTICATION_ID), Optional.of(AUTHORIZATION_ID)));
     }
 
     @Test

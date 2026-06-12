@@ -134,6 +134,8 @@ public class JPAHostSystem extends JamesImapHostSystem {
         ImapProcessor defaultImapProcessorFactory =
                 DefaultImapProcessorFactory.createDefaultProcessor(
                         mailboxManager,
+                        authenticator,
+                        authorizator,
                         eventBus,
                         subscriptionManager, 
                         storeQuotaManager,

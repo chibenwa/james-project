@@ -19,23 +19,24 @@
 
 package org.apache.james.protocols.api.sasl;
 
-import java.util.Optional;
+import jakarta.inject.Inject;
 
-import org.apache.james.core.Username;
+import org.apache.commons.configuration2.HierarchicalConfiguration;
+import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.apache.commons.configuration2.tree.ImmutableNode;
+import org.apache.james.mailbox.Authorizator;
 
-/**
- * Credentials parsed by SASL mechanisms and applied by protocol handlers.
- */
-public sealed interface SaslCredentials permits SaslCredentials.Password, SaslCredentials.BearerToken {
-    record Password(Username authenticationId, Optional<Username> authorizationId, String password) implements SaslCredentials {
-        public String toString() {
-            return "Password[authenticationId=" + authenticationId.asString() + ", authorizationId=" + authorizationId.map(Username::asString) + ", password=******]";
-        }
+public class OauthBearerSaslMechanismFactory implements SaslMechanismFactory {
+    private final Authorizator authorizator;
+
+    @Inject
+    public OauthBearerSaslMechanismFactory(Authorizator authorizator) {
+        this.authorizator = authorizator;
     }
 
-    record BearerToken(String token, Username authorizationId) implements SaslCredentials {
-        public String toString() {
-            return "BearerToken[token=******, authorizationId=" + authorizationId.asString() + "]";
-        }
+    @Override
+    public SaslMechanism create(HierarchicalConfiguration<ImmutableNode> serverConfiguration) throws ConfigurationException {
+        return new OauthBearerSaslMechanism(OidcSaslMechanisms.parseConfiguration(serverConfiguration),
+            SaslDelegation.withConfiguredAdminUsers(authorizator, serverConfiguration));
     }
 }

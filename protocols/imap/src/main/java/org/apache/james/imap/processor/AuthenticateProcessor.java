@@ -35,12 +35,13 @@ import org.apache.james.imap.message.request.AuthenticateRequest;
 import org.apache.james.imap.message.request.IRAuthenticateRequest;
 import org.apache.james.imap.message.response.AuthenticateResponse;
 import org.apache.james.imap.processor.sasl.ImapSaslBridge;
-import org.apache.james.jwt.OidcJwtTokenVerifier;
+import org.apache.james.mailbox.Authenticator;
+import org.apache.james.mailbox.Authorizator;
 import org.apache.james.mailbox.MailboxManager;
+import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.protocols.api.sasl.OauthBearerSaslMechanism;
 import org.apache.james.protocols.api.sasl.PlainSaslMechanism;
-import org.apache.james.protocols.api.sasl.SaslCredentials;
 import org.apache.james.protocols.api.sasl.SaslExchange;
 import org.apache.james.protocols.api.sasl.SaslIdentity;
 import org.apache.james.protocols.api.sasl.SaslInitialRequest;
@@ -64,20 +65,20 @@ public class AuthenticateProcessor extends AbstractAuthProcessor<AuthenticateReq
     public static final Capability AUTH_PLAIN_CAPABILITY = Capability.of(AUTH_PLAIN);
     public static final Capability SASL_CAPABILITY = Capability.of("SASL-IR");
     private static final Logger LOGGER = LoggerFactory.getLogger(AuthenticateProcessor.class);
-    private static final ImmutableList<SaslMechanism> DEFAULT_SASL_MECHANISMS = ImmutableList.of(
-        new PlainSaslMechanism(),
-        new OauthBearerSaslMechanism(),
-        new XOauth2SaslMechanism());
 
     private final ImapSaslBridge saslBridge;
-    private ImmutableList<SaslMechanism> saslMechanisms;
+    private final Authenticator authenticator;
+    private final Authorizator authorizator;
+    private Optional<ImmutableList<SaslMechanism>> saslMechanisms;
 
     @Inject
-    public AuthenticateProcessor(MailboxManager mailboxManager, StatusResponseFactory factory,
-                                 MetricFactory metricFactory, PathConverter.Factory pathConverterFactory) {
+    public AuthenticateProcessor(MailboxManager mailboxManager, Authenticator authenticator, Authorizator authorizator,
+                                 StatusResponseFactory factory, MetricFactory metricFactory, PathConverter.Factory pathConverterFactory) {
         super(AuthenticateRequest.class, mailboxManager, factory, metricFactory, pathConverterFactory);
         this.saslBridge = new ImapSaslBridge();
-        this.saslMechanisms = DEFAULT_SASL_MECHANISMS;
+        this.authenticator = authenticator;
+        this.authorizator = authorizator;
+        this.saslMechanisms = Optional.empty();
     }
 
     @Override
@@ -87,7 +88,7 @@ public class AuthenticateProcessor extends AbstractAuthProcessor<AuthenticateReq
 
     @Override
     protected void processRequest(AuthenticateRequest request, ImapSession session, final Responder responder) {
-        Optional<SaslMechanism> mechanism = findMechanism(request.getAuthType());
+        Optional<SaslMechanism> mechanism = findMechanism(request.getAuthType(), session);
 
         if (mechanism.isEmpty()) {
             LOGGER.debug("Unsupported authentication mechanism '{}'", request.getAuthType());
@@ -113,7 +114,7 @@ public class AuthenticateProcessor extends AbstractAuthProcessor<AuthenticateReq
 
     @Override
     public List<Capability> getImplementedCapabilities(ImapSession session) {
-        List<Capability> caps = saslMechanisms.stream()
+        List<Capability> caps = saslMechanisms(session).stream()
             .filter(mechanism -> isAvailable(mechanism, session))
             .map(mechanism -> Capability.of("AUTH=" + mechanism.name()))
             .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
@@ -131,7 +132,23 @@ public class AuthenticateProcessor extends AbstractAuthProcessor<AuthenticateReq
     }
 
     public void configureSaslMechanisms(ImmutableList<SaslMechanism> saslMechanisms) {
-        this.saslMechanisms = saslMechanisms;
+        this.saslMechanisms = Optional.of(saslMechanisms);
+    }
+
+    private ImmutableList<SaslMechanism> saslMechanisms(ImapSession session) {
+        return saslMechanisms.orElseGet(() -> defaultSaslMechanisms(session));
+    }
+
+    /**
+     * Default mechanisms for wirings that do not resolve SASL mechanisms from each server configuration:
+     * credential verification stays in the SASL layer, fed from the session-level configuration.
+     */
+    private ImmutableList<SaslMechanism> defaultSaslMechanisms(ImapSession session) {
+        Authorizator sessionAuthorizator = Authorizator.combine(authorizator, withAdminUsers());
+        return ImmutableList.of(
+            new PlainSaslMechanism(authenticator, sessionAuthorizator),
+            new OauthBearerSaslMechanism(session.oidcSaslConfiguration(), sessionAuthorizator),
+            new XOauth2SaslMechanism(session.oidcSaslConfiguration(), sessionAuthorizator));
     }
 
     private Optional<String> initialClientResponse(AuthenticateRequest request) {
@@ -150,9 +167,9 @@ public class AuthenticateProcessor extends AbstractAuthProcessor<AuthenticateReq
         }
     }
 
-    private Optional<SaslMechanism> findMechanism(String mechanismName) {
+    private Optional<SaslMechanism> findMechanism(String mechanismName, ImapSession session) {
         String normalizedName = mechanismName.toUpperCase(Locale.US);
-        return saslMechanisms.stream()
+        return saslMechanisms(session).stream()
             .filter(mechanism -> mechanism.name().toUpperCase(Locale.US).equals(normalizedName))
             .findFirst();
     }
@@ -358,55 +375,33 @@ public class AuthenticateProcessor extends AbstractAuthProcessor<AuthenticateReq
 
     private void handleTerminalStep(SaslExchange exchange, SaslStep step, ImapSession session, AuthenticateRequest request, Responder responder) {
         try {
-            if (step instanceof SaslStep.Credentials credentials) {
-                handleCredentials(credentials.credentials(), session, request, responder);
-            } else if (step instanceof SaslStep.Success success) {
+            if (step instanceof SaslStep.Success success) {
                 handleSuccess(session, request, responder, success.identity());
             } else if (step instanceof SaslStep.Failure failure) {
-                authFailure(session, request, responder, HumanReadableText.AUTHENTICATION_FAILED, Optional.empty(), Optional.empty(), failure.reason());
+                handleFailure(failure, session, request, responder);
             }
         } finally {
             saslBridge.close(exchange);
         }
     }
 
-    private void handleCredentials(SaslCredentials credentials, ImapSession session, AuthenticateRequest request, Responder responder) {
-        if (credentials instanceof SaslCredentials.Password password) {
-            handlePasswordCredentials(password, session, request, responder);
+    private void handleFailure(SaslStep.Failure failure, ImapSession session, AuthenticateRequest request, Responder responder) {
+        if (failure.cause() == SaslStep.Failure.Cause.SERVER_ERROR) {
+            LOGGER.error("Authentication failed: {}", failure.reason());
+            no(request, responder, HumanReadableText.GENERIC_FAILURE_DURING_PROCESSING);
             return;
         }
-        if (credentials instanceof SaslCredentials.BearerToken bearerToken) {
-            handleBearerTokenCredentials(bearerToken, session, request, responder);
-        }
+        authFailure(session, request, responder, failureResponseText(failure.cause()),
+            failure.authenticationId(), failure.authorizationId(), failure.reason());
     }
 
-    private void handlePasswordCredentials(SaslCredentials.Password password, ImapSession session, AuthenticateRequest request, Responder responder) {
-        AuthenticationAttempt authenticationAttempt = new AuthenticationAttempt(password.authorizationId(), password.authenticationId(), password.password());
-        if (authenticationAttempt.isDelegation()) {
-            doPasswordAuthWithDelegation(authenticationAttempt, session, request, responder);
-        } else {
-            doPasswordAuth(authenticationAttempt, session, request, responder);
-        }
-    }
-
-    private void handleBearerTokenCredentials(SaslCredentials.BearerToken bearerToken, ImapSession session, AuthenticateRequest request, Responder responder) {
-        session.oidcSaslConfiguration()
-            .ifPresentOrElse(configuration -> new OidcJwtTokenVerifier(configuration).validateToken(bearerToken.token())
-                    .ifPresentOrElse(authenticatedUser -> {
-                        if (!bearerToken.authorizationId().equals(authenticatedUser)) {
-                            doAuthWithDelegation(() -> getMailboxManager()
-                                    .withExtraAuthorizator(withAdminUsers())
-                                    .authenticate(authenticatedUser)
-                                    .as(bearerToken.authorizationId()),
-                                session, request, responder, authenticatedUser, bearerToken.authorizationId());
-                        } else {
-                            authSuccess(session, getMailboxManager().createSystemSession(authenticatedUser), request, responder,
-                                "OAuth authentication succeeded.");
-                        }
-                    }, () -> authFailure(session, request, responder, HumanReadableText.AUTHENTICATION_FAILED, Optional.empty(),
-                        Optional.of(bearerToken.authorizationId()), "OAuth authentication failed.")),
-                () -> authFailure(session, request, responder, HumanReadableText.AUTHENTICATION_FAILED, Optional.empty(),
-                    Optional.of(bearerToken.authorizationId()), "OAuth authentication failed."));
+    private HumanReadableText failureResponseText(SaslStep.Failure.Cause cause) {
+        return switch (cause) {
+            case INVALID_CREDENTIALS -> HumanReadableText.INVALID_CREDENTIALS;
+            case DELEGATION_FORBIDDEN -> HumanReadableText.DELEGATION_FORBIDDEN;
+            case UNKNOWN_USER -> HumanReadableText.USER_DOES_NOT_EXIST;
+            case MALFORMED_COMMAND, AUTHENTICATION_FAILED, SERVER_ERROR -> HumanReadableText.AUTHENTICATION_FAILED;
+        };
     }
 
     private void handleSuccess(ImapSession session, AuthenticateRequest request, Responder responder, SaslIdentity identity) {
@@ -418,7 +413,13 @@ public class AuthenticateProcessor extends AbstractAuthProcessor<AuthenticateReq
                 session, request, responder, identity.authenticationId(), identity.authorizationId());
             return;
         }
-        authSuccess(session, getMailboxManager().createSystemSession(identity.authenticationId()), request, responder, successLog(request));
+        try {
+            authSuccess(session, getMailboxManager().authenticate(identity.authenticationId()).withoutDelegation(),
+                request, responder, successLog(request));
+        } catch (MailboxException e) {
+            LOGGER.error("Session establishment failed after a successful SASL exchange", e);
+            no(request, responder, HumanReadableText.GENERIC_FAILURE_DURING_PROCESSING);
+        }
     }
 
     private String successLog(AuthenticateRequest request) {

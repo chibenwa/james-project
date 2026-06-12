@@ -355,7 +355,7 @@ public class InMemoryIntegrationResources implements IntegrationResources<StoreM
 
             listenersToBeRegistered.build().forEach(eventBus::register);
 
-            return new InMemoryIntegrationResources(manager, storeRightManager, messageIdFactory, currentQuotaCalculator, currentQuotaManager, quotaRootResolver, maxQuotaManager, quotaManager, messageIdManager, index, eventBus, attachmentManager);
+            return new InMemoryIntegrationResources(manager, storeRightManager, messageIdFactory, currentQuotaCalculator, currentQuotaManager, quotaRootResolver, maxQuotaManager, quotaManager, messageIdManager, index, eventBus, attachmentManager, authenticator.get(), authorizator.get());
         }
 
         private PreDeletionHooks createHooks(MailboxManagerPreInstanciationStage preInstanciationStage) {
@@ -427,6 +427,8 @@ public class InMemoryIntegrationResources implements IntegrationResources<StoreM
         }
     }
 
+    private final Authenticator authenticator;
+    private final Authorizator authorizator;
     private final InMemoryMailboxManager mailboxManager;
     private final StoreRightManager storeRightManager;
     private final MessageId.Factory messageIdFactory;
@@ -440,7 +442,9 @@ public class InMemoryIntegrationResources implements IntegrationResources<StoreM
     private final EventBus eventBus;
     private final AttachmentManager attachmentManager;
 
-    InMemoryIntegrationResources(InMemoryMailboxManager mailboxManager, StoreRightManager storeRightManager, MessageId.Factory messageIdFactory, CurrentQuotaCalculator currentQuotaCalculator, InMemoryCurrentQuotaManager currentQuotaManager, DefaultUserQuotaRootResolver defaultUserQuotaRootResolver, InMemoryPerUserMaxQuotaManager maxQuotaManager, QuotaManager quotaManager, StoreMessageIdManager storeMessageIdManager, MessageSearchIndex searchIndex, EventBus eventBus, AttachmentManager attachmentManager) {
+    InMemoryIntegrationResources(InMemoryMailboxManager mailboxManager, StoreRightManager storeRightManager, MessageId.Factory messageIdFactory, CurrentQuotaCalculator currentQuotaCalculator, InMemoryCurrentQuotaManager currentQuotaManager, DefaultUserQuotaRootResolver defaultUserQuotaRootResolver, InMemoryPerUserMaxQuotaManager maxQuotaManager, QuotaManager quotaManager, StoreMessageIdManager storeMessageIdManager, MessageSearchIndex searchIndex, EventBus eventBus, AttachmentManager attachmentManager, Authenticator authenticator, Authorizator authorizator) {
+        this.authenticator = authenticator;
+        this.authorizator = authorizator;
         this.mailboxManager = mailboxManager;
         this.storeRightManager = storeRightManager;
         this.messageIdFactory = messageIdFactory;
@@ -457,6 +461,14 @@ public class InMemoryIntegrationResources implements IntegrationResources<StoreM
 
     public DefaultUserQuotaRootResolver getDefaultUserQuotaRootResolver() {
         return defaultUserQuotaRootResolver;
+    }
+
+    public Authenticator getAuthenticator() {
+        return authenticator;
+    }
+
+    public Authorizator getAuthorizator() {
+        return authorizator;
     }
 
     public InMemoryMailboxManager getMailboxManager() {
