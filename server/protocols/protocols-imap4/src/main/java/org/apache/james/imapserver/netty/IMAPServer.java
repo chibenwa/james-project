@@ -91,37 +91,6 @@ public class IMAPServer extends AbstractConfigurableAsyncServer implements ImapC
     private static final Logger LOG = LoggerFactory.getLogger(IMAPServer.class);
     public static final AttributeKey<Instant> CONNECTION_DATE = AttributeKey.newInstance("connectionDate");
 
-    public static class AuthenticationConfiguration {
-        private static final boolean PLAIN_AUTH_DISALLOWED_DEFAULT = true;
-        private static final boolean PLAIN_AUTH_ENABLED_DEFAULT = true;
-
-        public static AuthenticationConfiguration parse(HierarchicalConfiguration<ImmutableNode> configuration) {
-            return new AuthenticationConfiguration(
-                configuration.getBoolean("auth.requireSSL", fallback(configuration)),
-                configuration.getBoolean("auth.plainAuthEnabled", PLAIN_AUTH_ENABLED_DEFAULT));
-        }
-
-        private static boolean fallback(HierarchicalConfiguration<ImmutableNode> configuration) {
-            return configuration.getBoolean("plainAuthDisallowed", PLAIN_AUTH_DISALLOWED_DEFAULT);
-        }
-
-        private final boolean isSSLRequired;
-        private final boolean plainAuthEnabled;
-
-        public AuthenticationConfiguration(boolean isSSLRequired, boolean plainAuthEnabled) {
-            this.isSSLRequired = isSSLRequired;
-            this.plainAuthEnabled = plainAuthEnabled;
-        }
-
-        public boolean isSSLRequired() {
-            return isSSLRequired;
-        }
-
-        public boolean isPlainAuthEnabled() {
-            return plainAuthEnabled;
-        }
-    }
-
     private static final String SOFTWARE_TYPE = "JAMES " + VERSION + " Server ";
     private static final String DEFAULT_TIME_UNIT = "SECONDS";
     private static final String CAPABILITY_SEPARATOR = "|";
@@ -144,7 +113,6 @@ public class IMAPServer extends AbstractConfigurableAsyncServer implements ImapC
     private int inMemorySizeLimit;
     private int timeout;
     private int literalSizeLimit;
-    private AuthenticationConfiguration authenticationConfiguration;
     private Optional<TrafficShapingConfiguration> trafficShaping = Optional.empty();
     private Optional<ConnectionLimitUpstreamHandler> connectionLimitUpstreamHandler = Optional.empty();
     private Optional<ConnectionPerIpLimitUpstreamHandler> connectionPerIpLimitUpstreamHandler = Optional.empty();
@@ -182,7 +150,6 @@ public class IMAPServer extends AbstractConfigurableAsyncServer implements ImapC
         if (timeout < DEFAULT_TIMEOUT) {
             throw new ConfigurationException("Minimum timeout of 30 minutes required. See rfc2060 5.4 for details");
         }
-        authenticationConfiguration = AuthenticationConfiguration.parse(configuration);
         connectionLimitUpstreamHandler = ConnectionLimitUpstreamHandler.forCount(connectionLimit);
         connectionPerIpLimitUpstreamHandler = ConnectionPerIpLimitUpstreamHandler.forCount(connPerIP);
         ignoreIDLEUponProcessing = configuration.getBoolean("ignoreIDLEUponProcessing", true);
@@ -338,7 +305,6 @@ public class IMAPServer extends AbstractConfigurableAsyncServer implements ImapC
             .processor(processor)
             .encoder(encoder)
             .compress(compress)
-            .authenticationConfiguration(authenticationConfiguration)
             .connectionChecks(connectionChecks)
             .secure(secure)
             .imapMetrics(imapMetrics)

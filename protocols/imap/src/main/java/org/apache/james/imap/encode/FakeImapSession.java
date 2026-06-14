@@ -166,16 +166,6 @@ public class FakeImapSession implements ImapSession {
     }
 
     @Override
-    public boolean isSSLRequired() {
-        return false;
-    }
-
-    @Override
-    public boolean isPlainAuthEnabled() {
-        return true;
-    }
-
-    @Override
     public InetSocketAddress getRemoteAddress() {
         return null;
     }

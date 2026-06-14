@@ -20,6 +20,7 @@
 package org.apache.james.imap.processor;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 import org.apache.commons.lang3.tuple.Pair;
@@ -40,6 +41,7 @@ import org.apache.james.mailbox.SubscriptionManager;
 import org.apache.james.mailbox.quota.QuotaManager;
 import org.apache.james.mailbox.quota.QuotaRootResolver;
 import org.apache.james.metrics.api.MetricFactory;
+import org.apache.james.protocols.api.sasl.PlainSaslMechanism;
 import org.apache.james.protocols.api.sasl.SaslMechanism;
 
 import com.google.common.collect.ImmutableList;
@@ -70,7 +72,7 @@ public class DefaultProcessor implements ImapProcessor {
         builder.add(capabilityProcessor);
         builder.add(new IdProcessor(mailboxManager, statusResponseFactory, metricFactory));
         builder.add(new CheckProcessor(mailboxManager, statusResponseFactory, metricFactory));
-        builder.add(new LoginProcessor(mailboxManager, statusResponseFactory, metricFactory, pathConverterFactory));
+        builder.add(new LoginProcessor(mailboxManager, statusResponseFactory, metricFactory, pathConverterFactory, plainSaslMechanism(saslMechanisms)));
         builder.add(new RenameProcessor(mailboxManager, statusResponseFactory, metricFactory, pathConverterFactory));
         builder.add(new DeleteProcessor(mailboxManager, statusResponseFactory, metricFactory, pathConverterFactory));
         builder.add(new CreateProcessor(mailboxManager, statusResponseFactory, metricFactory, pathConverterFactory));
@@ -136,6 +138,13 @@ public class DefaultProcessor implements ImapProcessor {
                 Pair::getRight));
 
         return new DefaultProcessor(processorMap, chainEndProcessor);
+    }
+
+    private static Optional<PlainSaslMechanism> plainSaslMechanism(ImmutableList<SaslMechanism> saslMechanisms) {
+        return saslMechanisms.stream()
+            .filter(PlainSaslMechanism.class::isInstance)
+            .map(PlainSaslMechanism.class::cast)
+            .findFirst();
     }
 
     private static Stream<Pair<Class, AbstractProcessor>> asPairStream(AbstractProcessor p) {

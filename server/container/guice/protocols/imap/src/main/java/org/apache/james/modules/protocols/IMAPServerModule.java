@@ -61,6 +61,7 @@ import org.apache.james.imap.processor.CapabilityImplementingProcessor;
 import org.apache.james.imap.processor.CapabilityProcessor;
 import org.apache.james.imap.processor.DefaultProcessor;
 import org.apache.james.imap.processor.EnableProcessor;
+import org.apache.james.imap.processor.LoginProcessor;
 import org.apache.james.imap.processor.NamespaceSupplier;
 import org.apache.james.imap.processor.PermitEnableCapabilityProcessor;
 import org.apache.james.imap.processor.SelectProcessor;
@@ -74,6 +75,7 @@ import org.apache.james.lifecycle.api.ConfigurationSanitizer;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.metrics.api.GaugeRegistry;
 import org.apache.james.metrics.api.MetricFactory;
+import org.apache.james.protocols.api.sasl.PlainSaslMechanism;
 import org.apache.james.protocols.api.sasl.SaslMechanism;
 import org.apache.james.protocols.lib.netty.CertificateReloadable;
 import org.apache.james.protocols.netty.Encryption;
@@ -185,12 +187,22 @@ public class IMAPServerModule extends AbstractModule {
                                                    ImmutableList<SaslMechanism> saslMechanisms, MailboxManager mailboxManager,
                                                    StatusResponseFactory statusResponseFactory, MetricFactory metricFactory,
                                                    PathConverter.Factory pathConverterFactory) throws ClassNotFoundException {
-        // AuthenticateProcessor receives its SASL mechanisms statically through its constructor: it cannot be
-        // built reflectively because the resolved mechanisms are server-configuration specific.
+        // AuthenticateProcessor and LoginProcessor receive their SASL mechanisms statically through their
+        // constructors: they cannot be built reflectively because the resolved mechanisms are server-specific.
         if (className.getName().equals(AuthenticateProcessor.class.getName())) {
             return new AuthenticateProcessor(mailboxManager, statusResponseFactory, metricFactory, pathConverterFactory, saslMechanisms);
         }
+        if (className.getName().equals(LoginProcessor.class.getName())) {
+            return new LoginProcessor(mailboxManager, statusResponseFactory, metricFactory, pathConverterFactory, plainSaslMechanism(saslMechanisms));
+        }
         return guiceLoader.instantiate(className);
+    }
+
+    private Optional<PlainSaslMechanism> plainSaslMechanism(ImmutableList<SaslMechanism> saslMechanisms) {
+        return saslMechanisms.stream()
+            .filter(PlainSaslMechanism.class::isInstance)
+            .map(PlainSaslMechanism.class::cast)
+            .findFirst();
     }
 
     private ImapPackage retrievePackages(GuiceLoader guiceLoader, HierarchicalConfiguration<ImmutableNode> configuration) {

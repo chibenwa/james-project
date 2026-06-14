@@ -60,8 +60,6 @@ public class NettyImapSession implements ImapSession, NettyConstants {
     private final Encryption secure;
     private final boolean compress;
     private final Channel channel;
-    private final boolean requiredSSL;
-    private final boolean plainAuthEnabled;
     private final SessionId sessionId;
 
     private volatile ImapSessionState state = ImapSessionState.NON_AUTHENTICATED;
@@ -69,12 +67,10 @@ public class NettyImapSession implements ImapSession, NettyConstants {
     private volatile boolean needsCommandInjectionDetection;
     private volatile MailboxSession mailboxSession = null;
 
-    public NettyImapSession(Channel channel, Encryption secure, boolean compress, boolean requiredSSL, boolean plainAuthEnabled, SessionId sessionId) {
+    public NettyImapSession(Channel channel, Encryption secure, boolean compress, SessionId sessionId) {
         this.channel = channel;
         this.secure = secure;
         this.compress = compress;
-        this.requiredSSL = requiredSSL;
-        this.plainAuthEnabled = plainAuthEnabled;
         this.sessionId = sessionId;
         this.needsCommandInjectionDetection = true;
     }
@@ -303,16 +299,6 @@ public class NettyImapSession implements ImapSession, NettyConstants {
     public void popLineHandler() {
         LineHandlerAware handler = (LineHandlerAware) channel.pipeline().get(REQUEST_DECODER);
         handler.popLineHandler();
-    }
-
-    @Override
-    public boolean isSSLRequired() {
-        return requiredSSL;
-    }
-
-    @Override
-    public boolean isPlainAuthEnabled() {
-        return plainAuthEnabled;
     }
 
     @Override

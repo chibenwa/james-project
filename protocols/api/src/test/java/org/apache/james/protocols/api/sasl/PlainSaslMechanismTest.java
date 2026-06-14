@@ -51,7 +51,7 @@ class PlainSaslMechanismTest {
         return Authorizator.AuthorizationState.FORBIDDEN;
     };
 
-    private final PlainSaslMechanism testee = new PlainSaslMechanism(AUTHENTICATOR, AUTHORIZATOR);
+    private final PlainSaslMechanism testee = new PlainSaslMechanism(AUTHENTICATOR, AUTHORIZATOR, false);
 
     @Test
     void shouldChallengeWhenNoInitialResponse() {
@@ -155,7 +155,7 @@ class PlainSaslMechanismTest {
     void shouldUseCanonicalUsernameReturnedByAuthenticator() {
         // GIVEN an authenticator normalizing the supplied login
         Username canonical = Username.of("canonical@example.com");
-        PlainSaslMechanism mechanism = new PlainSaslMechanism((userid, passwd) -> Optional.of(canonical), AUTHORIZATOR);
+        PlainSaslMechanism mechanism = new PlainSaslMechanism((userid, passwd) -> Optional.of(canonical), AUTHORIZATOR, false);
         SaslInitialRequest request = new SaslInitialRequest(PlainSaslMechanism.NAME,
             Optional.of(bytes("\0alias\0" + PASSWORD)));
 
@@ -174,7 +174,7 @@ class PlainSaslMechanismTest {
         serverConfiguration.addProperty("auth.adminUsers.adminUser", AUTHENTICATION_ID.asString());
         Authorizator forbiddingAuthorizator = (userId, otherUserId) -> Authorizator.AuthorizationState.FORBIDDEN;
         PlainSaslMechanism mechanism = new PlainSaslMechanism(AUTHENTICATOR,
-            SaslDelegation.withConfiguredAdminUsers(forbiddingAuthorizator, serverConfiguration));
+            SaslDelegation.withConfiguredAdminUsers(forbiddingAuthorizator, serverConfiguration), false);
         SaslInitialRequest request = new SaslInitialRequest(PlainSaslMechanism.NAME,
             Optional.of(bytes("other@example.com\0" + AUTHENTICATION_ID.asString() + "\0" + PASSWORD)));
 

@@ -34,10 +34,12 @@ public interface SaslMechanism {
     SaslExchange start(SaslInitialRequest request);
 
     /**
-     * Whether this mechanism transmits credentials that require a confidential (encrypted) channel,
-     * e.g. a cleartext password. Protocols may refuse such mechanisms over an insecure transport.
+     * Whether this mechanism may be used over a channel with the given encryption state. A cleartext-password
+     * mechanism, for instance, may refuse an unencrypted channel. Defaults to always available.
+     *
+     * @param channelEncrypted whether the underlying transport is currently encrypted (e.g. TLS active)
      */
-    default boolean requiresEncryptedChannel() {
-        return false;
+    default boolean isAvailableOnTransport(boolean channelEncrypted) {
+        return true;
     }
 }

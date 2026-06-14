@@ -42,10 +42,12 @@ public class PlainSaslMechanism implements SaslMechanism {
 
     private final Authenticator authenticator;
     private final Authorizator authorizator;
+    private final boolean requiresSsl;
 
-    public PlainSaslMechanism(Authenticator authenticator, Authorizator authorizator) {
+    public PlainSaslMechanism(Authenticator authenticator, Authorizator authorizator, boolean requiresSsl) {
         this.authenticator = authenticator;
         this.authorizator = authorizator;
+        this.requiresSsl = requiresSsl;
     }
 
     @Override
@@ -54,14 +56,22 @@ public class PlainSaslMechanism implements SaslMechanism {
     }
 
     @Override
-    public boolean requiresEncryptedChannel() {
-        // PLAIN carries a cleartext password.
-        return true;
+    public boolean isAvailableOnTransport(boolean channelEncrypted) {
+        // PLAIN carries a cleartext password: refuse it over a clear channel when SSL is required.
+        return !requiresSsl || channelEncrypted;
     }
 
     @Override
     public SaslExchange start(SaslInitialRequest request) {
         return new PlainSaslExchange(request.initialResponse());
+    }
+
+    /**
+     * Verifies cleartext credentials directly, for protocols whose command already exposes a username and
+     * password (e.g. the IMAP LOGIN command), without re-encoding them as a SASL payload.
+     */
+    public SaslStep authenticate(Username authenticationId, String password) {
+        return verify(credentials(Optional.empty(), authenticationId, password));
     }
 
     private class PlainSaslExchange implements SaslExchange {

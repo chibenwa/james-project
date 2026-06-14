@@ -38,6 +38,14 @@ public class PlainSaslMechanismFactory implements SaslMechanismFactory {
 
     @Override
     public SaslMechanism create(HierarchicalConfiguration<ImmutableNode> serverConfiguration) {
-        return new PlainSaslMechanism(authenticator, SaslDelegation.withConfiguredAdminUsers(authorizator, serverConfiguration));
+        return new PlainSaslMechanism(authenticator,
+            SaslDelegation.withConfiguredAdminUsers(authorizator, serverConfiguration),
+            requiresSsl(serverConfiguration));
+    }
+
+    private boolean requiresSsl(HierarchicalConfiguration<ImmutableNode> serverConfiguration) {
+        // Legacy: auth.requireSSL falls back to the historical plainAuthDisallowed flag (secure by default).
+        return serverConfiguration.getBoolean("auth.requireSSL",
+            serverConfiguration.getBoolean("plainAuthDisallowed", true));
     }
 }

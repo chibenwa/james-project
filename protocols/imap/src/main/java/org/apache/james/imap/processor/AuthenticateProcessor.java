@@ -34,10 +34,8 @@ import org.apache.james.imap.message.request.IRAuthenticateRequest;
 import org.apache.james.imap.message.response.AuthenticateResponse;
 import org.apache.james.imap.processor.sasl.ImapSaslBridge;
 import org.apache.james.mailbox.MailboxManager;
-import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.protocols.api.sasl.SaslExchange;
-import org.apache.james.protocols.api.sasl.SaslIdentity;
 import org.apache.james.protocols.api.sasl.SaslInitialRequest;
 import org.apache.james.protocols.api.sasl.SaslMechanism;
 import org.apache.james.protocols.api.sasl.SaslStep;
@@ -149,8 +147,8 @@ public class AuthenticateProcessor extends AbstractAuthProcessor<AuthenticateReq
 
     private boolean isAvailable(SaslMechanism mechanism, ImapSession session) {
         // Whether a mechanism is offered is a configuration concern (the mechanism list). The only
-        // per-connection gate left is transport confidentiality, which the mechanism declares itself.
-        return !mechanism.requiresEncryptedChannel() || !session.isAuthenticatingNonEncryptedWhenRequiredSSL();
+        // per-connection gate left is transport confidentiality, which the mechanism decides itself.
+        return mechanism.isAvailableOnTransport(session.isTLSActive());
     }
 
     private void rejectUnavailable(AuthenticateRequest request, Responder responder, SaslMechanism mechanism) {
@@ -339,50 +337,9 @@ public class AuthenticateProcessor extends AbstractAuthProcessor<AuthenticateReq
 
     private void handleTerminalStep(SaslExchange exchange, SaslStep step, ImapSession session, AuthenticateRequest request, Responder responder) {
         try {
-            if (step instanceof SaslStep.Success success) {
-                handleSuccess(session, request, responder, success.identity());
-            } else if (step instanceof SaslStep.Failure failure) {
-                handleFailure(failure, session, request, responder);
-            }
+            handleSaslStep(step, session, request, responder, successLog(request));
         } finally {
             saslBridge.close(exchange);
-        }
-    }
-
-    private void handleFailure(SaslStep.Failure failure, ImapSession session, AuthenticateRequest request, Responder responder) {
-        if (failure.cause() == SaslStep.Failure.Cause.SERVER_ERROR) {
-            LOGGER.error("Authentication failed: {}", failure.reason());
-            no(request, responder, HumanReadableText.GENERIC_FAILURE_DURING_PROCESSING);
-            return;
-        }
-        authFailure(session, request, responder, failureResponseText(failure.cause()),
-            failure.authenticationId(), failure.authorizationId(), failure.reason());
-    }
-
-    private HumanReadableText failureResponseText(SaslStep.Failure.Cause cause) {
-        return switch (cause) {
-            case INVALID_CREDENTIALS -> HumanReadableText.INVALID_CREDENTIALS;
-            case DELEGATION_FORBIDDEN -> HumanReadableText.DELEGATION_FORBIDDEN;
-            case UNKNOWN_USER -> HumanReadableText.USER_DOES_NOT_EXIST;
-            case MALFORMED_COMMAND, AUTHENTICATION_FAILED, SERVER_ERROR -> HumanReadableText.AUTHENTICATION_FAILED;
-        };
-    }
-
-    private void handleSuccess(ImapSession session, AuthenticateRequest request, Responder responder, SaslIdentity identity) {
-        if (!identity.authenticationId().equals(identity.authorizationId())) {
-            doAuthWithDelegation(() -> getMailboxManager()
-                    .withExtraAuthorizator(withAdminUsers())
-                    .authenticate(identity.authenticationId())
-                    .as(identity.authorizationId()),
-                session, request, responder, identity.authenticationId(), identity.authorizationId());
-            return;
-        }
-        try {
-            authSuccess(session, getMailboxManager().authenticate(identity.authenticationId()).withoutDelegation(),
-                request, responder, successLog(request));
-        } catch (MailboxException e) {
-            LOGGER.error("Session establishment failed after a successful SASL exchange", e);
-            no(request, responder, HumanReadableText.GENERIC_FAILURE_DURING_PROCESSING);
         }
     }
 

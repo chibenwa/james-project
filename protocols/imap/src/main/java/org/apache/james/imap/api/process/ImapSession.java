@@ -246,17 +246,6 @@ public interface ImapSession extends CommandDetectionSession {
      */
     void popLineHandler();
 
-    /**
-     * Return true if SSL is required when Authenticating
-     */
-    boolean isSSLRequired();
-
-    /**
-     * Return true if the login / authentication via plain username / password is
-     * enabled
-     */
-    boolean isPlainAuthEnabled();
-
     default void withMDC(Runnable runnable) {
         try (Closeable c = mdc().build()) {
             runnable.run();
@@ -289,14 +278,6 @@ public interface ImapSession extends CommandDetectionSession {
         return Optional.ofNullable(getMailboxSession())
             .map(MailboxSession::getUser)
             .orElse(null);
-    }
-
-    default boolean isPlainAuthDisallowed() {
-        return !isPlainAuthEnabled() || isAuthenticatingNonEncryptedWhenRequiredSSL();
-    }
-
-    default boolean isAuthenticatingNonEncryptedWhenRequiredSSL() {
-        return isSSLRequired() && !isTLSActive();
     }
 
     void schedule(Runnable runnable, Duration waitDelay);
