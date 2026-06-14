@@ -24,11 +24,15 @@ import jakarta.inject.Inject;
 import org.apache.james.protocols.api.sasl.SaslMechanismFactory;
 
 public class GuiceSaslMechanismInstantiator implements SaslMechanismInstantiator {
+    // Lets configuration reference the built-in SASL factories by simple name, resolving against their package.
+    private static final NamingScheme DEFAULT_SASL_PACKAGE = new NamingScheme.OptionalPackagePrefix(
+        PackageName.of(SaslMechanismFactory.class.getPackageName()));
+
     private final GuiceLoader.InvocationPerformer<SaslMechanismFactory> factoryLoader;
 
     @Inject
     public GuiceSaslMechanismInstantiator(GuiceLoader guiceLoader) {
-        this.factoryLoader = guiceLoader.withNamingSheme(DefaultSaslMechanismNamingScheme.asNamingScheme());
+        this.factoryLoader = guiceLoader.withNamingSheme(DEFAULT_SASL_PACKAGE);
     }
 
     @Override
