@@ -63,7 +63,7 @@ under the License.
         <customProperties>prop.b=baad</customProperties>
         <gracefulShutdown>false</gracefulShutdown>
         <auth>
-            <saslMechanisms>PlainSaslMechanismFactory,OauthBearerSaslMechanismFactory,XOauth2SaslMechanismFactory,org.apache.james.examples.imap.sasl.ExampleTokenSaslMechanismFactory</saslMechanisms>
+            <saslMechanisms>PlainSaslMechanismFactory,org.apache.james.examples.imap.sasl.ExampleTokenSaslMechanismFactory</saslMechanisms>
             <exampleToken>
                 <expectedToken>secret-token</expectedToken>
                 <authorizedUser>bob@domain.tld</authorizedUser>

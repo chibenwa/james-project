@@ -36,7 +36,6 @@ import org.apache.james.imap.processor.sasl.ImapSaslBridge;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.metrics.api.MetricFactory;
-import org.apache.james.protocols.api.sasl.PlainSaslMechanism;
 import org.apache.james.protocols.api.sasl.SaslExchange;
 import org.apache.james.protocols.api.sasl.SaslIdentity;
 import org.apache.james.protocols.api.sasl.SaslInitialRequest;
@@ -149,16 +148,13 @@ public class AuthenticateProcessor extends AbstractAuthProcessor<AuthenticateReq
     }
 
     private boolean isAvailable(SaslMechanism mechanism, ImapSession session) {
-        // Whether a mechanism is offered is now a configuration concern (the mechanism list). The only
-        // per-connection gate left is that PLAIN requires a secure channel when SSL is required.
-        if (PlainSaslMechanism.NAME.equalsIgnoreCase(mechanism.name())) {
-            return !session.isAuthenticatingNonEncryptedWhenRequiredSSL();
-        }
-        return true;
+        // Whether a mechanism is offered is a configuration concern (the mechanism list). The only
+        // per-connection gate left is transport confidentiality, which the mechanism declares itself.
+        return !mechanism.requiresEncryptedChannel() || !session.isAuthenticatingNonEncryptedWhenRequiredSSL();
     }
 
     private void rejectUnavailable(AuthenticateRequest request, Responder responder, SaslMechanism mechanism) {
-        LOGGER.warn("Plain authentication rejected because it is not allowed over an insecure channel");
+        LOGGER.warn("{} authentication rejected because it is not allowed over an insecure channel", mechanism.name());
         no(request, responder, HumanReadableText.DISABLED_LOGIN);
     }
 

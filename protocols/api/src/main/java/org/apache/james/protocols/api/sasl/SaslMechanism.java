@@ -32,4 +32,12 @@ public interface SaslMechanism {
      * Starts a new SASL exchange for one client authentication attempt.
      */
     SaslExchange start(SaslInitialRequest request);
+
+    /**
+     * Whether this mechanism transmits credentials that require a confidential (encrypted) channel,
+     * e.g. a cleartext password. Protocols may refuse such mechanisms over an insecure transport.
+     */
+    default boolean requiresEncryptedChannel() {
+        return false;
+    }
 }

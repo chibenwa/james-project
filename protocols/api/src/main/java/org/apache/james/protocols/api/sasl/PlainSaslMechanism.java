@@ -54,6 +54,12 @@ public class PlainSaslMechanism implements SaslMechanism {
     }
 
     @Override
+    public boolean requiresEncryptedChannel() {
+        // PLAIN carries a cleartext password.
+        return true;
+    }
+
+    @Override
     public SaslExchange start(SaslInitialRequest request) {
         return new PlainSaslExchange(request.initialResponse());
     }
