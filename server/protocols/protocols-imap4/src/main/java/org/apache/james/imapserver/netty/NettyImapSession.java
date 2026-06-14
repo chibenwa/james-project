@@ -39,7 +39,6 @@ import org.apache.james.imap.api.process.ImapSession;
 import org.apache.james.imap.api.process.SelectedMailbox;
 import org.apache.james.imap.encode.ImapResponseWriter;
 import org.apache.james.imap.message.Literal;
-import org.apache.james.jwt.OidcSASLConfiguration;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.protocols.netty.Encryption;
 import org.apache.james.protocols.netty.LineHandlerAware;
@@ -65,7 +64,6 @@ public class NettyImapSession implements ImapSession, NettyConstants {
     private final boolean plainAuthEnabled;
     private final SessionId sessionId;
     private final boolean supportsOAuth;
-    private final Optional<OidcSASLConfiguration> oidcSASLConfiguration;
 
     private volatile ImapSessionState state = ImapSessionState.NON_AUTHENTICATED;
     private final AtomicReference<SelectedMailbox> selectedMailbox = new AtomicReference<>();
@@ -73,7 +71,7 @@ public class NettyImapSession implements ImapSession, NettyConstants {
     private volatile MailboxSession mailboxSession = null;
 
     public NettyImapSession(Channel channel, Encryption secure, boolean compress, boolean requiredSSL, boolean plainAuthEnabled, SessionId sessionId,
-                            Optional<OidcSASLConfiguration> oidcSASLConfiguration) {
+                            boolean supportsOAuth) {
         this.channel = channel;
         this.secure = secure;
         this.compress = compress;
@@ -81,8 +79,7 @@ public class NettyImapSession implements ImapSession, NettyConstants {
         this.plainAuthEnabled = plainAuthEnabled;
         this.sessionId = sessionId;
         this.needsCommandInjectionDetection = true;
-        this.oidcSASLConfiguration = oidcSASLConfiguration;
-        this.supportsOAuth = oidcSASLConfiguration.isPresent();
+        this.supportsOAuth = supportsOAuth;
     }
 
     @Override
@@ -329,11 +326,6 @@ public class NettyImapSession implements ImapSession, NettyConstants {
     @Override
     public InetSocketAddress getRemoteAddress() {
         return (InetSocketAddress) channel.remoteAddress();
-    }
-
-    @Override
-    public Optional<OidcSASLConfiguration> oidcSaslConfiguration() {
-        return oidcSASLConfiguration;
     }
 
     @Override

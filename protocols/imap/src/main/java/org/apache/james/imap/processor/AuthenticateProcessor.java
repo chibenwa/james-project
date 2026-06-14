@@ -24,8 +24,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
-import jakarta.inject.Inject;
-
 import org.apache.james.imap.api.display.HumanReadableText;
 import org.apache.james.imap.api.message.Capability;
 import org.apache.james.imap.api.message.response.StatusResponseFactory;
@@ -35,8 +33,6 @@ import org.apache.james.imap.message.request.AuthenticateRequest;
 import org.apache.james.imap.message.request.IRAuthenticateRequest;
 import org.apache.james.imap.message.response.AuthenticateResponse;
 import org.apache.james.imap.processor.sasl.ImapSaslBridge;
-import org.apache.james.mailbox.Authenticator;
-import org.apache.james.mailbox.Authorizator;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.metrics.api.MetricFactory;
@@ -67,18 +63,14 @@ public class AuthenticateProcessor extends AbstractAuthProcessor<AuthenticateReq
     private static final Logger LOGGER = LoggerFactory.getLogger(AuthenticateProcessor.class);
 
     private final ImapSaslBridge saslBridge;
-    private final Authenticator authenticator;
-    private final Authorizator authorizator;
-    private Optional<ImmutableList<SaslMechanism>> saslMechanisms;
+    private final ImmutableList<SaslMechanism> saslMechanisms;
 
-    @Inject
-    public AuthenticateProcessor(MailboxManager mailboxManager, Authenticator authenticator, Authorizator authorizator,
-                                 StatusResponseFactory factory, MetricFactory metricFactory, PathConverter.Factory pathConverterFactory) {
+    public AuthenticateProcessor(MailboxManager mailboxManager, StatusResponseFactory factory,
+                                 MetricFactory metricFactory, PathConverter.Factory pathConverterFactory,
+                                 ImmutableList<SaslMechanism> saslMechanisms) {
         super(AuthenticateRequest.class, mailboxManager, factory, metricFactory, pathConverterFactory);
         this.saslBridge = new ImapSaslBridge();
-        this.authenticator = authenticator;
-        this.authorizator = authorizator;
-        this.saslMechanisms = Optional.empty();
+        this.saslMechanisms = saslMechanisms;
     }
 
     @Override
@@ -88,7 +80,7 @@ public class AuthenticateProcessor extends AbstractAuthProcessor<AuthenticateReq
 
     @Override
     protected void processRequest(AuthenticateRequest request, ImapSession session, final Responder responder) {
-        Optional<SaslMechanism> mechanism = findMechanism(request.getAuthType(), session);
+        Optional<SaslMechanism> mechanism = findMechanism(request.getAuthType());
 
         if (mechanism.isEmpty()) {
             LOGGER.debug("Unsupported authentication mechanism '{}'", request.getAuthType());
@@ -114,7 +106,7 @@ public class AuthenticateProcessor extends AbstractAuthProcessor<AuthenticateReq
 
     @Override
     public List<Capability> getImplementedCapabilities(ImapSession session) {
-        List<Capability> caps = saslMechanisms(session).stream()
+        List<Capability> caps = saslMechanisms().stream()
             .filter(mechanism -> isAvailable(mechanism, session))
             .map(mechanism -> Capability.of("AUTH=" + mechanism.name()))
             .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
@@ -131,24 +123,8 @@ public class AuthenticateProcessor extends AbstractAuthProcessor<AuthenticateReq
             .addToContext("authType", request.getAuthType());
     }
 
-    public void configureSaslMechanisms(ImmutableList<SaslMechanism> saslMechanisms) {
-        this.saslMechanisms = Optional.of(saslMechanisms);
-    }
-
-    private ImmutableList<SaslMechanism> saslMechanisms(ImapSession session) {
-        return saslMechanisms.orElseGet(() -> defaultSaslMechanisms(session));
-    }
-
-    /**
-     * Default mechanisms for wirings that do not resolve SASL mechanisms from each server configuration:
-     * credential verification stays in the SASL layer, fed from the session-level configuration.
-     */
-    private ImmutableList<SaslMechanism> defaultSaslMechanisms(ImapSession session) {
-        Authorizator sessionAuthorizator = Authorizator.combine(authorizator, withAdminUsers());
-        return ImmutableList.of(
-            new PlainSaslMechanism(authenticator, sessionAuthorizator),
-            new OauthBearerSaslMechanism(session.oidcSaslConfiguration(), sessionAuthorizator),
-            new XOauth2SaslMechanism(session.oidcSaslConfiguration(), sessionAuthorizator));
+    private ImmutableList<SaslMechanism> saslMechanisms() {
+        return saslMechanisms;
     }
 
     private Optional<String> initialClientResponse(AuthenticateRequest request) {
@@ -167,9 +143,9 @@ public class AuthenticateProcessor extends AbstractAuthProcessor<AuthenticateReq
         }
     }
 
-    private Optional<SaslMechanism> findMechanism(String mechanismName, ImapSession session) {
+    private Optional<SaslMechanism> findMechanism(String mechanismName) {
         String normalizedName = mechanismName.toUpperCase(Locale.US);
-        return saslMechanisms(session).stream()
+        return saslMechanisms().stream()
             .filter(mechanism -> mechanism.name().toUpperCase(Locale.US).equals(normalizedName))
             .findFirst();
     }

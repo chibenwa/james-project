@@ -67,6 +67,7 @@ import org.apache.james.metrics.tests.RecordingMetricFactory;
 import org.apache.james.mpt.api.ImapFeatures;
 import org.apache.james.mpt.api.ImapFeatures.Feature;
 import org.apache.james.mpt.host.JamesImapHostSystem;
+import org.apache.james.protocols.api.sasl.DefaultSaslMechanisms;
 import org.apache.james.utils.UpdatableTickingClock;
 
 import com.datastax.oss.driver.api.core.CqlSession;
@@ -132,7 +133,7 @@ public class CassandraHostSystem extends JamesImapHostSystem {
 
         configure(new DefaultImapDecoderFactory().buildImapDecoder(),
                 new DefaultImapEncoderFactory().buildImapEncoder(),
-                DefaultImapProcessorFactory.createDefaultProcessor(mailboxManager, authenticator, authorizator, eventBus, subscriptionManager, quotaManager, quotaRootResolver, new DefaultMetricFactory()));
+                DefaultImapProcessorFactory.createDefaultProcessor(mailboxManager, DefaultSaslMechanisms.create(authenticator, authorizator), eventBus, subscriptionManager, quotaManager, quotaRootResolver, new DefaultMetricFactory()));
     }
 
     @Override

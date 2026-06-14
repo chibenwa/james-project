@@ -57,6 +57,7 @@ import org.apache.james.metrics.tests.RecordingMetricFactory;
 import org.apache.james.mpt.api.ImapFeatures;
 import org.apache.james.mpt.api.ImapFeatures.Feature;
 import org.apache.james.mpt.host.JamesImapHostSystem;
+import org.apache.james.protocols.api.sasl.DefaultSaslMechanisms;
 
 import com.google.common.collect.ImmutableSet;
 
@@ -118,8 +119,7 @@ public class OpenSearchHostSystem extends JamesImapHostSystem {
 
         ImapProcessor defaultImapProcessorFactory =
             DefaultImapProcessorFactory.createDefaultProcessor(mailboxManager,
-                authenticator,
-                authorizator,
+                DefaultSaslMechanisms.create(authenticator, authorizator),
                 resources.getMailboxManager().getEventBus(),
                 new StoreSubscriptionManager(mailboxManager.getMapperFactory(), mailboxManager.getMapperFactory(), mailboxManager.getEventBus()),
                 new NoQuotaManager(),

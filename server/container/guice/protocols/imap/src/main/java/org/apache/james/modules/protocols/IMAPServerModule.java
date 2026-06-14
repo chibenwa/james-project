@@ -71,6 +71,7 @@ import org.apache.james.imap.processor.fetch.FetchProcessor;
 import org.apache.james.imapserver.netty.IMAPHealthCheck;
 import org.apache.james.imapserver.netty.IMAPServerFactory;
 import org.apache.james.lifecycle.api.ConfigurationSanitizer;
+import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.metrics.api.GaugeRegistry;
 import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.protocols.api.sasl.SaslMechanism;
@@ -111,7 +112,6 @@ public class IMAPServerModule extends AbstractModule {
         // Keep CapabilityProcessor, AuthenticateProcessor and EnableProcessor unscoped: IMAP suite loading configures
         // their SASL mechanisms and capability links from each server configuration.
         bind(CapabilityProcessor.class);
-        bind(AuthenticateProcessor.class);
         bind(EnableProcessor.class);
         bind(SelectProcessor.class).in(Scopes.SINGLETON);
         bind(StatusProcessor.class).in(Scopes.SINGLETON);
@@ -135,26 +135,29 @@ public class IMAPServerModule extends AbstractModule {
     @Singleton
     IMAPServerFactory provideServerFactory(FileSystem fileSystem,
                                            GuiceLoader guiceLoader,
+                                           MailboxManager mailboxManager,
                                            GuiceSaslMechanismResolver saslMechanismResolver,
                                            DefaultImapSaslMechanismClassNamesProvider defaultImapSaslMechanismClassNamesProvider,
                                            StatusResponseFactory statusResponseFactory,
                                            MetricFactory metricFactory,
+                                           PathConverter.Factory pathConverterFactory,
                                            GaugeRegistry gaugeRegistry,
                                            ConnectionCheckFactory connectionCheckFactory,
                                            Encryption.Factory encryptionFactory) {
-        IMAPServerFactory factory = new IMAPServerFactory(fileSystem, imapSuiteLoader(guiceLoader, saslMechanismResolver,
-            defaultImapSaslMechanismClassNamesProvider, statusResponseFactory), metricFactory, gaugeRegistry, connectionCheckFactory);
+        IMAPServerFactory factory = new IMAPServerFactory(fileSystem, imapSuiteLoader(guiceLoader, mailboxManager, saslMechanismResolver,
+            defaultImapSaslMechanismClassNamesProvider, statusResponseFactory, metricFactory, pathConverterFactory), metricFactory, gaugeRegistry, connectionCheckFactory);
         factory.setEncryptionFactory(encryptionFactory);
         return factory;
     }
 
     DefaultProcessor provideClassImapProcessors(ImapPackage imapPackage, GuiceLoader guiceLoader,
-                                                ImmutableList<SaslMechanism> saslMechanisms, StatusResponseFactory statusResponseFactory) {
+                                                ImmutableList<SaslMechanism> saslMechanisms, MailboxManager mailboxManager,
+                                                StatusResponseFactory statusResponseFactory, MetricFactory metricFactory,
+                                                PathConverter.Factory pathConverterFactory) {
         ImmutableMap<Class, ImapProcessor> processors = imapPackage.processors()
             .stream()
-            .map(Throwing.function(guiceLoader::instantiate))
-            .map(AbstractProcessor.class::cast)
-            .map(processor -> configureSaslMechanisms(processor, saslMechanisms))
+            .map(Throwing.function(className -> instantiateProcessor(className, guiceLoader, saslMechanisms,
+                mailboxManager, statusResponseFactory, metricFactory, pathConverterFactory)))
             .flatMap(IMAPServerModule::asPairStream)
             .collect(ImmutableMap.toImmutableMap(
                 Pair::getLeft,
@@ -178,11 +181,16 @@ public class IMAPServerModule extends AbstractModule {
         return new DefaultProcessor(processors, new UnknownRequestProcessor(statusResponseFactory));
     }
 
-    private AbstractProcessor configureSaslMechanisms(AbstractProcessor processor, ImmutableList<SaslMechanism> saslMechanisms) {
-        if (processor instanceof AuthenticateProcessor authenticateProcessor) {
-            authenticateProcessor.configureSaslMechanisms(saslMechanisms);
+    private AbstractProcessor instantiateProcessor(ClassName className, GuiceLoader guiceLoader,
+                                                   ImmutableList<SaslMechanism> saslMechanisms, MailboxManager mailboxManager,
+                                                   StatusResponseFactory statusResponseFactory, MetricFactory metricFactory,
+                                                   PathConverter.Factory pathConverterFactory) throws ClassNotFoundException {
+        // AuthenticateProcessor receives its SASL mechanisms statically through its constructor: it cannot be
+        // built reflectively because the resolved mechanisms are server-configuration specific.
+        if (className.getName().equals(AuthenticateProcessor.class.getName())) {
+            return new AuthenticateProcessor(mailboxManager, statusResponseFactory, metricFactory, pathConverterFactory, saslMechanisms);
         }
-        return processor;
+        return guiceLoader.instantiate(className);
     }
 
     private ImapPackage retrievePackages(GuiceLoader guiceLoader, HierarchicalConfiguration<ImmutableNode> configuration) {
@@ -227,14 +235,17 @@ public class IMAPServerModule extends AbstractModule {
     }
 
     private ThrowingFunction<HierarchicalConfiguration<ImmutableNode>, ImapSuite> imapSuiteLoader(GuiceLoader guiceLoader,
+                                                                                                  MailboxManager mailboxManager,
                                                                                                   GuiceSaslMechanismResolver saslMechanismResolver,
                                                                                                   DefaultImapSaslMechanismClassNamesProvider defaultImapSaslMechanismClassNamesProvider,
-                                                                                                  StatusResponseFactory statusResponseFactory) {
+                                                                                                  StatusResponseFactory statusResponseFactory,
+                                                                                                  MetricFactory metricFactory,
+                                                                                                  PathConverter.Factory pathConverterFactory) {
         return configuration -> {
             ImapPackage imapPackage = retrievePackages(guiceLoader, configuration);
             ImmutableList<SaslMechanism> saslMechanisms = retrieveSaslMechanisms(saslMechanismResolver,
                 defaultImapSaslMechanismClassNamesProvider, configuration);
-            DefaultProcessor processor = provideClassImapProcessors(imapPackage, guiceLoader, saslMechanisms, statusResponseFactory);
+            DefaultProcessor processor = provideClassImapProcessors(imapPackage, guiceLoader, saslMechanisms, mailboxManager, statusResponseFactory, metricFactory, pathConverterFactory);
             ImapEncoder encoder = provideImapEncoder(imapPackage, guiceLoader);
 
             ImapParserFactory imapParserFactory = provideImapCommandParserFactory(imapPackage, guiceLoader);

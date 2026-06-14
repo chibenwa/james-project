@@ -35,6 +35,7 @@ import org.apache.james.metrics.logger.DefaultMetricFactory;
 import org.apache.james.mpt.api.ImapFeatures;
 import org.apache.james.mpt.api.ImapFeatures.Feature;
 import org.apache.james.mpt.host.JamesImapHostSystem;
+import org.apache.james.protocols.api.sasl.DefaultSaslMechanisms;
 
 public class InMemoryHostSystem extends JamesImapHostSystem {
 
@@ -64,7 +65,7 @@ public class InMemoryHostSystem extends JamesImapHostSystem {
         this.mailboxManager = resources.getMailboxManager();
         this.perUserMaxQuotaManager = resources.getMaxQuotaManager();
 
-        ImapProcessor defaultImapProcessorFactory = DefaultImapProcessorFactory.createDefaultProcessor(mailboxManager, authenticator, authorizator, mailboxManager.getEventBus(), new StoreSubscriptionManager(mailboxManager.getMapperFactory(),
+        ImapProcessor defaultImapProcessorFactory = DefaultImapProcessorFactory.createDefaultProcessor(mailboxManager, DefaultSaslMechanisms.create(authenticator, authorizator), mailboxManager.getEventBus(), new StoreSubscriptionManager(mailboxManager.getMapperFactory(),
                 mailboxManager.getMapperFactory(),
                 mailboxManager.getEventBus()),
             mailboxManager.getQuotaComponents().getQuotaManager(), mailboxManager.getQuotaComponents().getQuotaRootResolver(), new DefaultMetricFactory());

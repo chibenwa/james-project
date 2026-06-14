@@ -28,25 +28,26 @@ import org.apache.james.imap.message.response.UnpooledStatusResponseFactory;
 import org.apache.james.imap.processor.DefaultProcessor;
 import org.apache.james.imap.processor.base.UnknownRequestProcessor;
 import org.apache.james.imap.processor.fetch.FetchProcessor;
-import org.apache.james.mailbox.Authenticator;
-import org.apache.james.mailbox.Authorizator;
 import org.apache.james.mailbox.MailboxCounterCorrector;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.SubscriptionManager;
 import org.apache.james.mailbox.quota.QuotaManager;
 import org.apache.james.mailbox.quota.QuotaRootResolver;
 import org.apache.james.metrics.api.MetricFactory;
+import org.apache.james.protocols.api.sasl.SaslMechanism;
+
+import com.google.common.collect.ImmutableList;
 
 public class DefaultImapProcessorFactory {
 
-    public static ImapProcessor createDefaultProcessor(MailboxManager mailboxManager, Authenticator authenticator, Authorizator authorizator,
+    public static ImapProcessor createDefaultProcessor(MailboxManager mailboxManager, ImmutableList<SaslMechanism> saslMechanisms,
             EventBus eventBus, SubscriptionManager subscriptionManager, QuotaManager quotaManager, QuotaRootResolver quotaRootResolver,
             MetricFactory metricFactory) {
-        return createXListSupportingProcessor(mailboxManager, authenticator, authorizator, eventBus, subscriptionManager, new DefaultMailboxTyper(), quotaManager, quotaRootResolver, metricFactory,
+        return createXListSupportingProcessor(mailboxManager, saslMechanisms, eventBus, subscriptionManager, new DefaultMailboxTyper(), quotaManager, quotaRootResolver, metricFactory,
             FetchProcessor.LocalCacheConfiguration.DEFAULT);
     }
 
-    public static ImapProcessor createXListSupportingProcessor(MailboxManager mailboxManager, Authenticator authenticator, Authorizator authorizator,
+    public static ImapProcessor createXListSupportingProcessor(MailboxManager mailboxManager, ImmutableList<SaslMechanism> saslMechanisms,
                                                                EventBus eventBus, SubscriptionManager subscriptionManager,
                                                                MailboxTyper mailboxTyper, QuotaManager quotaManager,
                                                                QuotaRootResolver quotaRootResolver, MetricFactory metricFactory,
@@ -55,13 +56,13 @@ public class DefaultImapProcessorFactory {
         StatusResponseFactory statusResponseFactory = new UnpooledStatusResponseFactory();
         UnknownRequestProcessor unknownRequestImapProcessor = new UnknownRequestProcessor(statusResponseFactory);
 
-        return DefaultProcessor.createDefaultProcessor(unknownRequestImapProcessor, mailboxManager, authenticator, authorizator,
+        return DefaultProcessor.createDefaultProcessor(unknownRequestImapProcessor, mailboxManager, saslMechanisms,
             eventBus, subscriptionManager, statusResponseFactory, mailboxTyper, quotaManager, quotaRootResolver,
             MailboxCounterCorrector.DEFAULT, metricFactory,
             localCacheConfiguration);
     }
 
-    public static ImapProcessor createXListSupportingProcessor(MailboxManager mailboxManager, Authenticator authenticator, Authorizator authorizator,
+    public static ImapProcessor createXListSupportingProcessor(MailboxManager mailboxManager, ImmutableList<SaslMechanism> saslMechanisms,
                                                                EventBus eventBus, SubscriptionManager subscriptionManager,
                                                                MailboxTyper mailboxTyper, QuotaManager quotaManager,
                                                                QuotaRootResolver quotaRootResolver, MetricFactory metricFactory) {
@@ -69,7 +70,7 @@ public class DefaultImapProcessorFactory {
         StatusResponseFactory statusResponseFactory = new UnpooledStatusResponseFactory();
         UnknownRequestProcessor unknownRequestImapProcessor = new UnknownRequestProcessor(statusResponseFactory);
 
-        return DefaultProcessor.createDefaultProcessor(unknownRequestImapProcessor, mailboxManager, authenticator, authorizator,
+        return DefaultProcessor.createDefaultProcessor(unknownRequestImapProcessor, mailboxManager, saslMechanisms,
             eventBus, subscriptionManager, statusResponseFactory, mailboxTyper, quotaManager, quotaRootResolver,
             MailboxCounterCorrector.DEFAULT, metricFactory,
             FetchProcessor.LocalCacheConfiguration.DEFAULT);

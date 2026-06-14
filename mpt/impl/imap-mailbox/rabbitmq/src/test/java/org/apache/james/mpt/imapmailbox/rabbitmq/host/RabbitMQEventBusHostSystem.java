@@ -53,6 +53,7 @@ import org.apache.james.metrics.tests.RecordingMetricFactory;
 import org.apache.james.mpt.api.ImapFeatures;
 import org.apache.james.mpt.api.ImapFeatures.Feature;
 import org.apache.james.mpt.host.JamesImapHostSystem;
+import org.apache.james.protocols.api.sasl.DefaultSaslMechanisms;
 
 import com.google.common.collect.ImmutableSet;
 
@@ -102,8 +103,7 @@ public class RabbitMQEventBusHostSystem extends JamesImapHostSystem {
         ImapProcessor defaultImapProcessorFactory =
             DefaultImapProcessorFactory.createDefaultProcessor(
                 resources.getMailboxManager(),
-                authenticator,
-                authorizator,
+                DefaultSaslMechanisms.create(authenticator, authorizator),
                 eventBus,
                 new StoreSubscriptionManager(resources.getMailboxManager().getMapperFactory(), resources.getMailboxManager().getMapperFactory(), resources.getMailboxManager().getEventBus()),
                 resources.getQuotaManager(),

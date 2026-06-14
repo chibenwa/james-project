@@ -34,14 +34,13 @@ import org.apache.james.imap.main.PathConverter;
 import org.apache.james.imap.processor.base.AbstractProcessor;
 import org.apache.james.imap.processor.base.ImapResponseMessageProcessor;
 import org.apache.james.imap.processor.fetch.FetchProcessor;
-import org.apache.james.mailbox.Authenticator;
-import org.apache.james.mailbox.Authorizator;
 import org.apache.james.mailbox.MailboxCounterCorrector;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.SubscriptionManager;
 import org.apache.james.mailbox.quota.QuotaManager;
 import org.apache.james.mailbox.quota.QuotaRootResolver;
 import org.apache.james.metrics.api.MetricFactory;
+import org.apache.james.protocols.api.sasl.SaslMechanism;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -52,8 +51,7 @@ public class DefaultProcessor implements ImapProcessor {
 
     public static ImapProcessor createDefaultProcessor(ImapProcessor chainEndProcessor,
                                                        MailboxManager mailboxManager,
-                                                       Authenticator authenticator,
-                                                       Authorizator authorizator,
+                                                       ImmutableList<SaslMechanism> saslMechanisms,
                                                        EventBus eventBus,
                                                        SubscriptionManager subscriptionManager,
                                                        StatusResponseFactory statusResponseFactory,
@@ -80,7 +78,7 @@ public class DefaultProcessor implements ImapProcessor {
         builder.add(new UnsubscribeProcessor(mailboxManager, subscriptionManager, statusResponseFactory, metricFactory, pathConverterFactory));
         builder.add(new SubscribeProcessor(mailboxManager, subscriptionManager, statusResponseFactory, metricFactory, pathConverterFactory));
         builder.add(new CopyProcessor(mailboxManager, statusResponseFactory, metricFactory, pathConverterFactory));
-        builder.add(new AuthenticateProcessor(mailboxManager, authenticator, authorizator, statusResponseFactory, metricFactory, pathConverterFactory));
+        builder.add(new AuthenticateProcessor(mailboxManager, statusResponseFactory, metricFactory, pathConverterFactory, saslMechanisms));
         builder.add(new ExpungeProcessor(mailboxManager, statusResponseFactory, metricFactory));
         builder.add(new ReplaceProcessor(mailboxManager, statusResponseFactory, metricFactory, pathConverterFactory));
         builder.add(new ExamineProcessor(mailboxManager, eventBus, statusResponseFactory, metricFactory, pathConverterFactory, mailboxCounterCorrector));

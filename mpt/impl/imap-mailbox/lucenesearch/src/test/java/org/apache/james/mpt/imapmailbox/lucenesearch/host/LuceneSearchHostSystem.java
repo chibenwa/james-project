@@ -40,6 +40,7 @@ import org.apache.james.metrics.logger.DefaultMetricFactory;
 import org.apache.james.mpt.api.ImapFeatures;
 import org.apache.james.mpt.api.ImapFeatures.Feature;
 import org.apache.james.mpt.host.JamesImapHostSystem;
+import org.apache.james.protocols.api.sasl.DefaultSaslMechanisms;
 import org.apache.lucene.store.ByteBuffersDirectory;
 
 import com.github.fge.lambdas.Throwing;
@@ -81,8 +82,7 @@ public class LuceneSearchHostSystem extends JamesImapHostSystem {
         ImapProcessor defaultImapProcessorFactory =
             DefaultImapProcessorFactory.createDefaultProcessor(
                 mailboxManager,
-                authenticator,
-                authorizator,
+                DefaultSaslMechanisms.create(authenticator, authorizator),
                 resources.getMailboxManager().getEventBus(),
                 subscriptionManager,
                 new NoQuotaManager(),

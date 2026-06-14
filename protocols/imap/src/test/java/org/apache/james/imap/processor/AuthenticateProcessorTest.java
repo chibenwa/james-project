@@ -36,8 +36,6 @@ import org.apache.james.imap.encode.FakeImapSession;
 import org.apache.james.imap.main.PathConverter;
 import org.apache.james.imap.message.request.AuthenticateRequest;
 import org.apache.james.imap.message.response.UnpooledStatusResponseFactory;
-import org.apache.james.mailbox.Authenticator;
-import org.apache.james.mailbox.Authorizator;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.metrics.tests.RecordingMetricFactory;
 import org.apache.james.protocols.api.sasl.SaslExchange;
@@ -174,19 +172,20 @@ class AuthenticateProcessorTest {
         }
     }
 
-    private final AuthenticateProcessor testee = new AuthenticateProcessor(
-        mock(MailboxManager.class),
-        mock(Authenticator.class),
-        mock(Authorizator.class),
-        new UnpooledStatusResponseFactory(),
-        new RecordingMetricFactory(),
-        PathConverter.Factory.DEFAULT);
+    private AuthenticateProcessor processor(SaslMechanism mechanism) {
+        return new AuthenticateProcessor(
+            mock(MailboxManager.class),
+            new UnpooledStatusResponseFactory(),
+            new RecordingMetricFactory(),
+            PathConverter.Factory.DEFAULT,
+            ImmutableList.of(mechanism));
+    }
 
     @Test
     void processRequestShouldCloseExchangeWhenFirstStepThrows() {
         // GIVEN a mechanism whose exchange fails while computing the first SASL step
         ThrowingFirstStepExchange exchange = new ThrowingFirstStepExchange();
-        testee.configureSaslMechanisms(ImmutableList.of(new TestSaslMechanism(exchange)));
+        AuthenticateProcessor testee = processor(new TestSaslMechanism(exchange));
 
         // WHEN the processor handles the malformed exchange
         testee.processRequest(new AuthenticateRequest(BROKEN_MECHANISM, TAG), new FakeImapSession(), mock(ImapProcessor.Responder.class));
@@ -199,7 +198,7 @@ class AuthenticateProcessorTest {
     void processRequestShouldCloseExchangeWhenInitialChallengeWriteThrows() {
         // GIVEN a first challenge that fails while being written to the client
         ThrowingContinuationExchange exchange = new ThrowingContinuationExchange();
-        testee.configureSaslMechanisms(ImmutableList.of(new TestSaslMechanism(exchange)));
+        AuthenticateProcessor testee = processor(new TestSaslMechanism(exchange));
 
         // WHEN the processor handles the initial challenge
         assertThatThrownBy(() -> testee.processRequest(new AuthenticateRequest(BROKEN_MECHANISM, TAG), new FakeImapSession(), new ThrowingResponder()))
@@ -213,7 +212,7 @@ class AuthenticateProcessorTest {
     void processRequestShouldCloseExchangeWhenInitialSuccessDataWriteThrows() {
         // GIVEN a first successful SASL step with final server data that fails while being written to the client
         SuccessDataExchange exchange = new SuccessDataExchange();
-        testee.configureSaslMechanisms(ImmutableList.of(new TestSaslMechanism(exchange)));
+        AuthenticateProcessor testee = processor(new TestSaslMechanism(exchange));
 
         // WHEN the processor handles the initial success data
         assertThatThrownBy(() -> testee.processRequest(new AuthenticateRequest(BROKEN_MECHANISM, TAG), new FakeImapSession(), new ThrowingResponder()))
@@ -228,7 +227,7 @@ class AuthenticateProcessorTest {
         // GIVEN an active continuation whose mechanism fails unexpectedly while processing the client response
         ThrowingContinuationExchange exchange = new ThrowingContinuationExchange();
         RecordingLineHandlerImapSession session = new RecordingLineHandlerImapSession();
-        testee.configureSaslMechanisms(ImmutableList.of(new TestSaslMechanism(exchange)));
+        AuthenticateProcessor testee = processor(new TestSaslMechanism(exchange));
         testee.processRequest(new AuthenticateRequest(BROKEN_MECHANISM, TAG), session, mock(ImapProcessor.Responder.class));
         ImapLineHandler lineHandler = session.lineHandler;
         assertThat(lineHandler).isNotNull();
@@ -247,7 +246,7 @@ class AuthenticateProcessorTest {
         // GIVEN an active final server-data acknowledgement handler
         SuccessDataExchange exchange = new SuccessDataExchange();
         RecordingLineHandlerImapSession session = new RecordingLineHandlerImapSession();
-        testee.configureSaslMechanisms(ImmutableList.of(new TestSaslMechanism(exchange)));
+        AuthenticateProcessor testee = processor(new TestSaslMechanism(exchange));
         testee.processRequest(new AuthenticateRequest(BROKEN_MECHANISM, TAG), session, mock(ImapProcessor.Responder.class));
         ImapLineHandler lineHandler = session.lineHandler;
         assertThat(lineHandler).isNotNull();

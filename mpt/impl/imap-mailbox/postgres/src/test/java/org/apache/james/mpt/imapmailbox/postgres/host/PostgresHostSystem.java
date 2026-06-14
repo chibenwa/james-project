@@ -74,6 +74,7 @@ import org.apache.james.metrics.tests.RecordingMetricFactory;
 import org.apache.james.mpt.api.ImapFeatures;
 import org.apache.james.mpt.api.ImapFeatures.Feature;
 import org.apache.james.mpt.host.JamesImapHostSystem;
+import org.apache.james.protocols.api.sasl.DefaultSaslMechanisms;
 import org.apache.james.server.blob.deduplication.DeDuplicationBlobStore;
 import org.apache.james.utils.UpdatableTickingClock;
 
@@ -146,8 +147,7 @@ public class PostgresHostSystem extends JamesImapHostSystem {
         ImapProcessor defaultImapProcessorFactory =
             DefaultImapProcessorFactory.createDefaultProcessor(
                 mailboxManager,
-                authenticator,
-                authorizator,
+                DefaultSaslMechanisms.create(authenticator, authorizator),
                 eventBus,
                 subscriptionManager,
                 storeQuotaManager,

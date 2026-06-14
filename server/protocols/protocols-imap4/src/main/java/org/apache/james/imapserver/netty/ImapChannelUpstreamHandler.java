@@ -217,7 +217,7 @@ public class ImapChannelUpstreamHandler extends ChannelInboundHandlerAdapter imp
         SessionId sessionId = SessionId.generate();
         ImapSession imapsession = new NettyImapSession(ctx.channel(), secure, compress, authenticationConfiguration.isSSLRequired(),
             authenticationConfiguration.isPlainAuthEnabled(), sessionId,
-            authenticationConfiguration.getOidcSASLConfiguration());
+            authenticationConfiguration.getOidcSASLConfiguration().isPresent());
         ctx.channel().attr(IMAP_SESSION_ATTRIBUTE_KEY).set(imapsession);
         ctx.channel().attr(REQUEST_COUNTER).set(new AtomicLong());
         ctx.channel().attr(LINEARIZER_ATTRIBUTE_KEY).set(new ImapLinerarizer());

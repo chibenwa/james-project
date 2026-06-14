@@ -41,6 +41,7 @@ import org.apache.james.mailbox.store.FakeAuthorizator;
 import org.apache.james.mailbox.store.StoreSubscriptionManager;
 import org.apache.james.metrics.api.NoopGaugeRegistry;
 import org.apache.james.metrics.tests.RecordingMetricFactory;
+import org.apache.james.protocols.api.sasl.DefaultSaslMechanisms;
 import org.apache.james.protocols.lib.mock.ConfigLoader;
 import org.apache.james.server.core.filesystem.FileSystemImpl;
 import org.apache.james.util.ClassLoaderUtils;
@@ -95,8 +96,7 @@ class ProtocolServerRoutesChannelsTest {
             new DefaultImapEncoderFactory().buildImapEncoder(),
             DefaultImapProcessorFactory.createXListSupportingProcessor(
                 resources.getMailboxManager(),
-                resources.getAuthenticator(),
-                resources.getAuthorizator(),
+                DefaultSaslMechanisms.create(resources.getAuthenticator(), resources.getAuthorizator()),
                 resources.getEventBus(),
                 new StoreSubscriptionManager(
                     resources.getMailboxManager().getMapperFactory(),

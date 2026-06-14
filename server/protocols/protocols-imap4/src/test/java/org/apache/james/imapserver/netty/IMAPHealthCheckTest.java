@@ -40,6 +40,7 @@ import org.apache.james.mailbox.store.FakeAuthorizator;
 import org.apache.james.mailbox.store.StoreSubscriptionManager;
 import org.apache.james.metrics.api.NoopGaugeRegistry;
 import org.apache.james.metrics.tests.RecordingMetricFactory;
+import org.apache.james.protocols.api.sasl.DefaultSaslMechanisms;
 import org.apache.james.protocols.lib.LegacyJavaEncryptionFactory;
 import org.apache.james.protocols.lib.mock.ConfigLoader;
 import org.apache.james.server.core.filesystem.FileSystemImpl;
@@ -82,8 +83,7 @@ public class IMAPHealthCheckTest {
             new DefaultImapEncoderFactory().buildImapEncoder(),
             DefaultImapProcessorFactory.createXListSupportingProcessor(
                 mailboxManager,
-                memoryIntegrationResources.getAuthenticator(),
-                memoryIntegrationResources.getAuthorizator(),
+                DefaultSaslMechanisms.create(memoryIntegrationResources.getAuthenticator(), memoryIntegrationResources.getAuthorizator()),
                 memoryIntegrationResources.getEventBus(),
                 new StoreSubscriptionManager(mailboxManager.getMapperFactory(),
                     mailboxManager.getMapperFactory(),

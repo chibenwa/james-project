@@ -31,7 +31,6 @@ import javax.net.ssl.SSLSession;
 import org.apache.commons.text.RandomStringGenerator;
 import org.apache.james.core.Username;
 import org.apache.james.imap.api.ImapSessionState;
-import org.apache.james.jwt.OidcSASLConfiguration;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.protocols.api.CommandDetectionSession;
 import org.apache.james.util.MDCBuilder;
@@ -279,8 +278,6 @@ public interface ImapSession extends CommandDetectionSession {
      * Return the {@link InetSocketAddress} of the remote peer
      */
     InetSocketAddress getRemoteAddress();
-
-    Optional<OidcSASLConfiguration> oidcSaslConfiguration();
 
     default void setMailboxSession(MailboxSession mailboxSession) {
         setAttribute(MAILBOX_SESSION_ATTRIBUTE_SESSION_KEY, mailboxSession);

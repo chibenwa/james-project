@@ -48,6 +48,7 @@ import org.apache.james.mailbox.store.FakeAuthorizator;
 import org.apache.james.mailbox.store.StoreSubscriptionManager;
 import org.apache.james.metrics.api.NoopGaugeRegistry;
 import org.apache.james.metrics.tests.RecordingMetricFactory;
+import org.apache.james.protocols.api.sasl.DefaultSaslMechanisms;
 import org.apache.james.protocols.api.utils.BogusSslContextFactory;
 import org.apache.james.protocols.api.utils.BogusTrustManagerFactory;
 import org.apache.james.protocols.lib.LegacyJavaEncryptionFactory;
@@ -112,8 +113,7 @@ abstract class AbstractIMAPServerTest {
             new DefaultImapEncoderFactory().buildImapEncoder(),
             DefaultImapProcessorFactory.createXListSupportingProcessor(
                 mailboxManager,
-                memoryIntegrationResources.getAuthenticator(),
-                memoryIntegrationResources.getAuthorizator(),
+                DefaultSaslMechanisms.create(memoryIntegrationResources.getAuthenticator(), memoryIntegrationResources.getAuthorizator(), config),
                 memoryIntegrationResources.getEventBus(),
                 new StoreSubscriptionManager(mailboxManager.getMapperFactory(),
                     mailboxManager.getMapperFactory(),
