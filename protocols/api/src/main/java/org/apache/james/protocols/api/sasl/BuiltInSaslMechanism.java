@@ -43,10 +43,10 @@ public enum BuiltInSaslMechanism {
         configuration -> configuration.getBoolean("auth.plainAuthEnabled", true)),
     OAUTHBEARER(OauthBearerSaslMechanismFactory.class,
         (authenticator, authorizator) -> new OauthBearerSaslMechanismFactory(authorizator),
-        OidcSaslMechanisms::hasConfiguration),
+        OAuthSaslMechanism::hasConfiguration),
     XOAUTH2(XOauth2SaslMechanismFactory.class,
         (authenticator, authorizator) -> new XOauth2SaslMechanismFactory(authorizator),
-        OidcSaslMechanisms::hasConfiguration);
+        OAuthSaslMechanism::hasConfiguration);
 
     private final Class<? extends SaslMechanismFactory> factoryClass;
     private final BiFunction<Authenticator, Authorizator, SaslMechanismFactory> factory;

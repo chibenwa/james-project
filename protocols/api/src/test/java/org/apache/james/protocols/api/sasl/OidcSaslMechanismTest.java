@@ -47,16 +47,16 @@ class OidcSaslMechanismTest {
     }
 
     private static OidcSASLConfiguration oidcConfiguration() throws ConfigurationException {
-        return OidcSaslMechanisms.parseConfiguration(oidcServerConfiguration());
+        return OAuthSaslMechanism.parseConfiguration(oidcServerConfiguration());
     }
 
     @Test
     void shouldChallengeWhenNoInitialResponse() throws Exception {
         // GIVEN an OIDC SASL exchange without SASL-IR
-        SaslInitialRequest request = new SaslInitialRequest(OauthBearerSaslMechanism.NAME, Optional.empty());
+        SaslInitialRequest request = new SaslInitialRequest(OauthBearerSaslMechanismFactory.NAME, Optional.empty());
 
         // WHEN the mechanism starts
-        SaslStep firstStep = new OauthBearerSaslMechanism(oidcConfiguration(), DENY_ALL).start(request).firstStep();
+        SaslStep firstStep = new OAuthSaslMechanism(OauthBearerSaslMechanismFactory.NAME, oidcConfiguration(), DENY_ALL).start(request).firstStep();
 
         // THEN the server asks for one client response
         assertThat(firstStep).isEqualTo(new SaslStep.Challenge(Optional.empty()));
@@ -65,11 +65,11 @@ class OidcSaslMechanismTest {
     @Test
     void shouldFailMalformedResponse() throws Exception {
         // GIVEN a malformed OIDC SASL response
-        SaslInitialRequest request = new SaslInitialRequest(OauthBearerSaslMechanism.NAME,
+        SaslInitialRequest request = new SaslInitialRequest(XOauth2SaslMechanismFactory.NAME,
             Optional.of(bytes("invalid")));
 
         // WHEN the mechanism consumes the response
-        SaslStep step = new XOauth2SaslMechanism(oidcConfiguration(), DENY_ALL).start(request).firstStep();
+        SaslStep step = new OAuthSaslMechanism(XOauth2SaslMechanismFactory.NAME, oidcConfiguration(), DENY_ALL).start(request).firstStep();
 
         // THEN it fails before any token validation
         assertThat(step).isEqualTo(new SaslStep.Failure("Malformed authentication command.",
@@ -80,7 +80,7 @@ class OidcSaslMechanismTest {
     void hasConfigurationShouldBeFalseWhenNoOidcDeclaration() {
         // GIVEN a server configuration without an auth.oidc block
         // THEN OIDC is detected as not configured
-        assertThat(OidcSaslMechanisms.hasConfiguration(new BaseHierarchicalConfiguration())).isFalse();
+        assertThat(OAuthSaslMechanism.hasConfiguration(new BaseHierarchicalConfiguration())).isFalse();
     }
 
     @Test
@@ -88,7 +88,7 @@ class OidcSaslMechanismTest {
         // GIVEN a server configuration without an auth.oidc block
         // WHEN the OIDC declaration is parsed
         // THEN it fails fast rather than degrading to an always-failing OAuth mechanism
-        assertThatThrownBy(() -> OidcSaslMechanisms.parseConfiguration(new BaseHierarchicalConfiguration()))
+        assertThatThrownBy(() -> OAuthSaslMechanism.parseConfiguration(new BaseHierarchicalConfiguration()))
             .isInstanceOf(ConfigurationException.class);
     }
 
@@ -97,7 +97,7 @@ class OidcSaslMechanismTest {
         // GIVEN a server configuration with an auth.oidc block
         // WHEN the OIDC declaration is parsed
         // THEN the per-server OIDC configuration is available to the mechanism
-        assertThat(OidcSaslMechanisms.parseConfiguration(oidcServerConfiguration()).getClaim()).isEqualTo("email");
+        assertThat(OAuthSaslMechanism.parseConfiguration(oidcServerConfiguration()).getClaim()).isEqualTo("email");
     }
 
     private static byte[] bytes(String value) {

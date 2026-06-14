@@ -33,12 +33,12 @@ import org.apache.james.jwt.OidcSASLConfiguration;
 import org.apache.james.mailbox.Authorizator;
 import org.apache.james.protocols.api.OIDCSASLParser;
 
-public final class OidcSaslMechanisms {
+/**
+ * OIDC bearer-token SASL mechanism. OAUTHBEARER and XOAUTH2 share the exact same exchange and only differ by
+ * their advertised name, so a single implementation is parameterized with the mechanism name.
+ */
+public class OAuthSaslMechanism implements SaslMechanism {
     private static final String OIDC_PATH = "auth.oidc";
-
-    static SaslExchange start(Optional<byte[]> initialResponse, OidcSASLConfiguration oidcConfiguration, Authorizator authorizator) {
-        return new OidcSaslExchange(initialResponse, oidcConfiguration, authorizator);
-    }
 
     /**
      * Whether the server configuration block declares an OIDC section.
@@ -64,18 +64,31 @@ public final class OidcSaslMechanisms {
         }
     }
 
-    private OidcSaslMechanisms() {
+    private final String name;
+    private final OidcSASLConfiguration oidcConfiguration;
+    private final Authorizator authorizator;
+
+    public OAuthSaslMechanism(String name, OidcSASLConfiguration oidcConfiguration, Authorizator authorizator) {
+        this.name = name;
+        this.oidcConfiguration = oidcConfiguration;
+        this.authorizator = authorizator;
     }
 
-    private static class OidcSaslExchange implements SaslExchange {
-        private final Optional<byte[]> initialResponse;
-        private final OidcSASLConfiguration oidcConfiguration;
-        private final Authorizator authorizator;
+    @Override
+    public String name() {
+        return name;
+    }
 
-        private OidcSaslExchange(Optional<byte[]> initialResponse, OidcSASLConfiguration oidcConfiguration, Authorizator authorizator) {
+    @Override
+    public SaslExchange start(SaslInitialRequest request) {
+        return new OAuthSaslExchange(request.initialResponse());
+    }
+
+    private class OAuthSaslExchange implements SaslExchange {
+        private final Optional<byte[]> initialResponse;
+
+        private OAuthSaslExchange(Optional<byte[]> initialResponse) {
             this.initialResponse = initialResponse;
-            this.oidcConfiguration = oidcConfiguration;
-            this.authorizator = authorizator;
         }
 
         @Override

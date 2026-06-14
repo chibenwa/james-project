@@ -27,6 +27,8 @@ import org.apache.commons.configuration2.tree.ImmutableNode;
 import org.apache.james.mailbox.Authorizator;
 
 public class OauthBearerSaslMechanismFactory implements SaslMechanismFactory {
+    public static final String NAME = "OAUTHBEARER";
+
     private final Authorizator authorizator;
 
     @Inject
@@ -36,7 +38,7 @@ public class OauthBearerSaslMechanismFactory implements SaslMechanismFactory {
 
     @Override
     public SaslMechanism create(HierarchicalConfiguration<ImmutableNode> serverConfiguration) throws ConfigurationException {
-        return new OauthBearerSaslMechanism(OidcSaslMechanisms.parseConfiguration(serverConfiguration),
+        return new OAuthSaslMechanism(NAME, OAuthSaslMechanism.parseConfiguration(serverConfiguration),
             SaslDelegation.withConfiguredAdminUsers(authorizator, serverConfiguration));
     }
 }
