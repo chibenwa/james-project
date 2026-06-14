@@ -21,31 +21,19 @@ package org.apache.james.modules.protocols;
 
 import org.apache.commons.configuration2.HierarchicalConfiguration;
 import org.apache.commons.configuration2.tree.ImmutableNode;
-import org.apache.james.protocols.api.sasl.OauthBearerSaslMechanismFactory;
-import org.apache.james.protocols.api.sasl.OidcSaslMechanisms;
-import org.apache.james.protocols.api.sasl.PlainSaslMechanismFactory;
-import org.apache.james.protocols.api.sasl.XOauth2SaslMechanismFactory;
+import org.apache.james.protocols.api.sasl.BuiltInSaslMechanism;
 
 import com.google.common.collect.ImmutableList;
 
 public class JamesDefaultImapSaslMechanismClassNamesProvider implements DefaultImapSaslMechanismClassNamesProvider {
-    private static final String PLAIN_AUTH_ENABLED = "auth.plainAuthEnabled";
-
     /**
-     * Default mechanism list used when "auth.saslMechanisms" is not configured. The legacy "auth.plainAuthEnabled"
-     * flag and the OIDC-presence gating are honoured here for backward compatibility: PLAIN unless disabled, and the
-     * OAuth mechanisms only when an "auth.oidc" section is present.
+     * Default mechanism list used when "auth.saslMechanisms" is not configured. The enablement rules live in
+     * {@link BuiltInSaslMechanism}; the resolver re-instantiates these factory classes through Guice.
      */
     @Override
     public ImmutableList<String> resolve(HierarchicalConfiguration<ImmutableNode> configuration) {
-        ImmutableList.Builder<String> mechanisms = ImmutableList.builder();
-        if (configuration.getBoolean(PLAIN_AUTH_ENABLED, true)) {
-            mechanisms.add(PlainSaslMechanismFactory.class.getSimpleName());
-        }
-        if (OidcSaslMechanisms.hasConfiguration(configuration)) {
-            mechanisms.add(OauthBearerSaslMechanismFactory.class.getSimpleName());
-            mechanisms.add(XOauth2SaslMechanismFactory.class.getSimpleName());
-        }
-        return mechanisms.build();
+        return BuiltInSaslMechanism.enabledFor(configuration)
+            .map(mechanism -> mechanism.factoryClass().getSimpleName())
+            .collect(ImmutableList.toImmutableList());
     }
 }
