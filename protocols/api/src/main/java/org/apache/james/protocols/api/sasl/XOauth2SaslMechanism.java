@@ -19,18 +19,16 @@
 
 package org.apache.james.protocols.api.sasl;
 
-import java.util.Optional;
-
 import org.apache.james.jwt.OidcSASLConfiguration;
 import org.apache.james.mailbox.Authorizator;
 
 public class XOauth2SaslMechanism implements SaslMechanism {
     public static final String NAME = "XOAUTH2";
 
-    private final Optional<OidcSASLConfiguration> oidcConfiguration;
+    private final OidcSASLConfiguration oidcConfiguration;
     private final Authorizator authorizator;
 
-    public XOauth2SaslMechanism(Optional<OidcSASLConfiguration> oidcConfiguration, Authorizator authorizator) {
+    public XOauth2SaslMechanism(OidcSASLConfiguration oidcConfiguration, Authorizator authorizator) {
         this.oidcConfiguration = oidcConfiguration;
         this.authorizator = authorizator;
     }

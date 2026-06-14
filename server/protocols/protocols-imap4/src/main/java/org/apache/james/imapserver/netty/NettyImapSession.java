@@ -63,15 +63,13 @@ public class NettyImapSession implements ImapSession, NettyConstants {
     private final boolean requiredSSL;
     private final boolean plainAuthEnabled;
     private final SessionId sessionId;
-    private final boolean supportsOAuth;
 
     private volatile ImapSessionState state = ImapSessionState.NON_AUTHENTICATED;
     private final AtomicReference<SelectedMailbox> selectedMailbox = new AtomicReference<>();
     private volatile boolean needsCommandInjectionDetection;
     private volatile MailboxSession mailboxSession = null;
 
-    public NettyImapSession(Channel channel, Encryption secure, boolean compress, boolean requiredSSL, boolean plainAuthEnabled, SessionId sessionId,
-                            boolean supportsOAuth) {
+    public NettyImapSession(Channel channel, Encryption secure, boolean compress, boolean requiredSSL, boolean plainAuthEnabled, SessionId sessionId) {
         this.channel = channel;
         this.secure = secure;
         this.compress = compress;
@@ -79,7 +77,6 @@ public class NettyImapSession implements ImapSession, NettyConstants {
         this.plainAuthEnabled = plainAuthEnabled;
         this.sessionId = sessionId;
         this.needsCommandInjectionDetection = true;
-        this.supportsOAuth = supportsOAuth;
     }
 
     @Override
@@ -316,11 +313,6 @@ public class NettyImapSession implements ImapSession, NettyConstants {
     @Override
     public boolean isPlainAuthEnabled() {
         return plainAuthEnabled;
-    }
-
-    @Override
-    public boolean supportsOAuth() {
-        return supportsOAuth;
     }
 
     @Override

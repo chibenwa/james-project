@@ -20,68 +20,56 @@
 package org.apache.james.protocols.api.sasl;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
 import org.apache.commons.configuration2.BaseHierarchicalConfiguration;
-import org.apache.james.core.Username;
+import org.apache.commons.configuration2.HierarchicalConfiguration;
+import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.apache.commons.configuration2.tree.ImmutableNode;
+import org.apache.james.jwt.OidcSASLConfiguration;
 import org.apache.james.mailbox.Authorizator;
 import org.junit.jupiter.api.Test;
 
 class OidcSaslMechanismTest {
     private static final Authorizator DENY_ALL = (userId, otherUserId) -> Authorizator.AuthorizationState.FORBIDDEN;
-    private static final Username USER = Username.of("user@example.com");
-    private static final String TOKEN = "token";
 
-    @Test
-    void oauthBearerShouldFailWhenNoOidcConfiguration() {
-        // GIVEN a decoded OAUTHBEARER initial response on a server without OIDC configuration
-        SaslInitialRequest request = new SaslInitialRequest(OauthBearerSaslMechanism.NAME,
-            Optional.of(bytes("n,a=" + USER.asString() + ",\u0001auth=Bearer " + TOKEN + "\u0001\u0001")));
+    private static HierarchicalConfiguration<ImmutableNode> oidcServerConfiguration() {
+        BaseHierarchicalConfiguration serverConfiguration = new BaseHierarchicalConfiguration();
+        serverConfiguration.addProperty("auth.oidc.jwksURL", "https://auth.example.com/jwks");
+        serverConfiguration.addProperty("auth.oidc.claim", "email");
+        serverConfiguration.addProperty("auth.oidc.oidcConfigurationURL", "https://auth.example.com/.well-known/openid-configuration");
+        serverConfiguration.addProperty("auth.oidc.scope", "openid");
+        serverConfiguration.addProperty("auth.oidc.aud", "james");
+        return serverConfiguration;
+    }
 
-        // WHEN the mechanism consumes the response
-        SaslStep step = new OauthBearerSaslMechanism(Optional.empty(), DENY_ALL).start(request).firstStep();
-
-        // THEN verification fails inside the SASL layer with the requested identity preserved for auditing
-        assertThat(step).isEqualTo(new SaslStep.Failure("OAuth authentication failed.",
-            SaslStep.Failure.Cause.AUTHENTICATION_FAILED, Optional.empty(), Optional.of(USER)));
+    private static OidcSASLConfiguration oidcConfiguration() throws ConfigurationException {
+        return OidcSaslMechanisms.parseConfiguration(oidcServerConfiguration());
     }
 
     @Test
-    void xOauth2ShouldFailWhenNoOidcConfiguration() {
-        // GIVEN a decoded XOAUTH2 initial response on a server without OIDC configuration
-        SaslInitialRequest request = new SaslInitialRequest(XOauth2SaslMechanism.NAME,
-            Optional.of(bytes("user=" + USER.asString() + "\u0001auth=Bearer " + TOKEN + "\u0001\u0001")));
-
-        // WHEN the mechanism consumes the response
-        SaslStep step = new XOauth2SaslMechanism(Optional.empty(), DENY_ALL).start(request).firstStep();
-
-        // THEN the generic bearer-token handling fails the same way as OAUTHBEARER
-        assertThat(step).isEqualTo(new SaslStep.Failure("OAuth authentication failed.",
-            SaslStep.Failure.Cause.AUTHENTICATION_FAILED, Optional.empty(), Optional.of(USER)));
-    }
-
-    @Test
-    void shouldChallengeWhenNoInitialResponse() {
+    void shouldChallengeWhenNoInitialResponse() throws Exception {
         // GIVEN an OIDC SASL exchange without SASL-IR
         SaslInitialRequest request = new SaslInitialRequest(OauthBearerSaslMechanism.NAME, Optional.empty());
 
         // WHEN the mechanism starts
-        SaslStep firstStep = new OauthBearerSaslMechanism(Optional.empty(), DENY_ALL).start(request).firstStep();
+        SaslStep firstStep = new OauthBearerSaslMechanism(oidcConfiguration(), DENY_ALL).start(request).firstStep();
 
         // THEN the server asks for one client response
         assertThat(firstStep).isEqualTo(new SaslStep.Challenge(Optional.empty()));
     }
 
     @Test
-    void shouldFailMalformedResponse() {
+    void shouldFailMalformedResponse() throws Exception {
         // GIVEN a malformed OIDC SASL response
         SaslInitialRequest request = new SaslInitialRequest(OauthBearerSaslMechanism.NAME,
             Optional.of(bytes("invalid")));
 
         // WHEN the mechanism consumes the response
-        SaslStep step = new OauthBearerSaslMechanism(Optional.empty(), DENY_ALL).start(request).firstStep();
+        SaslStep step = new XOauth2SaslMechanism(oidcConfiguration(), DENY_ALL).start(request).firstStep();
 
         // THEN it fails before any token validation
         assertThat(step).isEqualTo(new SaslStep.Failure("Malformed authentication command.",
@@ -89,29 +77,27 @@ class OidcSaslMechanismTest {
     }
 
     @Test
-    void parseConfigurationShouldReturnEmptyWhenNoOidcDeclaration() throws Exception {
+    void hasConfigurationShouldBeFalseWhenNoOidcDeclaration() {
         // GIVEN a server configuration without an auth.oidc block
-        BaseHierarchicalConfiguration serverConfiguration = new BaseHierarchicalConfiguration();
+        // THEN OIDC is detected as not configured
+        assertThat(OidcSaslMechanisms.hasConfiguration(new BaseHierarchicalConfiguration())).isFalse();
+    }
 
+    @Test
+    void parseConfigurationShouldThrowWhenNoOidcDeclaration() {
+        // GIVEN a server configuration without an auth.oidc block
         // WHEN the OIDC declaration is parsed
-        // THEN no OIDC configuration is available to the mechanism
-        assertThat(OidcSaslMechanisms.parseConfiguration(serverConfiguration)).isEmpty();
+        // THEN it fails fast rather than degrading to an always-failing OAuth mechanism
+        assertThatThrownBy(() -> OidcSaslMechanisms.parseConfiguration(new BaseHierarchicalConfiguration()))
+            .isInstanceOf(ConfigurationException.class);
     }
 
     @Test
     void parseConfigurationShouldReturnConfigurationWhenOidcDeclared() throws Exception {
         // GIVEN a server configuration with an auth.oidc block
-        BaseHierarchicalConfiguration serverConfiguration = new BaseHierarchicalConfiguration();
-        serverConfiguration.addProperty("auth.oidc.jwksURL", "https://auth.example.com/jwks");
-        serverConfiguration.addProperty("auth.oidc.claim", "email");
-        serverConfiguration.addProperty("auth.oidc.oidcConfigurationURL", "https://auth.example.com/.well-known/openid-configuration");
-        serverConfiguration.addProperty("auth.oidc.scope", "openid");
-        serverConfiguration.addProperty("auth.oidc.aud", "james");
-
         // WHEN the OIDC declaration is parsed
         // THEN the per-server OIDC configuration is available to the mechanism
-        assertThat(OidcSaslMechanisms.parseConfiguration(serverConfiguration))
-            .hasValueSatisfying(configuration -> assertThat(configuration.getClaim()).isEqualTo("email"));
+        assertThat(OidcSaslMechanisms.parseConfiguration(oidcServerConfiguration()).getClaim()).isEqualTo("email");
     }
 
     private static byte[] bytes(String value) {

@@ -257,8 +257,6 @@ public interface ImapSession extends CommandDetectionSession {
      */
     boolean isPlainAuthEnabled();
 
-    boolean supportsOAuth();
-
     default void withMDC(Runnable runnable) {
         try (Closeable c = mdc().build()) {
             runnable.run();

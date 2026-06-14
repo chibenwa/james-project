@@ -36,14 +36,12 @@ import org.apache.james.imap.processor.sasl.ImapSaslBridge;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.metrics.api.MetricFactory;
-import org.apache.james.protocols.api.sasl.OauthBearerSaslMechanism;
 import org.apache.james.protocols.api.sasl.PlainSaslMechanism;
 import org.apache.james.protocols.api.sasl.SaslExchange;
 import org.apache.james.protocols.api.sasl.SaslIdentity;
 import org.apache.james.protocols.api.sasl.SaslInitialRequest;
 import org.apache.james.protocols.api.sasl.SaslMechanism;
 import org.apache.james.protocols.api.sasl.SaslStep;
-import org.apache.james.protocols.api.sasl.XOauth2SaslMechanism;
 import org.apache.james.util.MDCBuilder;
 import org.apache.james.util.ReactorUtils;
 import org.slf4j.Logger;
@@ -151,23 +149,17 @@ public class AuthenticateProcessor extends AbstractAuthProcessor<AuthenticateReq
     }
 
     private boolean isAvailable(SaslMechanism mechanism, ImapSession session) {
+        // Whether a mechanism is offered is now a configuration concern (the mechanism list). The only
+        // per-connection gate left is that PLAIN requires a secure channel when SSL is required.
         if (PlainSaslMechanism.NAME.equalsIgnoreCase(mechanism.name())) {
-            return !session.isPlainAuthDisallowed();
-        }
-        if (OauthBearerSaslMechanism.NAME.equalsIgnoreCase(mechanism.name()) || XOauth2SaslMechanism.NAME.equalsIgnoreCase(mechanism.name())) {
-            return session.supportsOAuth();
+            return !session.isAuthenticatingNonEncryptedWhenRequiredSSL();
         }
         return true;
     }
 
     private void rejectUnavailable(AuthenticateRequest request, Responder responder, SaslMechanism mechanism) {
-        if (PlainSaslMechanism.NAME.equalsIgnoreCase(mechanism.name())) {
-            LOGGER.warn("Plain authentication rejected because it is disabled or not allowed over insecure channel");
-            no(request, responder, HumanReadableText.DISABLED_LOGIN);
-        } else {
-            LOGGER.warn("{} authentication rejected because it is disabled", mechanism.name());
-            no(request, responder, HumanReadableText.UNSUPPORTED_AUTHENTICATION_MECHANISM);
-        }
+        LOGGER.warn("Plain authentication rejected because it is not allowed over an insecure channel");
+        no(request, responder, HumanReadableText.DISABLED_LOGIN);
     }
 
     private void handleFirstStep(SaslExchange exchange, SaslStep step, ImapSession session, AuthenticateRequest request, Responder responder) {

@@ -36,19 +36,29 @@ import org.apache.james.protocols.api.OIDCSASLParser;
 public final class OidcSaslMechanisms {
     private static final String OIDC_PATH = "auth.oidc";
 
-    static SaslExchange start(Optional<byte[]> initialResponse, Optional<OidcSASLConfiguration> oidcConfiguration, Authorizator authorizator) {
+    static SaslExchange start(Optional<byte[]> initialResponse, OidcSASLConfiguration oidcConfiguration, Authorizator authorizator) {
         return new OidcSaslExchange(initialResponse, oidcConfiguration, authorizator);
     }
 
     /**
-     * Parses the optional OIDC declaration of one server configuration block.
+     * Whether the server configuration block declares an OIDC section.
      */
-    public static Optional<OidcSASLConfiguration> parseConfiguration(HierarchicalConfiguration<ImmutableNode> serverConfiguration) throws ConfigurationException {
-        if (serverConfiguration.immutableConfigurationsAt(OIDC_PATH).isEmpty()) {
-            return Optional.empty();
+    public static boolean hasConfiguration(HierarchicalConfiguration<ImmutableNode> serverConfiguration) {
+        return !serverConfiguration.immutableConfigurationsAt(OIDC_PATH).isEmpty();
+    }
+
+    /**
+     * Parses the OIDC declaration of one server configuration block.
+     *
+     * @throws ConfigurationException when the OIDC section is missing or malformed: OIDC mechanisms must not
+     * silently degrade to an always-failing exchange.
+     */
+    public static OidcSASLConfiguration parseConfiguration(HierarchicalConfiguration<ImmutableNode> serverConfiguration) throws ConfigurationException {
+        if (!hasConfiguration(serverConfiguration)) {
+            throw new ConfigurationException("OAuth SASL mechanisms require an 'auth.oidc' configuration");
         }
         try {
-            return Optional.of(OidcSASLConfiguration.parse(serverConfiguration.configurationAt(OIDC_PATH)));
+            return OidcSASLConfiguration.parse(serverConfiguration.configurationAt(OIDC_PATH));
         } catch (MalformedURLException | URISyntaxException e) {
             throw new ConfigurationException("Invalid OIDC SASL configuration", e);
         }
@@ -59,10 +69,10 @@ public final class OidcSaslMechanisms {
 
     private static class OidcSaslExchange implements SaslExchange {
         private final Optional<byte[]> initialResponse;
-        private final Optional<OidcSASLConfiguration> oidcConfiguration;
+        private final OidcSASLConfiguration oidcConfiguration;
         private final Authorizator authorizator;
 
-        private OidcSaslExchange(Optional<byte[]> initialResponse, Optional<OidcSASLConfiguration> oidcConfiguration, Authorizator authorizator) {
+        private OidcSaslExchange(Optional<byte[]> initialResponse, OidcSASLConfiguration oidcConfiguration, Authorizator authorizator) {
             this.initialResponse = initialResponse;
             this.oidcConfiguration = oidcConfiguration;
             this.authorizator = authorizator;
@@ -96,8 +106,7 @@ public final class OidcSaslMechanisms {
         }
 
         private SaslStep verify(String token, Username authorizationId) {
-            return oidcConfiguration
-                .flatMap(configuration -> new OidcJwtTokenVerifier(configuration).validateToken(token))
+            return new OidcJwtTokenVerifier(oidcConfiguration).validateToken(token)
                 .map(authenticatedUser -> SaslDelegation.authorize(authorizator, authenticatedUser, authorizationId))
                 .orElseGet(() -> new SaslStep.Failure("OAuth authentication failed.",
                     SaslStep.Failure.Cause.AUTHENTICATION_FAILED, Optional.empty(), Optional.of(authorizationId)));

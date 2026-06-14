@@ -176,11 +176,6 @@ public class FakeImapSession implements ImapSession {
     }
 
     @Override
-    public boolean supportsOAuth() {
-        return false;
-    }
-
-    @Override
     public InetSocketAddress getRemoteAddress() {
         return null;
     }

@@ -34,16 +34,43 @@ class IMAPServerModuleTest {
     private final IMAPServerModule testee = new IMAPServerModule();
 
     @Test
-    void retrieveSaslMechanismClassNamesShouldReturnDefaultsWhenAbsent() throws Exception {
-        // GIVEN no auth.saslMechanisms configuration
+    void retrieveSaslMechanismClassNamesShouldDefaultToPlainOnlyWhenAbsentAndNoOidc() throws Exception {
+        // GIVEN no auth.saslMechanisms configuration and no OIDC section
         BaseHierarchicalConfiguration configuration = new BaseHierarchicalConfiguration();
 
         // WHEN IMAP resolves its SASL mechanism class names
         ImmutableList<String> mechanismClassNames = testee.retrieveSaslMechanismClassNames(configuration, JAMES_DEFAULT_PROVIDER);
 
-        // THEN existing James IMAP defaults are preserved
+        // THEN only PLAIN is offered by default: OAuth mechanisms require an OIDC section
+        assertThat(mechanismClassNames)
+            .containsExactly("PlainSaslMechanismFactory");
+    }
+
+    @Test
+    void retrieveSaslMechanismClassNamesShouldIncludeOAuthDefaultsWhenOidcConfigured() throws Exception {
+        // GIVEN no auth.saslMechanisms configuration but an OIDC section (legacy supportsOAuth behaviour)
+        BaseHierarchicalConfiguration configuration = new BaseHierarchicalConfiguration();
+        configuration.addProperty("auth.oidc.jwksURL", "https://auth.example.com/jwks");
+
+        // WHEN IMAP resolves its SASL mechanism class names
+        ImmutableList<String> mechanismClassNames = testee.retrieveSaslMechanismClassNames(configuration, JAMES_DEFAULT_PROVIDER);
+
+        // THEN the OAuth mechanisms are offered alongside PLAIN
         assertThat(mechanismClassNames)
             .containsExactly("PlainSaslMechanismFactory", "OauthBearerSaslMechanismFactory", "XOauth2SaslMechanismFactory");
+    }
+
+    @Test
+    void retrieveSaslMechanismClassNamesShouldOmitPlainWhenPlainAuthDisabled() throws Exception {
+        // GIVEN no auth.saslMechanisms configuration and the legacy auth.plainAuthEnabled=false flag
+        BaseHierarchicalConfiguration configuration = new BaseHierarchicalConfiguration();
+        configuration.addProperty("auth.plainAuthEnabled", false);
+
+        // WHEN IMAP resolves its SASL mechanism class names
+        ImmutableList<String> mechanismClassNames = testee.retrieveSaslMechanismClassNames(configuration, JAMES_DEFAULT_PROVIDER);
+
+        // THEN PLAIN is not offered (disabling it = not listing its factory)
+        assertThat(mechanismClassNames).isEmpty();
     }
 
     @Test
