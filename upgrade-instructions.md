@@ -23,6 +23,26 @@ Change list:
  - [JAMES-4210 POP3 USER/PASS requires TLS by default](#james-4210-pop3-userpass-requires-tls-by-default)
  - [JAMES-4210 ManageSieve SASL adoption](#james-4210-managesieve-sasl-adoption)
  - [Dropping the bodyOctets column of the Cassandra messagev3 table](#dropping-the-bodyoctets-column-of-the-cassandra-messagev3-table)
+ - [Cassandra schema version 16: mandatory message denormalization migration](#cassandra-schema-version-16-mandatory-message-denormalization-migration)
+
+### Cassandra schema version 16: mandatory message denormalization migration
+
+Date: 05/09/2026
+
+Concerned products: James products using Cassandra as mailbox storage
+
+`messageIdTable` and `imapUidTable` denormalize four fields from `messagev3`: `internalDate`,
+`bodyStartOctet`, `fullContentOctets` and `headerContent`. They were introduced in 3.7.0 and never
+backfilled: James tolerates their absence instead, and falls back to reading `messagev3`. Messages
+written by James 3.6 and earlier therefore still carry null there.
+
+Schema version 16 backfills them. Run it as any other migration, for instance:
+
+```
+curl -XPOST 'http://ip:port/cassandra/version/upgrade' -d '16'
+```
+
+Later releases will drop this backward support and drop soon-to-be-useless collumns.
 
 ### Dropping the bodyOctets column of the Cassandra messagev3 table
 
