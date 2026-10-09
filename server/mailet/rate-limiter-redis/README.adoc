@@ -16,6 +16,14 @@ for the underlying rate limiting.
 guice.extension.module=org.apache.james.rate.limiter.redis.RedisRateLimiterModule
 ----
 
+`RedisRateLimiterModule` loads both the Redis driver and the rate limiting. If James already loads the Redis driver
+(for instance when Redis mailbox caches are enabled via `redis.current.quota` or `redis.mailbox.counters`),
+use instead the rate limiting only module, in order to avoid binding the Redis driver twice:
+
+----
+guice.extension.module=org.apache.james.rate.limiter.redis.RedisRateLimiterOnlyModule
+----
+
 - 4. Provide a `redis.properties` file:
 
 ----

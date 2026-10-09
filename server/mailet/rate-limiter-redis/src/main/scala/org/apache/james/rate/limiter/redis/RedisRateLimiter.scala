@@ -22,32 +22,45 @@ package org.apache.james.rate.limiter.redis
 import java.time.Duration
 
 import com.google.common.collect.ImmutableList
-import com.google.inject.{AbstractModule, Provides, Scopes}
+import com.google.inject.{AbstractModule, Scopes}
 import es.moki.ratelimitj.core.limiter.request.{AbstractRequestRateLimiterFactory, ReactiveRequestRateLimiter, RequestLimitRule}
 import es.moki.ratelimitj.redis.request.{RedisSlidingWindowRequestRateLimiter, RedisRateLimiterFactory => RedisSingleInstanceRateLimitjFactory}
 import io.lettuce.core.cluster.RedisClusterClient
 import io.lettuce.core.{AbstractRedisClient, RedisClient}
 import jakarta.inject.Inject
 import org.apache.james.backends.redis.{ClusterRedisConfiguration, MasterReplicaRedisConfiguration, RedisClientFactory, RedisConfiguration, SentinelRedisConfiguration, StandaloneRedisConfiguration}
+import org.apache.james.modules.redis.RedisDriverModule
 import org.apache.james.rate.limiter.api.Increment.Increment
 import org.apache.james.rate.limiter.api.{AcceptableRate, RateExceeded, RateLimiter, RateLimiterFactory, RateLimitingKey, RateLimitingResult, Rule, Rules}
-import org.apache.james.utils.PropertiesProvider
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.SMono
 
 import scala.jdk.CollectionConverters._
 
+/**
+ * Rate limiting on top of Redis, including the Redis driver.
+ *
+ * Use [[RedisRateLimiterOnlyModule]] instead if the Redis driver is already loaded by James.
+ */
 class RedisRateLimiterModule() extends AbstractModule {
+  override def configure(): Unit = {
+    install(new RedisDriverModule())
+    install(new RedisRateLimiterOnlyModule())
+  }
+}
+
+/**
+ * Rate limiting on top of Redis, without the Redis driver.
+ *
+ * Relies on the Redis driver loaded by James (eg Redis mailbox caches being enabled).
+ */
+class RedisRateLimiterOnlyModule() extends AbstractModule {
   override def configure(): Unit = {
     bind(classOf[RateLimiterFactory])
       .to(classOf[RedisRateLimiterFactory])
 
     bind(classOf[RedisRateLimiterFactory]).in(Scopes.SINGLETON)
   }
-
-  @Provides
-  def provideConfig(propertiesProvider: PropertiesProvider): RedisConfiguration =
-    RedisConfiguration.from(propertiesProvider.getConfiguration("redis"))
 }
 
 class RedisRateLimiterFactory @Inject()(redisConfiguration: RedisConfiguration, redisClientFactory: RedisClientFactory) extends RateLimiterFactory {

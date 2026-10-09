@@ -79,6 +79,7 @@
         <module>queue/memory</module>
         <module>queue/pulsar</module>
         <module>queue/rabbitmq</module>
+        <module>redis</module>
         <module>sieve-file</module>
         <module>sieve-jpa</module>
         <module>sieve-postgres</module>
@@ -194,6 +195,11 @@
             <dependency>
                 <groupId>${james.groupId}</groupId>
                 <artifactId>james-server-guice-pop</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${james.groupId}</groupId>
+                <artifactId>james-server-guice-redis</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
