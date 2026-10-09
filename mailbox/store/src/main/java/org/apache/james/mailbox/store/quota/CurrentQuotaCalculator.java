@@ -50,10 +50,17 @@ public class CurrentQuotaCalculator {
     }
 
     public Mono<CurrentQuotas> recalculateCurrentQuotas(QuotaRoot quotaRoot, MailboxSession session) {
+        return recalculateCurrentQuotas(quotaRoot, session, NO_CONCURRENCY);
+    }
+
+    /**
+     * @param mailboxConcurrency count of mailboxes being read concurrently
+     */
+    public Mono<CurrentQuotas> recalculateCurrentQuotas(QuotaRoot quotaRoot, MailboxSession session, int mailboxConcurrency) {
         MessageMapper mapper = factory.getMessageMapper(session);
 
         return Flux.from(quotaRootResolver.retrieveAssociatedMailboxes(quotaRoot, session))
-            .flatMap(mailbox -> mapper.findInMailboxReactive(mailbox, MessageRange.all(), MessageMapper.FetchType.METADATA, UNLIMITED), NO_CONCURRENCY)
+            .flatMap(mailbox -> mapper.findInMailboxReactive(mailbox, MessageRange.all(), MessageMapper.FetchType.METADATA, UNLIMITED), mailboxConcurrency)
             .map(message -> new CurrentQuotas(QuotaCountUsage.count(1), QuotaSizeUsage.size(message.getFullContentOctets())))
             .reduce(CurrentQuotas.emptyQuotas(), CurrentQuotas::increase);
     }
