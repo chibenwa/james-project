@@ -63,6 +63,7 @@ import org.apache.james.mailbox.model.UpdatedFlags;
 import org.apache.james.mailbox.store.BatchSizes;
 import org.apache.james.mailbox.store.FlagsUpdateCalculator;
 import org.apache.james.mailbox.store.MailboxReactorUtils;
+import org.apache.james.mailbox.store.mail.MailboxCountersStore;
 import org.apache.james.mailbox.store.mail.MessageMapper;
 import org.apache.james.mailbox.store.mail.ModSeqProvider;
 import org.apache.james.mailbox.store.mail.UidProvider;
@@ -96,7 +97,7 @@ public class CassandraMessageMapper implements MessageMapper {
     private final CassandraMessageDAOV3 messageDAOV3;
     private final CassandraMessageIdDAO messageIdDAO;
     private final CassandraMessageIdToImapUidDAO imapUidDAO;
-    private final CassandraMailboxCounterDAO mailboxCounterDAO;
+    private final MailboxCountersStore mailboxCountersStore;
     private final CassandraMailboxRecentsDAO mailboxRecentDAO;
     private final CassandraApplicableFlagDAO applicableFlagDAO;
     private final CassandraIndexTableHandler indexTableHandler;
@@ -114,7 +115,7 @@ public class CassandraMessageMapper implements MessageMapper {
     public CassandraMessageMapper(UidProvider uidProvider, ModSeqProvider modSeqProvider,
                                   CassandraAttachmentMapper attachmentMapper,
                                   CassandraMessageDAOV3 messageDAOV3, CassandraMessageIdDAO messageIdDAO,
-                                  CassandraMessageIdToImapUidDAO imapUidDAO, CassandraMailboxCounterDAO mailboxCounterDAO,
+                                  CassandraMessageIdToImapUidDAO imapUidDAO, MailboxCountersStore mailboxCountersStore,
                                   CassandraMailboxRecentsDAO mailboxRecentDAO, CassandraApplicableFlagDAO applicableFlagDAO,
                                   CassandraIndexTableHandler indexTableHandler, CassandraFirstUnseenDAO firstUnseenDAO,
                                   CassandraDeletedMessageDAO deletedMessageDAO, BlobStore blobStore, CassandraConfiguration cassandraConfiguration,
@@ -124,7 +125,7 @@ public class CassandraMessageMapper implements MessageMapper {
         this.messageDAOV3 = messageDAOV3;
         this.messageIdDAO = messageIdDAO;
         this.imapUidDAO = imapUidDAO;
-        this.mailboxCounterDAO = mailboxCounterDAO;
+        this.mailboxCountersStore = mailboxCountersStore;
         this.mailboxRecentDAO = mailboxRecentDAO;
         this.indexTableHandler = indexTableHandler;
         this.firstUnseenDAO = firstUnseenDAO;
@@ -158,21 +159,20 @@ public class CassandraMessageMapper implements MessageMapper {
 
     @Override
     public Mono<MailboxCounters> getMailboxCountersReactive(Mailbox mailbox) {
-        CassandraId mailboxId = (CassandraId) mailbox.getMailboxId();
-        return readMailboxCounters(mailboxId)
+        return readMailboxCounters(mailbox)
             .flatMap(counters -> {
                 if (!counters.isValid()) {
                     return fixCounters(mailbox)
-                        .then(readMailboxCounters(mailboxId));
+                        .then(readMailboxCounters(mailbox));
                 }
                 return Mono.just(counters);
             })
             .doOnNext(counters -> readRepair(mailbox, counters));
     }
 
-    public Mono<MailboxCounters> readMailboxCounters(CassandraId mailboxId) {
-        return mailboxCounterDAO.retrieveMailboxCounters(mailboxId)
-            .defaultIfEmpty(MailboxCounters.empty(mailboxId));
+    public Mono<MailboxCounters> readMailboxCounters(Mailbox mailbox) {
+        return mailboxCountersStore.retrieveMailboxCounters(mailbox)
+            .defaultIfEmpty(MailboxCounters.empty(mailbox.getMailboxId()));
     }
 
     private void readRepair(Mailbox mailbox, MailboxCounters counters) {

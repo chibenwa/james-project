@@ -55,6 +55,7 @@ import org.apache.james.mailbox.store.mail.AnnotationMapper;
 import org.apache.james.mailbox.store.mail.AttachmentIdAssignationStrategy;
 import org.apache.james.mailbox.store.mail.AttachmentMapper;
 import org.apache.james.mailbox.store.mail.AttachmentMapperFactory;
+import org.apache.james.mailbox.store.mail.MailboxCountersStore;
 import org.apache.james.mailbox.store.mail.MailboxMapper;
 import org.apache.james.mailbox.store.mail.MessageIdMapper;
 import org.apache.james.mailbox.store.mail.MessageMapper;
@@ -104,6 +105,7 @@ public class CassandraMailboxSessionMapperFactory extends MailboxSessionMapperFa
                                                 ACLMapper aclMapper,
                                                 CassandraUserMailboxRightsDAO userMailboxRightsDAO,
                                                 RecomputeMailboxCountersService recomputeMailboxCountersService,
+                                                MailboxCountersStore mailboxCountersStore,
                                                 CassandraConfiguration cassandraConfiguration,
                                                 BatchSizes batchSizes, AttachmentIdAssignationStrategy attachmentIdAssignationStrategy,
                                                 Clock clock) {
@@ -140,7 +142,7 @@ public class CassandraMailboxSessionMapperFactory extends MailboxSessionMapperFa
             messageDAOV3,
             messageIdDAO,
             imapUidDAO,
-            mailboxCounterDAO,
+            mailboxCountersStore,
             mailboxRecentsDAO,
             applicableFlagDAO,
             indexTableHandler,

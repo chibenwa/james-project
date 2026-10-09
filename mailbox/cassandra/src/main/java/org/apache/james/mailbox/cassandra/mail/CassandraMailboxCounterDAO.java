@@ -37,6 +37,8 @@ import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor;
 import org.apache.james.mailbox.cassandra.ids.CassandraId;
 import org.apache.james.mailbox.model.Mailbox;
 import org.apache.james.mailbox.model.MailboxCounters;
+import org.apache.james.mailbox.model.MailboxId;
+import org.apache.james.mailbox.store.mail.MailboxCountersStore;
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.BoundStatement;
@@ -46,7 +48,7 @@ import com.datastax.oss.driver.api.querybuilder.update.Assignment;
 
 import reactor.core.publisher.Mono;
 
-public class CassandraMailboxCounterDAO {
+public class CassandraMailboxCounterDAO implements MailboxCountersStore {
 
     private final CassandraAsyncExecutor cassandraAsyncExecutor;
     private final PreparedStatement readStatement;
@@ -119,6 +121,16 @@ public class CassandraMailboxCounterDAO {
         return cassandraAsyncExecutor.executeVoid(bindWithMailbox(mailboxId, deleteStatement));
     }
 
+    @Override
+    public Mono<Void> delete(MailboxId mailboxId) {
+        return delete((CassandraId) mailboxId);
+    }
+
+    @Override
+    public Mono<MailboxCounters> retrieveMailboxCounters(Mailbox mailbox) {
+        return retrieveMailboxCounters((CassandraId) mailbox.getMailboxId());
+    }
+
     public Mono<MailboxCounters> retrieveMailboxCounters(CassandraId mailboxId) {
         return cassandraAsyncExecutor.executeSingleRow(bindWithMailbox(mailboxId, readStatement))
             .map(row -> MailboxCounters.builder()
@@ -128,6 +140,7 @@ public class CassandraMailboxCounterDAO {
                 .build());
     }
 
+    @Override
     public Mono<Void> resetCounters(MailboxCounters counters) {
         CassandraId mailboxId = (CassandraId) counters.getMailboxId();
 

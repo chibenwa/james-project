@@ -133,6 +133,7 @@ class CassandraSubscriptionManagerTest implements SubscriptionManagerContract {
             aclMapper,
             userMailboxRightsDAO,
             recomputeMailboxCountersService,
+            mailboxCounterDAO,
             CassandraConfiguration.DEFAULT_CONFIGURATION,
             BatchSizes.defaultValues(),
             attachmentIdAssignationStrategy,

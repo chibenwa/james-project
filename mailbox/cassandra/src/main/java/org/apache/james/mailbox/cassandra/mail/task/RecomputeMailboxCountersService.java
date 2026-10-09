@@ -34,7 +34,6 @@ import org.apache.james.backends.cassandra.init.configuration.CassandraConfigura
 import org.apache.james.backends.cassandra.init.configuration.JamesExecutionProfiles.ConsistencyChoice;
 import org.apache.james.mailbox.cassandra.ids.CassandraId;
 import org.apache.james.mailbox.cassandra.ids.CassandraMessageId;
-import org.apache.james.mailbox.cassandra.mail.CassandraMailboxCounterDAO;
 import org.apache.james.mailbox.cassandra.mail.CassandraMailboxDAO;
 import org.apache.james.mailbox.cassandra.mail.CassandraMessageIdDAO;
 import org.apache.james.mailbox.cassandra.mail.CassandraMessageIdToImapUidDAO;
@@ -43,6 +42,7 @@ import org.apache.james.mailbox.model.ComposedMessageIdWithMetaData;
 import org.apache.james.mailbox.model.Mailbox;
 import org.apache.james.mailbox.model.MailboxCounters;
 import org.apache.james.mailbox.model.MessageRange;
+import org.apache.james.mailbox.store.mail.MailboxCountersStore;
 import org.apache.james.task.Task;
 import org.apache.james.task.Task.Result;
 import org.apache.james.util.streams.Limit;
@@ -196,14 +196,14 @@ public class RecomputeMailboxCountersService {
     private final CassandraMailboxDAO mailboxDAO;
     private final CassandraMessageIdDAO imapUidToMessageIdDAO;
     private final CassandraMessageIdToImapUidDAO messageIdToImapUidDAO;
-    private final CassandraMailboxCounterDAO counterDAO;
+    private final MailboxCountersStore counterDAO;
     private final CassandraConfiguration cassandraConfiguration;
 
     @Inject
     RecomputeMailboxCountersService(CassandraMailboxDAO mailboxDAO,
                                     CassandraMessageIdDAO imapUidToMessageIdDAO,
                                     CassandraMessageIdToImapUidDAO messageIdToImapUidDAO,
-                                    CassandraMailboxCounterDAO counterDAO,
+                                    MailboxCountersStore counterDAO,
                                     CassandraConfiguration cassandraConfiguration) {
         this.mailboxDAO = mailboxDAO;
         this.imapUidToMessageIdDAO = imapUidToMessageIdDAO;

@@ -120,6 +120,7 @@ import org.apache.james.mailbox.store.event.MailboxAnnotationListener;
 import org.apache.james.mailbox.store.event.MailboxSubscriptionListener;
 import org.apache.james.mailbox.store.mail.AttachmentIdAssignationStrategy;
 import org.apache.james.mailbox.store.mail.AttachmentMapperFactory;
+import org.apache.james.mailbox.store.mail.MailboxCountersStore;
 import org.apache.james.mailbox.store.mail.MailboxMapperFactory;
 import org.apache.james.mailbox.store.mail.MessageMapperFactory;
 import org.apache.james.mailbox.store.mail.ModSeqProvider;
@@ -196,6 +197,7 @@ public class CassandraMailboxModule extends AbstractModule {
         bind(AttachmentIdFactory.class).to(StringBackedAttachmentIdFactory.class);
         bind(AttachmentMapperFactory.class).to(CassandraMailboxSessionMapperFactory.class);
         bind(MailboxSessionMapperFactory.class).to(CassandraMailboxSessionMapperFactory.class);
+        bind(MailboxCountersStore.class).to(CassandraMailboxCounterDAO.class);
         bind(SubscriptionMapperFactory.class).to(CassandraMailboxSessionMapperFactory.class);
 
         bind(ACLMapper.class).to(CassandraACLMapper.class);
