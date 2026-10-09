@@ -61,6 +61,7 @@ import org.apache.james.modules.mailbox.CassandraQuotaMailingModule;
 import org.apache.james.modules.mailbox.CassandraSessionModule;
 import org.apache.james.modules.mailbox.DistributedDeletedMessageVaultModule;
 import org.apache.james.modules.mailbox.TikaMailboxModule;
+import org.apache.james.modules.mailbox.redis.RedisMailboxModuleChooser;
 import org.apache.james.modules.mailrepository.CassandraMailRepositoryModule;
 import org.apache.james.modules.metrics.CassandraMetricsModule;
 import org.apache.james.modules.protocols.IMAPServerModule;
@@ -214,7 +215,8 @@ public class CassandraRabbitMQJamesServerMain implements JamesServerMain {
             .combineWith(chooseDeletedMessageVault(configuration.getVaultConfiguration()))
             .combineWith(chooseQuotaModule(configuration))
             .overrideWith(chooseJmapModules(configuration))
-            .overrideWith(chooseDropListsModule(configuration));
+            .overrideWith(chooseDropListsModule(configuration))
+            .overrideWith(RedisMailboxModuleChooser.chooseModules(configuration.redisMailboxConfiguration()));
     }
 
     private static Module chooseMailQueue(CassandraRabbitMQJamesConfiguration configuration) {

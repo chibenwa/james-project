@@ -29,6 +29,7 @@ import org.apache.james.filesystem.api.FileSystem;
 import org.apache.james.filesystem.api.JamesDirectoriesProvider;
 import org.apache.james.jmap.JMAPModule;
 import org.apache.james.modules.blobstore.BlobStoreConfiguration;
+import org.apache.james.modules.mailbox.redis.RedisMailboxConfiguration;
 import org.apache.james.modules.queue.rabbitmq.MailQueueViewChoice;
 import org.apache.james.server.core.JamesServerResourceLoader;
 import org.apache.james.server.core.MissingArgumentException;
@@ -52,6 +53,7 @@ public class CassandraRabbitMQJamesConfiguration implements Configuration {
         private Optional<VaultConfiguration> vaultConfiguration;
         private Optional<Boolean> jmapEnabled;
         private Optional<Boolean> quotaCompatibilityMode;
+        private Optional<RedisMailboxConfiguration> redisMailboxConfiguration;
         private Optional<Boolean> dropListsEnabled;
 
         private Builder() {
@@ -65,6 +67,7 @@ public class CassandraRabbitMQJamesConfiguration implements Configuration {
             vaultConfiguration = Optional.empty();
             jmapEnabled = Optional.empty();
             quotaCompatibilityMode = Optional.empty();
+            redisMailboxConfiguration = Optional.empty();
             dropListsEnabled = Optional.empty();
         }
 
@@ -133,6 +136,11 @@ public class CassandraRabbitMQJamesConfiguration implements Configuration {
 
         public Builder quotaCompatibilityModeEnabled(boolean value) {
             this.quotaCompatibilityMode = Optional.of(value);
+            return this;
+        }
+
+        public Builder redisMailboxConfiguration(RedisMailboxConfiguration redisMailboxConfiguration) {
+            this.redisMailboxConfiguration = Optional.of(redisMailboxConfiguration);
             return this;
         }
 
@@ -207,6 +215,9 @@ public class CassandraRabbitMQJamesConfiguration implements Configuration {
                 }
             });
 
+            RedisMailboxConfiguration redisMailboxConfiguration = this.redisMailboxConfiguration.orElseGet(Throwing.supplier(
+                () -> RedisMailboxConfiguration.parse(propertiesProvider)));
+
             return new CassandraRabbitMQJamesConfiguration(
                 configurationPath,
                 directories,
@@ -217,7 +228,8 @@ public class CassandraRabbitMQJamesConfiguration implements Configuration {
                 mailQueueViewChoice, vaultConfiguration,
                 jmapEnabled,
                 quotaCompatibilityMode,
-                dropListsEnabled);
+                dropListsEnabled,
+                redisMailboxConfiguration);
         }
     }
 
@@ -236,12 +248,14 @@ public class CassandraRabbitMQJamesConfiguration implements Configuration {
     private final boolean jmapEnabled;
     private final boolean quotaCompatibilityMode;
     private final boolean dropListsEnabled;
+    private final RedisMailboxConfiguration redisMailboxConfiguration;
 
     public CassandraRabbitMQJamesConfiguration(ConfigurationPath configurationPath, JamesDirectoriesProvider directories,
                                                BlobStoreConfiguration blobStoreConfiguration, SearchConfiguration searchConfiguration,
                                                UsersRepositoryModuleChooser.Implementation usersRepositoryImplementation, MailQueueChoice mailQueueChoice,
                                                MailQueueViewChoice mailQueueViewChoice, VaultConfiguration vaultConfiguration,
-                                               boolean jmapEnabled, boolean quotaCompatibilityMode, boolean dropListsEnabled) {
+                                               boolean jmapEnabled, boolean quotaCompatibilityMode, boolean dropListsEnabled,
+                                               RedisMailboxConfiguration redisMailboxConfiguration) {
         this.configurationPath = configurationPath;
         this.directories = directories;
         this.blobStoreConfiguration = blobStoreConfiguration;
@@ -253,6 +267,7 @@ public class CassandraRabbitMQJamesConfiguration implements Configuration {
         this.jmapEnabled = jmapEnabled;
         this.quotaCompatibilityMode = quotaCompatibilityMode;
         this.dropListsEnabled = dropListsEnabled;
+        this.redisMailboxConfiguration = redisMailboxConfiguration;
     }
 
     public MailQueueViewChoice getMailQueueViewChoice() {
@@ -299,5 +314,9 @@ public class CassandraRabbitMQJamesConfiguration implements Configuration {
 
     public boolean isDropListsEnabled() {
         return dropListsEnabled;
+    }
+
+    public RedisMailboxConfiguration redisMailboxConfiguration() {
+        return redisMailboxConfiguration;
     }
 }

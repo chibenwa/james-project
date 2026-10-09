@@ -52,6 +52,7 @@
         <module>mailbox-jpa</module>
         <module>mailbox-plugin-deleted-messages-vault</module>
         <module>mailbox-postgres</module>
+        <module>mailbox-redis</module>
         <module>mailet</module>
         <module>mailrepository-blob</module>
         <module>mailrepository-cassandra</module>
@@ -164,6 +165,11 @@
             <dependency>
                 <groupId>${james.groupId}</groupId>
                 <artifactId>james-server-guice-mailbox-postgres</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${james.groupId}</groupId>
+                <artifactId>james-server-guice-mailbox-redis</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

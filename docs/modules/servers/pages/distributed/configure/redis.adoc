@@ -3,3 +3,66 @@
 
 :sample-configuration-prefix-url: https://github.com/apache/james-project/blob/master/server/apps/distributed-app/sample-configuration
 include::partial$configure/redis.adoc[]
+
+== Redis mailbox caches
+
+Cassandra counters, used by default for current quotas and mailbox counters, cannot be set: they can only be incremented
+and decremented. On an unstable Cassandra cluster they might drift and fail to converge onto the values stored in the
+source of truth tables, even after recomputation.
+
+The distributed server can instead cache these values in Redis. The source of truth remains the message metadata stored
+in Cassandra:
+
+ - Upon cache miss, values are recomputed from the source of truth then stored in Redis.
+ - Cached values are then maintained upon writes. Increments are only applied to cached values: an absent value will be
+recomputed upon next read.
+ - Cached values expire after a configurable TTL. Any drift is thus bounded in time.
+ - Recomputation tasks (current quotas, mailbox counters) replace the cached values: they can be used to warm up the cache.
+
+.redis.properties content
+|===
+| Property name | explanation
+
+| redis.current.quota
+| Whether to cache current quotas in Redis instead of storing them in Cassandra counters. Optional boolean, defaults to false.
+
+| redis.mailbox.counters
+| Whether to cache mailbox counters (count of messages, count of unseen messages) in Redis instead of reading them from
+Cassandra counters. Optional boolean, defaults to false.
+
+| redis.cache.ttl
+| Duration during which cached values are kept. Optional duration (supports multiple time units cf `DurationParser`),
+defaults to 1 day.
+
+| redis.cache.ttl.jitter
+| Random duration, between zero and this value, added to the TTL of each cached value, in order for entries not to expire
+simultaneously. Optional duration (supports multiple time units cf `DurationParser`), defaults to zero (no jitter).
+|===
+
+Example:
+
+....
+redisURL=redis://redis:6379
+redis.topology=standalone
+redis.current.quota=true
+redis.mailbox.counters=true
+redis.cache.ttl=1d
+redis.cache.ttl.jitter=2h
+....
+
+Mailbox counters are maintained by the `RedisMailboxCountersListenerGroup` event bus listener. In order to read up to date
+counters right after a write (IMAP `STATUS` after `APPEND`, JMAP `Mailbox/get` after `Email/set`...), it is advised to
+execute it synchronously by adding the following line to `jvm.properties`:
+
+....
+james.eventbus.synchronous.listener.groups=RedisMailboxCountersListenerGroup
+....
+
+When `redis.mailbox.counters` is enabled, Cassandra mailbox counters are still written but no longer read. Mailbox
+counters read repairs, controlled by `mailbox.counters.read.repair.chance.max` and
+`mailbox.counters.read.repair.chance.one.hundred` in `cassandra.properties`, then recompute the counters into Redis: they
+can be disabled.
+
+Enabling Redis mailbox caches loads the Redis driver. If you also use Redis rate limiting extensions, configure
+`extensions.properties` with `org.apache.james.rate.limiter.redis.RedisRateLimiterOnlyModule` instead of
+`org.apache.james.rate.limiter.redis.RedisRateLimiterModule` so that the Redis driver is not loaded twice.
