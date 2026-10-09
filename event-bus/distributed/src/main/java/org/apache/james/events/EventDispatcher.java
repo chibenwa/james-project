@@ -28,6 +28,7 @@ import static org.apache.james.backends.rabbitmq.Constants.EXCLUSIVE;
 import static org.apache.james.backends.rabbitmq.Constants.evaluateAutoDelete;
 import static org.apache.james.backends.rabbitmq.Constants.evaluateDurable;
 import static org.apache.james.backends.rabbitmq.Constants.evaluateExclusive;
+import static org.apache.james.events.GroupRegistration.DEFAULT_RETRY_COUNT;
 import static org.apache.james.events.RabbitMQEventBus.EVENT_BUS_ID;
 
 import java.time.Duration;
@@ -71,11 +72,13 @@ public class EventDispatcher {
     private final RabbitMQConfiguration configuration;
 
     private final DispatchingFailureGroup dispatchingFailureGroup;
+    private final GroupRegistrationHandler groupRegistrationHandler;
 
     EventDispatcher(NamingStrategy namingStrategy, EventBusId eventBusId, EventSerializer eventSerializer, Sender sender,
                     LocalListenerRegistry localListenerRegistry,
                     ListenerExecutor listenerExecutor,
-                    EventDeadLetters deadLetters, RabbitMQConfiguration configuration) {
+                    EventDeadLetters deadLetters, RabbitMQConfiguration configuration,
+                    GroupRegistrationHandler groupRegistrationHandler) {
         this.namingStrategy = namingStrategy;
         this.eventSerializer = eventSerializer;
         this.sender = sender;
@@ -90,6 +93,7 @@ public class EventDispatcher {
         this.deadLetters = deadLetters;
         this.configuration = configuration;
         this.dispatchingFailureGroup = new DispatchingFailureGroup(namingStrategy.getEventBusName());
+        this.groupRegistrationHandler = groupRegistrationHandler;
     }
 
     void start() {
@@ -117,6 +121,7 @@ public class EventDispatcher {
     Mono<Void> dispatch(Event event, Set<RegistrationKey> keys) {
         return Flux
             .concat(
+                executeLocalSynchronousListeners(ImmutableList.of(new EventBus.EventWithRegistrationKey(event, keys))),
                 dispatchToLocalListeners(event, keys),
                 dispatchToRemoteListeners(event, keys))
             .doOnError(throwable -> LOGGER.error("error while dispatching event", throwable))
@@ -126,11 +131,27 @@ public class EventDispatcher {
     Mono<Void> dispatch(Collection<EventBus.EventWithRegistrationKey> events) {
         return Flux
             .concat(
-                Flux.fromIterable(events)
-                    .concatMap(e -> dispatchToLocalListeners(e.event(), e.keys()))
-                    .then(),
+                executeLocalSynchronousListeners(events),
+                dispatchToLocalListeners(events),
                 dispatchToRemoteListeners(events))
             .doOnError(throwable -> LOGGER.error("error while dispatching event", throwable))
+            .then();
+    }
+
+    private Mono<Void> executeLocalSynchronousListeners(Collection<EventBus.EventWithRegistrationKey> events) {
+        if (RabbitMQEventBus.listenersToExecuteSynchronously.isEmpty()) {
+            return Mono.empty();
+        }
+        return Flux.fromStream(groupRegistrationHandler.synchronousGroupRegistrations())
+            .flatMap(registration -> registration.runListenerReliably(DEFAULT_RETRY_COUNT, events.stream()
+                .map(EventBus.EventWithRegistrationKey::event)
+                .collect(ImmutableList.toImmutableList())))
+            .then();
+    }
+
+    private Mono<Void> dispatchToLocalListeners(Collection<EventBus.EventWithRegistrationKey> events) {
+        return Flux.fromIterable(events)
+            .concatMap(e -> dispatchToLocalListeners(e.event(), e.keys()))
             .then();
     }
 

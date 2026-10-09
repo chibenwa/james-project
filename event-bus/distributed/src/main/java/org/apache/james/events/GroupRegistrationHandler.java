@@ -36,6 +36,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
@@ -101,6 +102,20 @@ public class GroupRegistrationHandler {
         this.consumer = Optional.empty();
     }
 
+    Stream<GroupRegistration> synchronousGroupRegistrations() {
+        return groupRegistrations.entrySet()
+            .stream()
+            .filter(registration -> RabbitMQEventBus.shouldBeExecutedSynchronously(registration.getKey()))
+            .map(Map.Entry::getValue);
+    }
+
+    Stream<GroupRegistration> asynchronousGroupRegistrations() {
+        return groupRegistrations.entrySet()
+            .stream()
+            .filter(registration -> !RabbitMQEventBus.shouldBeExecutedSynchronously(registration.getKey()))
+            .map(Map.Entry::getValue);
+    }
+
     GroupRegistration retrieveGroupRegistration(Group group) {
         return Optional.ofNullable(groupRegistrations.get(group))
             .orElseThrow(() -> new GroupRegistrationNotFound(group));
@@ -140,8 +155,7 @@ public class GroupRegistrationHandler {
         byte[] eventAsBytes = acknowledgableDelivery.getBody();
 
         return deserializeEvents(eventAsBytes)
-            .flatMapIterable(events -> groupRegistrations.values()
-                .stream()
+            .flatMapIterable(events -> asynchronousGroupRegistrations()
                 .map(group -> Pair.of(group, events))
                 .collect(ImmutableList.toImmutableList()))
             .flatMap(event -> event.getLeft().runListenerReliably(DEFAULT_RETRY_COUNT, event.getRight()))

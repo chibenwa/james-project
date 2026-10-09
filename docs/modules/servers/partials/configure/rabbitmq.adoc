@@ -123,6 +123,24 @@ You still need to specify the vhost in the uri parameter.
 
 |===
 
+== Executing some event bus listeners synchronously
+
+Group listeners of the distributed event bus are by default executed asynchronously: the event is published on RabbitMQ
+and consumed later by the group work queue. Some listeners however need to be executed before the action
+triggering the event completes, for instance to maintain a cache that needs read-after-write consistency.
+
+The JVM property `james.eventbus.synchronous.listener.groups` allows listing the groups that need to be
+executed synchronously, on the node dispatching the event. It takes a coma separated list of group simple class names.
+Those groups are then skipped upon RabbitMQ consumption.
+
+Example, in `jvm.properties`:
+
+....
+james.eventbus.synchronous.listener.groups=RedisMailboxCountersListenerGroup
+....
+
+Defaults to an empty list: all groups are executed asynchronously.
+
 == Tuning RabbitMQ for quorum queue use
 
 While quorum queues are great at preserving your data and enabling High Availability, they demand more resources and
