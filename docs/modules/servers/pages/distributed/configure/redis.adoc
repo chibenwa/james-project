@@ -26,9 +26,23 @@ recomputed upon next read.
 | redis.current.quota
 | Whether to cache current quotas in Redis instead of storing them in Cassandra counters. Optional boolean, defaults to false.
 
+| redis.current.quota.timeout
+| Timeout of Redis commands for current quotas, after which Redis is considered unavailable. Optional duration
+(supports multiple time units cf `DurationParser`), defaults to 10 seconds.
+
+| redis.current.quota.maintain.legacy
+| Whether Cassandra current quotas are still maintained alongside Redis. Optional boolean, defaults to false. See below.
+
 | redis.mailbox.counters
 | Whether to cache mailbox counters (count of messages, count of unseen messages) in Redis instead of reading them from
 Cassandra counters. Optional boolean, defaults to false.
+
+| redis.mailbox.counters.timeout
+| Timeout of Redis commands for mailbox counters, after which Redis is considered unavailable. Optional duration
+(supports multiple time units cf `DurationParser`), defaults to 10 seconds.
+
+| redis.mailbox.counters.maintain.legacy
+| Whether Cassandra mailbox counters are still maintained alongside Redis. Optional boolean, defaults to false. See below.
 
 | redis.cache.ttl
 | Duration during which cached values are kept. Optional duration (supports multiple time units cf `DurationParser`),
@@ -45,10 +59,36 @@ Example:
 redisURL=redis://redis:6379
 redis.topology=standalone
 redis.current.quota=true
+redis.current.quota.maintain.legacy=true
 redis.mailbox.counters=true
+redis.mailbox.counters.maintain.legacy=true
 redis.cache.ttl=1d
 redis.cache.ttl.jitter=2h
 ....
+
+=== Maintaining legacy structures
+
+When `maintain.legacy` is enabled for a component, its Cassandra counters keep being maintained alongside Redis (best
+effort: failures are logged and ignored). Recomputation tasks also reset them. This enables:
+
+ - Transparent rollbacks: disabling the Redis cache switches back to Cassandra counters that kept being maintained.
+ - Cheap fallback upon Redis outages: Cassandra counters are read when Redis is unavailable.
+
+When `maintain.legacy` is disabled (default), Cassandra counters are no longer written. Rolling back then requires
+running the current quotas and mailbox counters recomputation tasks.
+
+=== Redis outages
+
+A Redis command exceeding the configured timeout, or failing, is treated as an outage:
+
+ - Reads fall back on Cassandra counters when legacy structures are maintained, and otherwise on a recomputation from
+the source of truth (more expensive).
+ - Increments never fail and are never retried, as retrying an increment risks double counting. The impacted entry is
+invalidated if possible, so that it gets recomputed upon next read. If Redis is unreachable this invalidation can fail:
+cached values might then be stale after the outage, until they expire. As the cache is disposable, flushing it after an
+outage where Redis kept its data (`FLUSHDB`) guarantees correct values. Running Redis without persistence achieves
+this automatically upon restarts.
+ - Resetting values (recomputation tasks) fails, and can be retried once Redis is back.
 
 Mailbox counters are maintained by the `RedisMailboxCountersListenerGroup` event bus listener. In order to read up to date
 counters right after a write (IMAP `STATUS` after `APPEND`, JMAP `Mailbox/get` after `Email/set`...), it is advised to
@@ -58,10 +98,9 @@ execute it synchronously by adding the following line to `jvm.properties`:
 james.eventbus.synchronous.listener.groups=RedisMailboxCountersListenerGroup
 ....
 
-When `redis.mailbox.counters` is enabled, Cassandra mailbox counters are still written but no longer read. Mailbox
-counters read repairs, controlled by `mailbox.counters.read.repair.chance.max` and
-`mailbox.counters.read.repair.chance.one.hundred` in `cassandra.properties`, then recompute the counters into Redis: they
-can be disabled.
+When `redis.mailbox.counters` is enabled, Cassandra mailbox counters are no longer read. Mailbox counters read repairs,
+controlled by `mailbox.counters.read.repair.chance.max` and `mailbox.counters.read.repair.chance.one.hundred` in
+`cassandra.properties`, then recompute the counters into Redis: they can be disabled.
 
 Enabling Redis mailbox caches loads the Redis driver. If you also use Redis rate limiting extensions, configure
 `extensions.properties` with `org.apache.james.rate.limiter.redis.RedisRateLimiterOnlyModule` instead of

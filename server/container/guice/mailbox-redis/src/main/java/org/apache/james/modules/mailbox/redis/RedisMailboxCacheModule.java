@@ -34,7 +34,7 @@ import com.google.inject.Singleton;
 public class RedisMailboxCacheModule extends AbstractModule {
     @Override
     protected void configure() {
-        bind(RedisCounterCache.class).in(Scopes.SINGLETON);
+        bind(RedisCounterCache.Factory.class).in(Scopes.SINGLETON);
     }
 
     @Provides

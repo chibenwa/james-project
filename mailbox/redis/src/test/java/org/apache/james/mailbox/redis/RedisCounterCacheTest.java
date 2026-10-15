@@ -20,6 +20,8 @@
 package org.apache.james.mailbox.redis;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Duration;
 import java.util.Map;
@@ -28,6 +30,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.james.backends.redis.DockerRedis;
 import org.apache.james.backends.redis.RedisExtension;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
@@ -50,14 +53,20 @@ class RedisCounterCacheTest {
     static RedisExtension redisExtension = new RedisExtension();
 
     private RedisCounterCache testee;
+    private DockerRedis dockerRedis;
     private RedisCommands<String, String> redis;
     private AtomicInteger computationCount;
 
     @BeforeEach
     void setUp(DockerRedis dockerRedis) {
         testee = RedisTestFixture.counterCache(dockerRedis);
+        this.dockerRedis = dockerRedis;
         redis = dockerRedis.createClient();
         computationCount = new AtomicInteger();
+    }
+
+    private Mono<Map<String, Long>> noFallback() {
+        return Mono.error(new AssertionError("Fallback should not be called"));
     }
 
     private Mono<Map<String, Long>> compute(Map<String, Long> values) {
@@ -69,22 +78,22 @@ class RedisCounterCacheTest {
 
     @Test
     void getOrComputeShouldComputeUponCacheMiss() {
-        assertThat(testee.getOrCompute(KEY, FIELDS, () -> compute(VALUES)).block())
+        assertThat(testee.getOrCompute(KEY, FIELDS, () -> compute(VALUES), this::noFallback).block())
             .isEqualTo(VALUES);
     }
 
     @Test
     void getOrComputeShouldStoreComputedValues() {
-        testee.getOrCompute(KEY, FIELDS, () -> compute(VALUES)).block();
+        testee.getOrCompute(KEY, FIELDS, () -> compute(VALUES), this::noFallback).block();
 
-        assertThat(testee.getOrCompute(KEY, FIELDS, () -> compute(OTHER_VALUES)).block())
+        assertThat(testee.getOrCompute(KEY, FIELDS, () -> compute(OTHER_VALUES), this::noFallback).block())
             .isEqualTo(VALUES);
         assertThat(computationCount.get()).isEqualTo(1);
     }
 
     @Test
     void storedValuesShouldExpire() {
-        testee.getOrCompute(KEY, FIELDS, () -> compute(VALUES)).block();
+        testee.getOrCompute(KEY, FIELDS, () -> compute(VALUES), this::noFallback).block();
 
         assertThat(redis.ttl(KEY))
             .isBetween(TTL.getSeconds() - 5, TTL.plus(TTL_JITTER).getSeconds());
@@ -92,11 +101,11 @@ class RedisCounterCacheTest {
 
     @Test
     void incrementIfPresentShouldIncrementStoredValues() {
-        testee.getOrCompute(KEY, FIELDS, () -> compute(VALUES)).block();
+        testee.getOrCompute(KEY, FIELDS, () -> compute(VALUES), this::noFallback).block();
 
         testee.incrementIfPresent(KEY, ImmutableMap.of("a", 3L, "b", -1L)).block();
 
-        assertThat(testee.getOrCompute(KEY, FIELDS, () -> compute(OTHER_VALUES)).block())
+        assertThat(testee.getOrCompute(KEY, FIELDS, () -> compute(OTHER_VALUES), this::noFallback).block())
             .isEqualTo(ImmutableMap.of("a", 4L, "b", 1L));
     }
 
@@ -104,7 +113,7 @@ class RedisCounterCacheTest {
     void incrementIfPresentShouldBeNoopWhenAbsent() {
         testee.incrementIfPresent(KEY, ImmutableMap.of("a", 3L, "b", -1L)).block();
 
-        assertThat(testee.getOrCompute(KEY, FIELDS, () -> compute(VALUES)).block())
+        assertThat(testee.getOrCompute(KEY, FIELDS, () -> compute(VALUES), this::noFallback).block())
             .isEqualTo(VALUES);
     }
 
@@ -129,7 +138,7 @@ class RedisCounterCacheTest {
     void partialEntriesShouldBeRecomputed() {
         redis.hset(KEY, "a", "36");
 
-        assertThat(testee.getOrCompute(KEY, FIELDS, () -> compute(VALUES)).block())
+        assertThat(testee.getOrCompute(KEY, FIELDS, () -> compute(VALUES), this::noFallback).block())
             .isEqualTo(VALUES);
     }
 
@@ -137,26 +146,26 @@ class RedisCounterCacheTest {
     void unreadableEntriesShouldBeRecomputed() {
         redis.hset(KEY, ImmutableMap.of("a", "36", "b", "notANumber"));
 
-        assertThat(testee.getOrCompute(KEY, FIELDS, () -> compute(VALUES)).block())
+        assertThat(testee.getOrCompute(KEY, FIELDS, () -> compute(VALUES), this::noFallback).block())
             .isEqualTo(VALUES);
     }
 
     @Test
     void recomputedValuesShouldBeStoredAfterPartialRead() {
         redis.hset(KEY, "a", "36");
-        testee.getOrCompute(KEY, FIELDS, () -> compute(VALUES)).block();
+        testee.getOrCompute(KEY, FIELDS, () -> compute(VALUES), this::noFallback).block();
 
-        assertThat(testee.getOrCompute(KEY, FIELDS, () -> compute(OTHER_VALUES)).block())
+        assertThat(testee.getOrCompute(KEY, FIELDS, () -> compute(OTHER_VALUES), this::noFallback).block())
             .isEqualTo(VALUES);
     }
 
     @Test
     void replaceShouldOverwriteStoredValues() {
-        testee.getOrCompute(KEY, FIELDS, () -> compute(VALUES)).block();
+        testee.getOrCompute(KEY, FIELDS, () -> compute(VALUES), this::noFallback).block();
 
         testee.replace(KEY, OTHER_VALUES).block();
 
-        assertThat(testee.getOrCompute(KEY, FIELDS, () -> compute(VALUES)).block())
+        assertThat(testee.getOrCompute(KEY, FIELDS, () -> compute(VALUES), this::noFallback).block())
             .isEqualTo(OTHER_VALUES);
     }
 
@@ -164,7 +173,7 @@ class RedisCounterCacheTest {
     void replaceShouldStoreValuesWhenAbsent() {
         testee.replace(KEY, OTHER_VALUES).block();
 
-        assertThat(testee.getOrCompute(KEY, FIELDS, () -> compute(VALUES)).block())
+        assertThat(testee.getOrCompute(KEY, FIELDS, () -> compute(VALUES), this::noFallback).block())
             .isEqualTo(OTHER_VALUES);
         assertThat(computationCount.get()).isZero();
     }
@@ -179,11 +188,11 @@ class RedisCounterCacheTest {
 
     @Test
     void invalidateShouldTriggerRecomputation() {
-        testee.getOrCompute(KEY, FIELDS, () -> compute(VALUES)).block();
+        testee.getOrCompute(KEY, FIELDS, () -> compute(VALUES), this::noFallback).block();
 
         testee.invalidate(KEY).block();
 
-        assertThat(testee.getOrCompute(KEY, FIELDS, () -> compute(OTHER_VALUES)).block())
+        assertThat(testee.getOrCompute(KEY, FIELDS, () -> compute(OTHER_VALUES), this::noFallback).block())
             .isEqualTo(OTHER_VALUES);
     }
 
@@ -191,7 +200,7 @@ class RedisCounterCacheTest {
     void invalidateShouldNotFailWhenAbsent() {
         testee.invalidate(KEY).block();
 
-        assertThat(testee.getOrCompute(KEY, FIELDS, () -> compute(VALUES)).block())
+        assertThat(testee.getOrCompute(KEY, FIELDS, () -> compute(VALUES), this::noFallback).block())
             .isEqualTo(VALUES);
     }
 
@@ -200,11 +209,11 @@ class RedisCounterCacheTest {
         // The increment happens while the recomputation is running: the recomputed value might not account for it
         Map<String, Long> result = testee.getOrCompute(KEY, FIELDS,
                 () -> testee.incrementIfPresent(KEY, ImmutableMap.of("a", 3L, "b", 3L))
-                    .then(compute(VALUES)))
+                    .then(compute(VALUES)), this::noFallback)
             .block();
 
         assertThat(result).isEqualTo(VALUES);
-        assertThat(testee.getOrCompute(KEY, FIELDS, () -> compute(OTHER_VALUES)).block())
+        assertThat(testee.getOrCompute(KEY, FIELDS, () -> compute(OTHER_VALUES), this::noFallback).block())
             .isEqualTo(OTHER_VALUES);
     }
 
@@ -212,10 +221,10 @@ class RedisCounterCacheTest {
     void recomputedValueShouldNotBeStoredWhenConcurrentReplace() {
         testee.getOrCompute(KEY, FIELDS,
                 () -> testee.replace(KEY, OTHER_VALUES)
-                    .then(compute(VALUES)))
+                    .then(compute(VALUES)), this::noFallback)
             .block();
 
-        assertThat(testee.getOrCompute(KEY, FIELDS, () -> compute(VALUES)).block())
+        assertThat(testee.getOrCompute(KEY, FIELDS, () -> compute(VALUES), this::noFallback).block())
             .isEqualTo(OTHER_VALUES);
     }
 
@@ -223,10 +232,10 @@ class RedisCounterCacheTest {
     void recomputedValueShouldNotBeStoredWhenConcurrentInvalidation() {
         testee.getOrCompute(KEY, FIELDS,
                 () -> testee.invalidate(KEY)
-                    .then(compute(VALUES)))
+                    .then(compute(VALUES)), this::noFallback)
             .block();
 
-        assertThat(testee.getOrCompute(KEY, FIELDS, () -> compute(OTHER_VALUES)).block())
+        assertThat(testee.getOrCompute(KEY, FIELDS, () -> compute(OTHER_VALUES), this::noFallback).block())
             .isEqualTo(OTHER_VALUES);
     }
 
@@ -235,7 +244,7 @@ class RedisCounterCacheTest {
         Mono<Map<String, Long>> slowComputation = compute(VALUES).delayElement(Duration.ofMillis(500));
 
         Flux.range(0, 10)
-            .flatMap(any -> testee.getOrCompute(KEY, FIELDS, () -> slowComputation))
+            .flatMap(any -> testee.getOrCompute(KEY, FIELDS, () -> slowComputation, this::noFallback))
             .collectList()
             .block();
 
@@ -244,11 +253,67 @@ class RedisCounterCacheTest {
 
     @Test
     void failedRecomputationShouldNotBeCached() {
-        testee.getOrCompute(KEY, FIELDS, () -> Mono.error(new RuntimeException()))
+        testee.getOrCompute(KEY, FIELDS, () -> Mono.error(new RuntimeException()), this::noFallback)
             .onErrorResume(e -> Mono.empty())
             .block();
 
-        assertThat(testee.getOrCompute(KEY, FIELDS, () -> compute(VALUES)).block())
+        assertThat(testee.getOrCompute(KEY, FIELDS, () -> compute(VALUES), this::noFallback).block())
             .isEqualTo(VALUES);
+    }
+
+    @Nested
+    class RedisFailures {
+        @Test
+        void getOrComputeShouldUseFallbackWhenRedisIsUnavailable() {
+            RedisTestFixture.whileRedisIsPaused(dockerRedis, () ->
+                assertThat(testee.getOrCompute(KEY, FIELDS, () -> compute(VALUES), () -> Mono.just(OTHER_VALUES)).block())
+                    .isEqualTo(OTHER_VALUES));
+        }
+
+        @Test
+        void getOrComputeShouldNotComputeWhenRedisIsUnavailable() {
+            RedisTestFixture.whileRedisIsPaused(dockerRedis, () ->
+                testee.getOrCompute(KEY, FIELDS, () -> compute(VALUES), () -> Mono.just(OTHER_VALUES)).block());
+
+            assertThat(computationCount.get()).isZero();
+        }
+
+        @Test
+        void getOrComputeShouldReturnComputedValueWhenStoringItFails() {
+            Mono<Map<String, Long>> computationPausingRedis = Mono.fromRunnable(dockerRedis::pause)
+                .then(compute(VALUES));
+
+            try {
+                assertThat(testee.getOrCompute(KEY, FIELDS, () -> computationPausingRedis, RedisCounterCacheTest.this::noFallback).block())
+                    .isEqualTo(VALUES);
+            } finally {
+                dockerRedis.unPause();
+            }
+        }
+
+        @Test
+        void incrementIfPresentShouldNotFailWhenRedisIsUnavailable() {
+            testee.getOrCompute(KEY, FIELDS, () -> compute(VALUES), RedisCounterCacheTest.this::noFallback).block();
+
+            RedisTestFixture.whileRedisIsPaused(dockerRedis, () ->
+                assertThatCode(() -> testee.incrementIfPresent(KEY, ImmutableMap.of("a", 3L, "b", 3L)).block())
+                    .doesNotThrowAnyException());
+        }
+
+        @Test
+        void replaceShouldFailWhenRedisIsUnavailable() {
+            RedisTestFixture.whileRedisIsPaused(dockerRedis, () ->
+                assertThatThrownBy(() -> testee.replace(KEY, VALUES).block())
+                    .isInstanceOf(Exception.class));
+        }
+
+        @Test
+        void cacheShouldWorkAgainOnceRedisIsBack() {
+            RedisTestFixture.whileRedisIsPaused(dockerRedis, () ->
+                testee.getOrCompute(KEY, FIELDS, () -> compute(VALUES), () -> Mono.just(OTHER_VALUES)).block());
+
+            assertThat(testee.getOrCompute(KEY, FIELDS, () -> compute(VALUES), RedisCounterCacheTest.this::noFallback).block())
+                .isEqualTo(VALUES);
+        }
     }
 }

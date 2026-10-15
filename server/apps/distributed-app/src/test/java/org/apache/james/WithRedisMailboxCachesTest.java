@@ -24,23 +24,18 @@ import static org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS;
 
 import java.time.Duration;
 
-import jakarta.inject.Inject;
 import jakarta.mail.Flags;
 
 import org.apache.james.backends.redis.RedisExtension;
 import org.apache.james.core.Username;
 import org.apache.james.core.quota.QuotaCountUsage;
-import org.apache.james.mailbox.MailboxManager;
-import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageManager;
-import org.apache.james.mailbox.exception.MailboxException;
+import org.apache.james.mailbox.model.CurrentQuotas;
 import org.apache.james.mailbox.model.MailboxCounters;
 import org.apache.james.mailbox.model.MailboxPath;
-import org.apache.james.mailbox.quota.CurrentQuotaManager;
-import org.apache.james.mailbox.quota.UserQuotaRootResolver;
+import org.apache.james.mailbox.redis.RedisComponentConfiguration;
 import org.apache.james.mailbox.redis.mail.RedisMailboxCountersStore;
 import org.apache.james.mailbox.redis.quota.RedisCurrentQuotaManager;
-import org.apache.james.mailbox.store.mail.MailboxCountersStore;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.apache.james.modules.MailboxProbeImpl;
 import org.apache.james.modules.RabbitMQExtension;
@@ -53,44 +48,19 @@ import org.awaitility.core.ConditionFactory;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import com.github.fge.lambdas.Throwing;
 import com.google.inject.multibindings.Multibinder;
 
-import reactor.core.publisher.Mono;
-
 class WithRedisMailboxCachesTest {
-    public static class RedisMailboxCachesProbe implements GuiceProbe {
-        private final CurrentQuotaManager currentQuotaManager;
-        private final MailboxCountersStore mailboxCountersStore;
-        private final UserQuotaRootResolver quotaRootResolver;
-        private final MailboxManager mailboxManager;
-
-        @Inject
-        public RedisMailboxCachesProbe(CurrentQuotaManager currentQuotaManager, MailboxCountersStore mailboxCountersStore,
-                                       UserQuotaRootResolver quotaRootResolver, MailboxManager mailboxManager) {
-            this.currentQuotaManager = currentQuotaManager;
-            this.mailboxCountersStore = mailboxCountersStore;
-            this.quotaRootResolver = quotaRootResolver;
-            this.mailboxManager = mailboxManager;
-        }
-
-        QuotaCountUsage currentMessageCount(Username username) {
-            return Mono.from(currentQuotaManager.getCurrentMessageCount(quotaRootResolver.forUser(username))).block();
-        }
-
-        MailboxCounters mailboxCounters(MailboxPath mailboxPath) throws MailboxException {
-            MailboxSession session = mailboxManager.createSystemSession(mailboxPath.getUser());
-            return mailboxManager.getMailbox(mailboxPath, session).getMailboxCounters(session);
-        }
-    }
-
-    private static final Username BOB = Username.of("bob@domain.tld");
-    private static final MailboxPath INBOX = MailboxPath.inbox(BOB);
-    private static final ConditionFactory AWAIT = Awaitility.await()
+    static final Duration REDIS_TIMEOUT = Duration.ofSeconds(1);
+    static final ConditionFactory AWAIT = Awaitility.await()
         .pollInterval(ONE_HUNDRED_MILLISECONDS)
         .atMost(Duration.ofSeconds(30));
 
-    @RegisterExtension
-    static JamesServerExtension jamesServerExtension = new JamesServerBuilder<CassandraRabbitMQJamesConfiguration>(tmpDir ->
+    static JamesServerBuilder<CassandraRabbitMQJamesConfiguration> baseExtension(RedisExtension redisExtension, boolean maintainLegacy) {
+        RedisComponentConfiguration componentConfiguration = new RedisComponentConfiguration(true, REDIS_TIMEOUT, maintainLegacy);
+
+        return new JamesServerBuilder<CassandraRabbitMQJamesConfiguration>(tmpDir ->
             CassandraRabbitMQJamesConfiguration.builder()
                 .workingDirectory(tmpDir)
                 .configurationFromClasspath()
@@ -100,17 +70,41 @@ class WithRedisMailboxCachesTest {
                     .deduplication()
                     .noCryptoConfig())
                 .searchConfiguration(SearchConfiguration.scanning())
-                .redisMailboxConfiguration(new RedisMailboxConfiguration(true, true))
+                .redisMailboxConfiguration(new RedisMailboxConfiguration(componentConfiguration, componentConfiguration))
                 .build())
-        .server(configuration -> CassandraRabbitMQJamesServerMain.createServer(configuration)
-            .overrideWith(new TestJMAPServerModule())
-            .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(RedisMailboxCachesProbe.class)))
-        .extension(new CassandraExtension())
-        .extension(new RabbitMQExtension())
-        .extension(new AwsS3BlobStoreExtension())
-        .extension(new RedisExtension())
-        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
-        .build();
+            .server(configuration -> CassandraRabbitMQJamesServerMain.createServer(configuration)
+                .overrideWith(new TestJMAPServerModule())
+                .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(RedisMailboxCachesProbe.class)))
+            .extension(new CassandraExtension())
+            .extension(new RabbitMQExtension())
+            .extension(new AwsS3BlobStoreExtension())
+            .extension(redisExtension)
+            .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS);
+    }
+
+    static void appendMessage(GuiceJamesServer server, MailboxPath mailboxPath, Flags flags) throws Exception {
+        server.getProbe(MailboxProbeImpl.class).appendMessage(mailboxPath.getUser().asString(), mailboxPath, MessageManager.AppendCommand.builder()
+            .withFlags(flags)
+            .build("Subject: test\r\n\r\nbody\r\n"));
+    }
+
+    static void whileRedisIsPaused(RedisExtension redisExtension, Runnable operation) {
+        redisExtension.dockerRedis().pause();
+        try {
+            operation.run();
+        } finally {
+            redisExtension.dockerRedis().unPause();
+        }
+    }
+
+    private static final Username BOB = Username.of("bob@domain.tld");
+    private static final Username ALICE = Username.of("alice@domain.tld");
+    private static final Username CEDRIC = Username.of("cedric@domain.tld");
+
+    static RedisExtension redisExtension = new RedisExtension();
+
+    @RegisterExtension
+    static JamesServerExtension jamesServerExtension = baseExtension(redisExtension, false).build();
 
     @Test
     void redisImplementationsShouldBeBound(GuiceJamesServer server) {
@@ -122,27 +116,55 @@ class WithRedisMailboxCachesTest {
 
     @Test
     void cachesShouldBeMaintainedUponWrites(GuiceJamesServer server) throws Exception {
-        MailboxProbeImpl mailboxProbe = server.getProbe(MailboxProbeImpl.class);
         RedisMailboxCachesProbe probe = server.getProbe(RedisMailboxCachesProbe.class);
-        mailboxProbe.createMailbox(INBOX);
+        MailboxPath inbox = MailboxPath.inbox(BOB);
+        server.getProbe(MailboxProbeImpl.class).createMailbox(inbox);
 
-        mailboxProbe.appendMessage(BOB.asString(), INBOX, MessageManager.AppendCommand.builder()
-            .build("Subject: first\r\n\r\nbody\r\n"));
+        appendMessage(server, inbox, new Flags());
         // Quota check upon append populates the current quota cache, updated asynchronously by the quota listener
         AWAIT.untilAsserted(() -> {
             assertThat(probe.currentMessageCount(BOB)).isEqualTo(QuotaCountUsage.count(1));
-            assertThat(probe.mailboxCounters(INBOX).getCount()).isEqualTo(1);
+            assertThat(probe.mailboxCounters(inbox).getCount()).isEqualTo(1);
         });
 
-        mailboxProbe.appendMessage(BOB.asString(), INBOX, MessageManager.AppendCommand.builder()
-            .withFlags(new Flags(Flags.Flag.SEEN))
-            .build("Subject: second\r\n\r\nbody\r\n"));
+        appendMessage(server, inbox, new Flags(Flags.Flag.SEEN));
 
         AWAIT.untilAsserted(() -> {
             assertThat(probe.currentMessageCount(BOB)).isEqualTo(QuotaCountUsage.count(2));
-            MailboxCounters counters = probe.mailboxCounters(INBOX);
+            MailboxCounters counters = probe.mailboxCounters(inbox);
             assertThat(counters.getCount()).isEqualTo(2);
             assertThat(counters.getUnseen()).isEqualTo(1);
         });
+    }
+
+    @Test
+    void legacyStructuresShouldNotBeMaintained(GuiceJamesServer server) throws Exception {
+        RedisMailboxCachesProbe probe = server.getProbe(RedisMailboxCachesProbe.class);
+        MailboxPath inbox = MailboxPath.inbox(ALICE);
+        server.getProbe(MailboxProbeImpl.class).createMailbox(inbox);
+
+        appendMessage(server, inbox, new Flags());
+        AWAIT.untilAsserted(() -> assertThat(probe.currentMessageCount(ALICE)).isEqualTo(QuotaCountUsage.count(1)));
+
+        assertThat(probe.cassandraCurrentQuotas(ALICE)).isEqualTo(CurrentQuotas.emptyQuotas());
+        assertThat(probe.cassandraMailboxCounters(inbox).getCount()).isZero();
+    }
+
+    @Test
+    void readsAndWritesShouldWorkWhileRedisIsUnavailable(GuiceJamesServer server) throws Exception {
+        RedisMailboxCachesProbe probe = server.getProbe(RedisMailboxCachesProbe.class);
+        MailboxPath inbox = MailboxPath.inbox(CEDRIC);
+        server.getProbe(MailboxProbeImpl.class).createMailbox(inbox);
+        appendMessage(server, inbox, new Flags());
+
+        whileRedisIsPaused(redisExtension, Throwing.runnable(() -> {
+            appendMessage(server, inbox, new Flags(Flags.Flag.SEEN));
+
+            // Recomputed from the source of truth
+            assertThat(probe.currentMessageCount(CEDRIC)).isEqualTo(QuotaCountUsage.count(2));
+            MailboxCounters counters = probe.mailboxCounters(inbox);
+            assertThat(counters.getCount()).isEqualTo(2);
+            assertThat(counters.getUnseen()).isEqualTo(1);
+        }));
     }
 }

@@ -19,16 +19,49 @@
 
 package org.apache.james.modules.mailbox.redis;
 
+import java.util.Optional;
+
+import org.apache.james.mailbox.SessionProvider;
 import org.apache.james.mailbox.quota.CurrentQuotaManager;
+import org.apache.james.mailbox.quota.QuotaRootResolver;
+import org.apache.james.mailbox.redis.RedisComponentConfiguration;
+import org.apache.james.mailbox.redis.RedisCounterCache;
 import org.apache.james.mailbox.redis.quota.RedisCurrentQuotaManager;
+import org.apache.james.mailbox.store.quota.CurrentQuotaCalculator;
 
 import com.google.inject.AbstractModule;
-import com.google.inject.Scopes;
+import com.google.inject.Provider;
+import com.google.inject.Provides;
+import com.google.inject.Singleton;
 
 public class RedisCurrentQuotaModule extends AbstractModule {
+    private final RedisComponentConfiguration configuration;
+    private final Class<? extends CurrentQuotaManager> legacyImplementation;
+    private Provider<? extends CurrentQuotaManager> legacyProvider;
+
+    /**
+     * @param legacyImplementation current quota manager maintained alongside Redis when legacy is maintained
+     */
+    public RedisCurrentQuotaModule(RedisComponentConfiguration configuration, Class<? extends CurrentQuotaManager> legacyImplementation) {
+        this.configuration = configuration;
+        this.legacyImplementation = legacyImplementation;
+    }
+
     @Override
     protected void configure() {
-        bind(RedisCurrentQuotaManager.class).in(Scopes.SINGLETON);
         bind(CurrentQuotaManager.class).to(RedisCurrentQuotaManager.class);
+        legacyProvider = getProvider(legacyImplementation);
+    }
+
+    @Provides
+    @Singleton
+    RedisCurrentQuotaManager provideRedisCurrentQuotaManager(RedisCounterCache.Factory cacheFactory, CurrentQuotaCalculator currentQuotaCalculator,
+                                                             QuotaRootResolver quotaRootResolver, SessionProvider sessionProvider) {
+        Optional<CurrentQuotaManager> legacy = Optional.of(configuration)
+            .filter(RedisComponentConfiguration::isMaintainLegacy)
+            .map(any -> legacyProvider.get());
+
+        return new RedisCurrentQuotaManager(cacheFactory.create(configuration.getTimeout()),
+            currentQuotaCalculator, quotaRootResolver, sessionProvider, legacy);
     }
 }

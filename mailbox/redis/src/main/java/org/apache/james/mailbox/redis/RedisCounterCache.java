@@ -19,6 +19,7 @@
 
 package org.apache.james.mailbox.redis;
 
+import java.time.Duration;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
@@ -53,14 +54,44 @@ import reactor.core.publisher.Mono;
  * not change since the cache miss: this prevents concurrent increments being lost while the recomputation runs.
  *
  * Partially stored entries (missing or unreadable counters) are treated as cache misses.
+ *
+ * Redis failures, including commands exceeding the timeout, are tolerated: reads fall back to a supplied
+ * alternative, increments are dropped. Increments are never retried as this risks double counting.
  */
 public class RedisCounterCache {
+    /**
+     * Creates caches sharing the same Redis connection.
+     */
+    public static class Factory {
+        private final RedisClusterReactiveCommands<String, String> commands;
+        private final RedisMailboxCacheConfiguration configuration;
+
+        @Inject
+        public Factory(RedisReactiveCommandsFactory commandsFactory, RedisMailboxCacheConfiguration configuration) {
+            this(commandsFactory.<RedisClusterReactiveCommands<String, String>>create(commands -> commands, commands -> commands), configuration);
+        }
+
+        @VisibleForTesting
+        public Factory(RedisClusterReactiveCommands<String, String> commands, RedisMailboxCacheConfiguration configuration) {
+            this.commands = commands;
+            this.configuration = configuration;
+        }
+
+        public RedisCounterCache create(Duration timeout) {
+            return new RedisCounterCache(commands, configuration, timeout);
+        }
+    }
+
     sealed interface CacheRead {
         record Hit(Map<String, Long> values) implements CacheRead {
 
         }
 
         record Miss(String generation) implements CacheRead {
+
+        }
+
+        record Unavailable() implements CacheRead {
 
         }
     }
@@ -124,37 +155,43 @@ public class RedisCounterCache {
 
     private final RedisClusterReactiveCommands<String, String> commands;
     private final RedisMailboxCacheConfiguration configuration;
+    private final Duration timeout;
     private final ConcurrentHashMap<String, Mono<Map<String, Long>>> ongoingComputations;
 
-    @Inject
-    public RedisCounterCache(RedisReactiveCommandsFactory commandsFactory, RedisMailboxCacheConfiguration configuration) {
-        this(commandsFactory.<RedisClusterReactiveCommands<String, String>>create(commands -> commands, commands -> commands), configuration);
-    }
-
     @VisibleForTesting
-    public RedisCounterCache(RedisClusterReactiveCommands<String, String> commands, RedisMailboxCacheConfiguration configuration) {
+    public RedisCounterCache(RedisClusterReactiveCommands<String, String> commands, RedisMailboxCacheConfiguration configuration, Duration timeout) {
         this.commands = commands;
         this.configuration = configuration;
+        this.timeout = timeout;
         this.ongoingComputations = new ConcurrentHashMap<>();
     }
 
     /**
      * Reads the counters stored under this key. On cache miss, they are computed via the supplied computation, then
      * stored. Concurrent computations for the same key are shared.
+     *
+     * If Redis is unavailable the fallback is used.
      */
-    public Mono<Map<String, Long>> getOrCompute(String key, Collection<String> fields, Supplier<Mono<Map<String, Long>>> computation) {
+    public Mono<Map<String, Long>> getOrCompute(String key, Collection<String> fields,
+                                                Supplier<Mono<Map<String, Long>>> computation,
+                                                Supplier<Mono<Map<String, Long>>> fallback) {
         return read(key, fields)
+            .onErrorResume(e -> {
+                LOGGER.warn("Failed reading {} from Redis, using fallback", key, e);
+                return Mono.just(new CacheRead.Unavailable());
+            })
             .flatMap(cacheRead -> switch (cacheRead) {
                 case CacheRead.Hit hit -> Mono.just(hit.values());
                 case CacheRead.Miss miss -> computeAndStore(key, miss.generation(), computation);
+                case CacheRead.Unavailable unavailable -> Mono.defer(fallback);
             });
     }
 
     /**
      * Adds the deltas to the stored counters. No-op if the counters are not stored.
      *
-     * If the outcome of the increment is unknown (Redis error), the entry is invalidated so that it gets recomputed
-     * upon next read, instead of risking over or under counting upon retries.
+     * Never fails. If the outcome of the increment is unknown (Redis error), the entry is invalidated (best effort) so
+     * that it gets recomputed upon next read. Increments are never retried as this risks double counting.
      */
     public Mono<Void> incrementIfPresent(String key, Map<String, Long> deltas) {
         return eval(INCREMENT_IF_PRESENT_SCRIPT, key, Stream.concat(
@@ -164,9 +201,9 @@ public class RedisCounterCache {
             .onErrorResume(e -> {
                 LOGGER.warn("Failed incrementing {}, invalidating it", key, e);
                 return invalidate(key)
-                    .onErrorMap(invalidationError -> {
-                        e.addSuppressed(invalidationError);
-                        return e;
+                    .onErrorResume(invalidationError -> {
+                        LOGGER.error("Failed invalidating {}: its cached value might be stale until it expires", key, invalidationError);
+                        return Mono.empty();
                     });
             });
     }
@@ -193,6 +230,7 @@ public class RedisCounterCache {
     Mono<CacheRead> read(String key, Collection<String> fields) {
         return commands.hgetall(key)
             .collectMap(KeyValue::getKey, KeyValue::getValue)
+            .timeout(timeout)
             .map(storedValues -> asCacheRead(storedValues, fields));
     }
 
@@ -226,6 +264,10 @@ public class RedisCounterCache {
                             LOGGER.debug("{} was concurrently updated, skip caching the recomputed value", key);
                         }
                     })
+                    .onErrorResume(e -> {
+                        LOGGER.warn("Failed storing recomputed {} in Redis", key, e);
+                        return Mono.empty();
+                    })
                     .thenReturn(values))
                 .doFinally(signal -> ongoingComputations.remove(key, sharedComputation.get()))
                 .cache();
@@ -236,7 +278,8 @@ public class RedisCounterCache {
 
     private Mono<Long> eval(String script, String key, Stream<String> arguments) {
         return commands.<Long>eval(script, ScriptOutputType.INTEGER, new String[] {key}, arguments.toArray(String[]::new))
-            .next();
+            .next()
+            .timeout(timeout);
     }
 
     private Stream<String> asArguments(Map<String, Long> values) {

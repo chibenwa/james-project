@@ -22,8 +22,8 @@ package org.apache.james.mailbox.redis.mail;
 import static org.apache.james.mailbox.store.mail.AbstractMessageMapper.UNLIMITED;
 
 import java.util.Map;
+import java.util.Optional;
 
-import jakarta.inject.Inject;
 import jakarta.inject.Provider;
 import jakarta.mail.Flags;
 
@@ -36,6 +36,8 @@ import org.apache.james.mailbox.redis.RedisCounterCache;
 import org.apache.james.mailbox.store.MailboxSessionMapperFactory;
 import org.apache.james.mailbox.store.mail.MailboxCountersStore;
 import org.apache.james.mailbox.store.mail.MessageMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -46,7 +48,10 @@ import reactor.core.publisher.Mono;
  * Mailbox counters cached in Redis.
  *
  * On cache miss, counters are recomputed from the message metadata of the mailbox, which is the source of truth.
- * Cached values are then maintained by the {@link RedisMailboxCountersListener}.
+ * Cached values are then maintained by the {@link RedisMailboxCountersListener}, without ever failing.
+ *
+ * Optionally, a legacy store (maintained by the underlying mailbox implementation) is read when Redis is unavailable
+ * and reset alongside Redis. Without legacy store, counters are recomputed when Redis is unavailable.
  */
 public class RedisMailboxCountersStore implements MailboxCountersStore {
     private static final String KEY_PREFIX = "mailbox-counters:";
@@ -54,21 +59,25 @@ public class RedisMailboxCountersStore implements MailboxCountersStore {
     private static final String UNSEEN = "unseen";
     private static final ImmutableList<String> FIELDS = ImmutableList.of(COUNT, UNSEEN);
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(RedisMailboxCountersStore.class);
+
     private final RedisCounterCache cache;
     // Lazy: the mapper factory itself depends on the MailboxCountersStore
     private final Provider<MailboxSessionMapperFactory> mapperFactory;
     private final SessionProvider sessionProvider;
+    private final Optional<MailboxCountersStore> legacy;
 
-    @Inject
-    public RedisMailboxCountersStore(RedisCounterCache cache, Provider<MailboxSessionMapperFactory> mapperFactory, SessionProvider sessionProvider) {
+    public RedisMailboxCountersStore(RedisCounterCache cache, Provider<MailboxSessionMapperFactory> mapperFactory,
+                                     SessionProvider sessionProvider, Optional<MailboxCountersStore> legacy) {
         this.cache = cache;
         this.mapperFactory = mapperFactory;
         this.sessionProvider = sessionProvider;
+        this.legacy = legacy;
     }
 
     @Override
     public Mono<MailboxCounters> retrieveMailboxCounters(Mailbox mailbox) {
-        return cache.getOrCompute(key(mailbox.getMailboxId()), FIELDS, () -> recompute(mailbox))
+        return cache.getOrCompute(key(mailbox.getMailboxId()), FIELDS, () -> recompute(mailbox), () -> fallback(mailbox))
             .map(values -> MailboxCounters.builder()
                 .mailboxId(mailbox.getMailboxId())
                 .count(values.get(COUNT))
@@ -76,16 +85,31 @@ public class RedisMailboxCountersStore implements MailboxCountersStore {
                 .build());
     }
 
+    /**
+     * Resetting counters is idempotent: failures are propagated so that the caller can retry.
+     */
     @Override
     public Mono<Void> resetCounters(MailboxCounters counters) {
-        return cache.replace(key(counters.getMailboxId()), ImmutableMap.of(
-            COUNT, counters.getCount(),
-            UNSEEN, counters.getUnseen()));
+        return Mono.when(
+            cache.replace(key(counters.getMailboxId()), ImmutableMap.of(
+                COUNT, counters.getCount(),
+                UNSEEN, counters.getUnseen())),
+            legacy.map(legacy -> legacy.resetCounters(counters))
+                .orElse(Mono.empty()));
     }
 
+    /**
+     * Invalidates the cached counters. Never fails.
+     *
+     * Legacy counters are deleted by the underlying mailbox implementation.
+     */
     @Override
     public Mono<Void> delete(MailboxId mailboxId) {
-        return cache.invalidate(key(mailboxId));
+        return cache.invalidate(key(mailboxId))
+            .onErrorResume(e -> {
+                LOGGER.error("Failed invalidating counters of {}: they might be stale until they expire", mailboxId.serialize(), e);
+                return Mono.empty();
+            });
     }
 
     public Mono<Void> applyDelta(MailboxId mailboxId, long countDelta, long unseenDelta) {
@@ -95,6 +119,19 @@ public class RedisMailboxCountersStore implements MailboxCountersStore {
         return cache.incrementIfPresent(key(mailboxId), ImmutableMap.of(
             COUNT, countDelta,
             UNSEEN, unseenDelta));
+    }
+
+    private Mono<Map<String, Long>> fallback(Mailbox mailbox) {
+        return legacy.map(legacy -> legacy.retrieveMailboxCounters(mailbox)
+                .map(counters -> (Map<String, Long>) ImmutableMap.of(
+                    COUNT, counters.getCount(),
+                    UNSEEN, counters.getUnseen()))
+                .switchIfEmpty(Mono.defer(() -> recompute(mailbox)))
+                .onErrorResume(e -> {
+                    LOGGER.warn("Failed reading legacy counters of {}, recomputing them", mailbox.getMailboxId().serialize(), e);
+                    return recompute(mailbox);
+                }))
+            .orElseGet(() -> recompute(mailbox));
     }
 
     private Mono<Map<String, Long>> recompute(Mailbox mailbox) {

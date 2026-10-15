@@ -31,15 +31,29 @@ import org.apache.james.server.core.filesystem.FileSystemImpl;
 
 public class RedisTestFixture {
     public static final RedisMailboxCacheConfiguration CACHE_CONFIGURATION = new RedisMailboxCacheConfiguration(Duration.ofHours(1), Duration.ofMinutes(10));
+    public static final Duration TIMEOUT = Duration.ofSeconds(1);
 
-    private static final ConcurrentHashMap<URI, RedisReactiveCommandsFactory> COMMANDS_FACTORIES = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<URI, RedisCounterCache.Factory> FACTORIES = new ConcurrentHashMap<>();
 
     public static RedisCounterCache counterCache(DockerRedis dockerRedis) {
-        RedisReactiveCommandsFactory commandsFactory = COMMANDS_FACTORIES.computeIfAbsent(dockerRedis.redisURI(), uri -> {
-            StandaloneRedisConfiguration redisConfiguration = StandaloneRedisConfiguration.from(uri.toString());
-            return new RedisReactiveCommandsFactory(
-                new RedisClientFactory(FileSystemImpl.forTesting(), redisConfiguration), redisConfiguration);
-        });
-        return new RedisCounterCache(commandsFactory, CACHE_CONFIGURATION);
+        return FACTORIES.computeIfAbsent(dockerRedis.redisURI(), uri -> {
+                StandaloneRedisConfiguration redisConfiguration = StandaloneRedisConfiguration.from(uri.toString());
+                return new RedisCounterCache.Factory(new RedisReactiveCommandsFactory(
+                    new RedisClientFactory(FileSystemImpl.forTesting(), redisConfiguration), redisConfiguration),
+                    CACHE_CONFIGURATION);
+            })
+            .create(TIMEOUT);
+    }
+
+    /**
+     * Runs the operation while Redis is unresponsive.
+     */
+    public static void whileRedisIsPaused(DockerRedis dockerRedis, Runnable operation) {
+        dockerRedis.pause();
+        try {
+            operation.run();
+        } finally {
+            dockerRedis.unPause();
+        }
     }
 }

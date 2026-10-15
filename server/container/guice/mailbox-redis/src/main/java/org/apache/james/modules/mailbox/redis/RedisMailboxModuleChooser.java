@@ -19,6 +19,8 @@
 
 package org.apache.james.modules.mailbox.redis;
 
+import org.apache.james.mailbox.quota.CurrentQuotaManager;
+import org.apache.james.mailbox.store.mail.MailboxCountersStore;
 import org.apache.james.modules.redis.RedisDriverModule;
 
 import com.google.common.collect.ImmutableList;
@@ -31,7 +33,15 @@ import com.google.inject.util.Modules;
  * The returned module is meant to override the mailbox modules.
  */
 public class RedisMailboxModuleChooser {
-    public static Module chooseModules(RedisMailboxConfiguration configuration) {
+    /**
+     * Implementations maintained alongside Redis when `maintain.legacy` is enabled.
+     */
+    public record LegacyImplementations(Class<? extends CurrentQuotaManager> currentQuotaManager,
+                                        Class<? extends MailboxCountersStore> mailboxCountersStore) {
+
+    }
+
+    public static Module chooseModules(RedisMailboxConfiguration configuration, LegacyImplementations legacyImplementations) {
         if (!configuration.isEnabled()) {
             return Modules.EMPTY_MODULE;
         }
@@ -39,11 +49,11 @@ public class RedisMailboxModuleChooser {
         ImmutableList.Builder<Module> modules = ImmutableList.<Module>builder()
             .add(new RedisDriverModule())
             .add(new RedisMailboxCacheModule());
-        if (configuration.isCurrentQuotaEnabled()) {
-            modules.add(new RedisCurrentQuotaModule());
+        if (configuration.getCurrentQuota().isEnabled()) {
+            modules.add(new RedisCurrentQuotaModule(configuration.getCurrentQuota(), legacyImplementations.currentQuotaManager()));
         }
-        if (configuration.isMailboxCountersEnabled()) {
-            modules.add(new RedisMailboxCountersModule());
+        if (configuration.getMailboxCounters().isEnabled()) {
+            modules.add(new RedisMailboxCountersModule(configuration.getMailboxCounters(), legacyImplementations.mailboxCountersStore()));
         }
         return Modules.combine(modules.build());
     }

@@ -19,11 +19,15 @@
 
 package org.apache.james.modules.mailbox.redis;
 
+import static org.apache.james.mailbox.redis.RedisComponentConfiguration.CURRENT_QUOTA_PREFIX;
+import static org.apache.james.mailbox.redis.RedisComponentConfiguration.MAILBOX_COUNTERS_PREFIX;
+
 import java.io.FileNotFoundException;
 import java.util.Objects;
 
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.apache.james.mailbox.redis.RedisComponentConfiguration;
 import org.apache.james.utils.PropertiesProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,9 +40,7 @@ import com.google.common.base.MoreObjects;
 public class RedisMailboxConfiguration {
     private static final Logger LOGGER = LoggerFactory.getLogger(RedisMailboxConfiguration.class);
     private static final String REDIS_CONFIGURATION_NAME = "redis";
-    public static final String CURRENT_QUOTA_PROPERTY = "redis.current.quota";
-    public static final String MAILBOX_COUNTERS_PROPERTY = "redis.mailbox.counters";
-    public static final RedisMailboxConfiguration DISABLED = new RedisMailboxConfiguration(false, false);
+    public static final RedisMailboxConfiguration DISABLED = new RedisMailboxConfiguration(RedisComponentConfiguration.DISABLED, RedisComponentConfiguration.DISABLED);
 
     public static RedisMailboxConfiguration parse(PropertiesProvider propertiesProvider) throws ConfigurationException {
         try {
@@ -51,49 +53,61 @@ public class RedisMailboxConfiguration {
 
     public static RedisMailboxConfiguration from(Configuration configuration) {
         return new RedisMailboxConfiguration(
-            configuration.getBoolean(CURRENT_QUOTA_PROPERTY, false),
-            configuration.getBoolean(MAILBOX_COUNTERS_PROPERTY, false));
+            RedisComponentConfiguration.from(configuration, CURRENT_QUOTA_PREFIX),
+            RedisComponentConfiguration.from(configuration, MAILBOX_COUNTERS_PREFIX));
     }
 
-    private final boolean currentQuotaEnabled;
-    private final boolean mailboxCountersEnabled;
+    private final RedisComponentConfiguration currentQuota;
+    private final RedisComponentConfiguration mailboxCounters;
+
+    public RedisMailboxConfiguration(RedisComponentConfiguration currentQuota, RedisComponentConfiguration mailboxCounters) {
+        this.currentQuota = currentQuota;
+        this.mailboxCounters = mailboxCounters;
+    }
 
     public RedisMailboxConfiguration(boolean currentQuotaEnabled, boolean mailboxCountersEnabled) {
-        this.currentQuotaEnabled = currentQuotaEnabled;
-        this.mailboxCountersEnabled = mailboxCountersEnabled;
+        this(currentQuotaEnabled ? RedisComponentConfiguration.enabled() : RedisComponentConfiguration.DISABLED,
+            mailboxCountersEnabled ? RedisComponentConfiguration.enabled() : RedisComponentConfiguration.DISABLED);
     }
 
-    public boolean isCurrentQuotaEnabled() {
-        return currentQuotaEnabled;
+    public RedisComponentConfiguration getCurrentQuota() {
+        return currentQuota;
     }
 
-    public boolean isMailboxCountersEnabled() {
-        return mailboxCountersEnabled;
+    public RedisComponentConfiguration getMailboxCounters() {
+        return mailboxCounters;
     }
 
     public boolean isEnabled() {
-        return currentQuotaEnabled || mailboxCountersEnabled;
+        return currentQuota.isEnabled() || mailboxCounters.isEnabled();
+    }
+
+    /**
+     * @return true if mailbox counters are stored in Redis only, and legacy counters thus no longer need maintenance.
+     */
+    public boolean isLegacyMailboxCountersObsolete() {
+        return mailboxCounters.isEnabled() && !mailboxCounters.isMaintainLegacy();
     }
 
     @Override
     public final boolean equals(Object o) {
         if (o instanceof RedisMailboxConfiguration that) {
-            return Objects.equals(this.currentQuotaEnabled, that.currentQuotaEnabled)
-                && Objects.equals(this.mailboxCountersEnabled, that.mailboxCountersEnabled);
+            return Objects.equals(this.currentQuota, that.currentQuota)
+                && Objects.equals(this.mailboxCounters, that.mailboxCounters);
         }
         return false;
     }
 
     @Override
     public final int hashCode() {
-        return Objects.hash(currentQuotaEnabled, mailboxCountersEnabled);
+        return Objects.hash(currentQuota, mailboxCounters);
     }
 
     @Override
     public String toString() {
         return MoreObjects.toStringHelper(this)
-            .add("currentQuotaEnabled", currentQuotaEnabled)
-            .add("mailboxCountersEnabled", mailboxCountersEnabled)
+            .add("currentQuota", currentQuota)
+            .add("mailboxCounters", mailboxCounters)
             .toString();
     }
 }

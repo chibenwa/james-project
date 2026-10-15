@@ -20,6 +20,10 @@
 package org.apache.james.mailbox.redis.mail;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 import jakarta.mail.Flags;
 
@@ -36,9 +40,15 @@ import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.model.MessageRange;
 import org.apache.james.mailbox.redis.RedisTestFixture;
 import org.apache.james.mailbox.store.StoreMailboxManager;
+import org.apache.james.mailbox.store.mail.MailboxCountersStore;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+
+import com.github.fge.lambdas.Throwing;
+
+import reactor.core.publisher.Mono;
 
 class RedisMailboxCountersTest {
     private static final Username BOB = Username.of("bob");
@@ -47,7 +57,27 @@ class RedisMailboxCountersTest {
     @RegisterExtension
     static RedisExtension redisExtension = new RedisExtension();
 
+    static class FakeLegacyMailboxCountersStore implements MailboxCountersStore {
+        private final ConcurrentHashMap<MailboxId, MailboxCounters> values = new ConcurrentHashMap<>();
+
+        @Override
+        public Mono<MailboxCounters> retrieveMailboxCounters(Mailbox mailbox) {
+            return Mono.justOrEmpty(values.get(mailbox.getMailboxId()));
+        }
+
+        @Override
+        public Mono<Void> resetCounters(MailboxCounters counters) {
+            return Mono.fromRunnable(() -> values.put(counters.getMailboxId(), counters));
+        }
+
+        @Override
+        public Mono<Void> delete(MailboxId mailboxId) {
+            return Mono.fromRunnable(() -> values.remove(mailboxId));
+        }
+    }
+
     private RedisMailboxCountersStore testee;
+    private DockerRedis dockerRedis;
     private StoreMailboxManager mailboxManager;
     private MailboxSession session;
     private MailboxPath inboxPath;
@@ -60,9 +90,8 @@ class RedisMailboxCountersTest {
     void setUp(DockerRedis dockerRedis) throws Exception {
         InMemoryIntegrationResources resources = InMemoryIntegrationResources.defaultResources();
         mailboxManager = resources.getMailboxManager();
-        testee = new RedisMailboxCountersStore(RedisTestFixture.counterCache(dockerRedis),
-            mailboxManager::getMapperFactory,
-            mailboxManager.getSessionProvider());
+        this.dockerRedis = dockerRedis;
+        testee = testee(Optional.empty());
         resources.getEventBus().register(new RedisMailboxCountersListener(testee));
 
         session = mailboxManager.createSystemSession(BOB);
@@ -73,6 +102,13 @@ class RedisMailboxCountersTest {
         inbox = mailboxManager.getMailbox(inboxPath, session);
         inboxEntity = mailboxEntity(inboxId);
         otherEntity = mailboxEntity(otherId);
+    }
+
+    private RedisMailboxCountersStore testee(Optional<MailboxCountersStore> legacy) {
+        return new RedisMailboxCountersStore(RedisTestFixture.counterCache(dockerRedis),
+            mailboxManager::getMapperFactory,
+            mailboxManager.getSessionProvider(),
+            legacy);
     }
 
     private Mailbox mailboxEntity(MailboxId mailboxId) {
@@ -226,5 +262,98 @@ class RedisMailboxCountersTest {
         testee.delete(inboxEntity.getMailboxId()).block();
 
         assertThat(retrieve(inboxEntity)).isEqualTo(counters(inboxEntity, 1, 1));
+    }
+
+    @Test
+    void retrieveShouldRecomputeWhenRedisIsUnavailable() throws Exception {
+        appendMessage(new Flags());
+        retrieve(inboxEntity);
+        testee.resetCounters(counters(inboxEntity, 36, 12)).block();
+
+        RedisTestFixture.whileRedisIsPaused(dockerRedis, () ->
+            assertThat(retrieve(inboxEntity)).isEqualTo(counters(inboxEntity, 1, 1)));
+    }
+
+    @Test
+    void writesShouldNotFailWhenRedisIsUnavailable() throws Exception {
+        appendMessage(new Flags());
+        retrieve(inboxEntity);
+
+        RedisTestFixture.whileRedisIsPaused(dockerRedis, () ->
+            assertThatCode(() -> {
+                appendMessage(new Flags());
+                inbox.setFlags(new Flags(Flags.Flag.SEEN), MessageManager.FlagsUpdateMode.ADD, MessageRange.all(), session);
+            }).doesNotThrowAnyException());
+    }
+
+    @Test
+    void countersShouldBeCorrectAfterRedisOutage() throws Exception {
+        appendMessage(new Flags());
+        retrieve(inboxEntity);
+
+        RedisTestFixture.whileRedisIsPaused(dockerRedis, Throwing.runnable(() -> {
+            appendMessage(new Flags());
+            appendMessage(new Flags(Flags.Flag.SEEN));
+        }));
+
+        assertThat(retrieve(inboxEntity)).isEqualTo(counters(inboxEntity, 3, 2));
+    }
+
+    @Test
+    void deleteShouldNotFailWhenRedisIsUnavailable() {
+        RedisTestFixture.whileRedisIsPaused(dockerRedis, () ->
+            assertThatCode(() -> testee.delete(inboxEntity.getMailboxId()).block())
+                .doesNotThrowAnyException());
+    }
+
+    @Nested
+    class MaintainLegacy {
+        private FakeLegacyMailboxCountersStore legacy;
+        private RedisMailboxCountersStore testee;
+
+        @BeforeEach
+        void setUp() {
+            legacy = new FakeLegacyMailboxCountersStore();
+            testee = testee(Optional.of(legacy));
+        }
+
+        @Test
+        void retrieveShouldNotReadLegacyWhenRedisIsAvailable() throws Exception {
+            appendMessage(new Flags());
+            legacy.resetCounters(counters(inboxEntity, 36, 12)).block();
+
+            assertThat(testee.retrieveMailboxCounters(inboxEntity).block()).isEqualTo(counters(inboxEntity, 1, 1));
+        }
+
+        @Test
+        void retrieveShouldReadLegacyWhenRedisIsUnavailable() throws Exception {
+            appendMessage(new Flags());
+            legacy.resetCounters(counters(inboxEntity, 36, 12)).block();
+
+            RedisTestFixture.whileRedisIsPaused(dockerRedis, () ->
+                assertThat(testee.retrieveMailboxCounters(inboxEntity).block()).isEqualTo(counters(inboxEntity, 36, 12)));
+        }
+
+        @Test
+        void retrieveShouldRecomputeWhenRedisIsUnavailableAndLegacyIsEmpty() throws Exception {
+            appendMessage(new Flags());
+
+            RedisTestFixture.whileRedisIsPaused(dockerRedis, () ->
+                assertThat(testee.retrieveMailboxCounters(inboxEntity).block()).isEqualTo(counters(inboxEntity, 1, 1)));
+        }
+
+        @Test
+        void resetCountersShouldUpdateLegacy() {
+            testee.resetCounters(counters(inboxEntity, 36, 12)).block();
+
+            assertThat(legacy.retrieveMailboxCounters(inboxEntity).block()).isEqualTo(counters(inboxEntity, 36, 12));
+        }
+
+        @Test
+        void resetCountersShouldUpdateRedis() {
+            testee.resetCounters(counters(inboxEntity, 36, 12)).block();
+
+            assertThat(testee.retrieveMailboxCounters(inboxEntity).block()).isEqualTo(counters(inboxEntity, 36, 12));
+        }
     }
 }

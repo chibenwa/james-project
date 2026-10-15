@@ -21,7 +21,10 @@ package org.apache.james.modules.mailbox.redis;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Duration;
+
 import org.apache.commons.configuration2.PropertiesConfiguration;
+import org.apache.james.mailbox.redis.RedisComponentConfiguration;
 import org.junit.jupiter.api.Test;
 
 import nl.jqno.equalsverifier.EqualsVerifier;
@@ -65,5 +68,37 @@ class RedisMailboxConfigurationTest {
     @Test
     void isEnabledShouldBeTrueWhenOneCacheIsEnabled() {
         assertThat(new RedisMailboxConfiguration(false, true).isEnabled()).isTrue();
+    }
+
+    @Test
+    void fromShouldParseComponentOptions() {
+        PropertiesConfiguration configuration = new PropertiesConfiguration();
+        configuration.addProperty("redis.current.quota", "true");
+        configuration.addProperty("redis.current.quota.timeout", "2s");
+        configuration.addProperty("redis.current.quota.maintain.legacy", "true");
+        configuration.addProperty("redis.mailbox.counters", "true");
+
+        assertThat(RedisMailboxConfiguration.from(configuration))
+            .isEqualTo(new RedisMailboxConfiguration(
+                new RedisComponentConfiguration(true, Duration.ofSeconds(2), true),
+                new RedisComponentConfiguration(true, Duration.ofSeconds(10), false)));
+    }
+
+    @Test
+    void legacyMailboxCountersShouldBeObsoleteWhenRedisOnly() {
+        assertThat(new RedisMailboxConfiguration(false, true).isLegacyMailboxCountersObsolete()).isTrue();
+    }
+
+    @Test
+    void legacyMailboxCountersShouldNotBeObsoleteWhenMaintained() {
+        assertThat(new RedisMailboxConfiguration(RedisComponentConfiguration.DISABLED,
+                RedisComponentConfiguration.enabled().withMaintainLegacy(true))
+            .isLegacyMailboxCountersObsolete())
+            .isFalse();
+    }
+
+    @Test
+    void legacyMailboxCountersShouldNotBeObsoleteWhenRedisCountersDisabled() {
+        assertThat(new RedisMailboxConfiguration(true, false).isLegacyMailboxCountersObsolete()).isFalse();
     }
 }

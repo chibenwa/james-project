@@ -28,6 +28,11 @@ import org.apache.james.jmap.JMAPListenerModule;
 import org.apache.james.jmap.JMAPModule;
 import org.apache.james.json.DTO;
 import org.apache.james.json.DTOModule;
+import org.apache.james.mailbox.cassandra.mail.CassandraMailboxCounterDAO;
+import org.apache.james.mailbox.cassandra.mail.MailboxCountersWriteMode;
+import org.apache.james.mailbox.cassandra.quota.CassandraCurrentQuotaManagerV1;
+import org.apache.james.mailbox.cassandra.quota.CassandraCurrentQuotaManagerV2;
+import org.apache.james.mailbox.quota.CurrentQuotaManager;
 import org.apache.james.modules.BlobExportMechanismModule;
 import org.apache.james.modules.CassandraConsistencyTaskSerializationModule;
 import org.apache.james.modules.DistributedTaskManagerModule;
@@ -61,6 +66,7 @@ import org.apache.james.modules.mailbox.CassandraQuotaMailingModule;
 import org.apache.james.modules.mailbox.CassandraSessionModule;
 import org.apache.james.modules.mailbox.DistributedDeletedMessageVaultModule;
 import org.apache.james.modules.mailbox.TikaMailboxModule;
+import org.apache.james.modules.mailbox.redis.RedisMailboxConfiguration;
 import org.apache.james.modules.mailbox.redis.RedisMailboxModuleChooser;
 import org.apache.james.modules.mailrepository.CassandraMailRepositoryModule;
 import org.apache.james.modules.metrics.CassandraMetricsModule;
@@ -216,7 +222,7 @@ public class CassandraRabbitMQJamesServerMain implements JamesServerMain {
             .combineWith(chooseQuotaModule(configuration))
             .overrideWith(chooseJmapModules(configuration))
             .overrideWith(chooseDropListsModule(configuration))
-            .overrideWith(RedisMailboxModuleChooser.chooseModules(configuration.redisMailboxConfiguration()));
+            .overrideWith(chooseRedisMailboxModules(configuration));
     }
 
     private static Module chooseMailQueue(CassandraRabbitMQJamesConfiguration configuration) {
@@ -264,6 +270,26 @@ public class CassandraRabbitMQJamesServerMain implements JamesServerMain {
         } else {
             return Modules.combine(new CassandraMailboxQuotaModule(), new CassandraSieveQuotaModule());
         }
+    }
+
+    private static Module chooseRedisMailboxModules(CassandraRabbitMQJamesConfiguration configuration) {
+        RedisMailboxConfiguration redisMailboxConfiguration = configuration.redisMailboxConfiguration();
+        RedisMailboxModuleChooser.LegacyImplementations legacyImplementations = new RedisMailboxModuleChooser.LegacyImplementations(
+            chooseCurrentQuotaManager(configuration),
+            CassandraMailboxCounterDAO.class);
+        Module countersWriteMode = binder -> binder.bind(MailboxCountersWriteMode.class)
+            .toInstance(redisMailboxConfiguration.isLegacyMailboxCountersObsolete() ? MailboxCountersWriteMode.DISABLED : MailboxCountersWriteMode.ENABLED);
+
+        return Modules.combine(
+            RedisMailboxModuleChooser.chooseModules(redisMailboxConfiguration, legacyImplementations),
+            countersWriteMode);
+    }
+
+    private static Class<? extends CurrentQuotaManager> chooseCurrentQuotaManager(CassandraRabbitMQJamesConfiguration configuration) {
+        if (configuration.isQuotaCompatibilityMode()) {
+            return CassandraCurrentQuotaManagerV1.class;
+        }
+        return CassandraCurrentQuotaManagerV2.class;
     }
 
     private static Module chooseDropListsModule(CassandraRabbitMQJamesConfiguration configuration) {
