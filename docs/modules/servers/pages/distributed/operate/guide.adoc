@@ -90,9 +90,8 @@ increments & decrements will be ignored during a single mailbox
 processing. Re-running this task may eventually return the correct
 result.
 
-On an unstable Cassandra cluster, Cassandra counters might fail to converge
-even after recomputation. Mailbox counters can then be cached in Redis, the
-source of truth remaining in Cassandra, see
+Redis can be used as an alternative to Cassandra counters for mailbox counters,
+the source of truth remaining in Cassandra, see
 xref:{xref-base}/configure/redis.adoc#_redis_mailbox_caches[Redis mailbox caches].
 In that case the recompute Mailbox counters task replaces the values cached in Redis.
 
@@ -134,9 +133,8 @@ xref:{xref-base}/operate/webadmin.adoc#_recomputing_current_quotas_for_users[rec
 operations will result in an invalid quota to be persisted. Re-running
 this task may eventually return the correct result.
 
-On an unstable Cassandra cluster, Cassandra counters might fail to converge
-even after recomputation. Current quotas can then be cached in Redis, the
-source of truth remaining in Cassandra, see
+Redis can be used as an alternative to Cassandra counters for current quotas,
+the source of truth remaining in Cassandra, see
 xref:{xref-base}/configure/redis.adoc#_redis_mailbox_caches[Redis mailbox caches].
 In that case the recompute Quotas counters task replaces the values cached in Redis.
 

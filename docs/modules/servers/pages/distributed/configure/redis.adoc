@@ -6,12 +6,8 @@ include::partial$configure/redis.adoc[]
 
 == Redis mailbox caches
 
-Cassandra counters, used by default for current quotas and mailbox counters, cannot be set: they can only be incremented
-and decremented. On an unstable Cassandra cluster they might drift and fail to converge onto the values stored in the
-source of truth tables, even after recomputation.
-
-The distributed server can instead cache these values in Redis. The source of truth remains the message metadata stored
-in Cassandra:
+Redis can be used as an alternative to Cassandra counters for current quotas and mailbox counters. The source of truth
+remains the message metadata stored in Cassandra:
 
  - Upon cache miss, values are recomputed from the source of truth then stored in Redis.
  - Cached values are then maintained upon writes. Increments are only applied to cached values: an absent value will be
