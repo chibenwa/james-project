@@ -255,8 +255,13 @@ public class CassandraMessageIdMapper implements MessageIdMapper {
     }
 
     private Mono<Void> retrieveAndDeleteIndices(CassandraMessageId messageId, Optional<CassandraId> mailboxId) {
+        // Retry reading the source of truth: a failure here would otherwise turn a move into a copy.
+        // Only the read is retried, as a whole: index updates are not idempotent.
         return imapUidDAO.retrieve(messageId, mailboxId, chooseReadConsistencyUponWrites())
             .map(CassandraMessageMetadata::getComposedMessageId)
+            .collectList()
+            .retryWhen(Retry.backoff(MAX_RETRY, MIN_RETRY_BACKOFF).maxBackoff(MAX_RETRY_BACKOFF))
+            .flatMapIterable(Function.identity())
             .flatMap(this::deleteIds, ReactorUtils.DEFAULT_CONCURRENCY)
             .then();
     }
@@ -272,8 +277,10 @@ public class CassandraMessageIdMapper implements MessageIdMapper {
         CassandraMessageId messageId = (CassandraMessageId) metaData.getComposedMessageId().getMessageId();
         CassandraId mailboxId = (CassandraId) metaData.getComposedMessageId().getMailboxId();
         return Flux.merge(
-                imapUidDAO.delete(messageId, mailboxId),
-                messageIdDAO.delete(mailboxId, metaData.getComposedMessageId().getUid()))
+                imapUidDAO.delete(messageId, mailboxId)
+                    .retryWhen(Retry.backoff(MAX_RETRY, MIN_RETRY_BACKOFF).maxBackoff(MAX_RETRY_BACKOFF)),
+                messageIdDAO.delete(mailboxId, metaData.getComposedMessageId().getUid())
+                    .retryWhen(Retry.backoff(MAX_RETRY, MIN_RETRY_BACKOFF).maxBackoff(MAX_RETRY_BACKOFF)))
             .then(indexTableHandler.updateIndexOnDelete(metaData, mailboxId));
     }
 
