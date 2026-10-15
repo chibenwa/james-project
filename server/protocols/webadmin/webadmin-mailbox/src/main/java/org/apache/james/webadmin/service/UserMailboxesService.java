@@ -51,6 +51,7 @@ import org.slf4j.LoggerFactory;
 import com.github.fge.lambdas.Throwing;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -137,12 +138,45 @@ public class UserMailboxesService {
             .doFinally(any -> mailboxManager.endProcessingRequest(mailboxSession));
     }
 
+    /**
+     * Deletes the messages of a mailbox whose message id is also referenced in the reference mailbox.
+     */
+    public Mono<Result> deleteMessagesReferencedIn(Username username, MailboxName mailboxName, MailboxName referenceMailboxName,
+                                                   DeleteMessagesReferencedInMailboxTask.Context context) {
+        MailboxSession mailboxSession = mailboxManager.createSystemSession(username);
+
+        return Mono.from(mailboxManager.getMailboxReactive(MailboxPath.forUser(username, referenceMailboxName.asString()), mailboxSession))
+            .flatMap(referenceMailbox -> Flux.from(referenceMailbox.listMessagesMetadata(MessageRange.all(), mailboxSession))
+                .map(metaData -> metaData.getComposedMessageId().getMessageId())
+                .collect(ImmutableSet.toImmutableSet()))
+            .flatMap(referencedMessageIds -> Mono.from(mailboxManager.getMailboxReactive(MailboxPath.forUser(username, mailboxName.asString()), mailboxSession))
+                .flatMapMany(messageManager -> Flux.from(messageManager.listMessagesMetadata(MessageRange.all(), mailboxSession))
+                    .filter(metaData -> referencedMessageIds.contains(metaData.getComposedMessageId().getMessageId()))
+                    .map(metaData -> metaData.getComposedMessageId().getUid())
+                    .concatMap(messageUid -> deleteMessage(messageManager, messageUid, mailboxSession, context::incrementSuccesses, context::incrementMessageFails)))
+                .reduce(Task::combine))
+            .onErrorResume(e -> {
+                LOGGER.error("Error when deleting messages of mailbox {} referenced in mailbox {} for user {}",
+                    mailboxName.asString(), referenceMailboxName.asString(), username, e);
+                context.incrementMessageFails();
+                return Mono.just(Result.PARTIAL);
+            })
+            .switchIfEmpty(Mono.just(Result.COMPLETED))
+            .doFinally(any -> mailboxManager.endProcessingRequest(mailboxSession));
+    }
+
     private Mono<Result> deleteMessage(MessageManager messageManager, MessageUid messageUid, MailboxSession mailboxSession, ClearMailboxContentTask.Context context) {
+        return deleteMessage(messageManager, messageUid, mailboxSession, context::incrementSuccesses, context::incrementMessageFails);
+    }
+
+    private Mono<Result> deleteMessage(MessageManager messageManager, MessageUid messageUid, MailboxSession mailboxSession,
+                                       Runnable onSuccess, Runnable onFailure) {
         return Mono.from(messageManager.deleteReactive(List.of(messageUid), mailboxSession))
             .thenReturn(Result.COMPLETED)
-            .doOnNext(next -> context.incrementSuccesses())
+            .doOnNext(next -> onSuccess.run())
             .onErrorResume(e -> {
-                context.incrementMessageFails();
+                LOGGER.warn("Failed deleting message {}", messageUid.asLong(), e);
+                onFailure.run();
                 return Mono.just(Result.PARTIAL);
             });
     }

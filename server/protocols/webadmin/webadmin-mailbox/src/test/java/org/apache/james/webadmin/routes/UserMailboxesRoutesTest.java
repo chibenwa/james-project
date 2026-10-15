@@ -80,6 +80,7 @@ import org.apache.james.mailbox.model.MailboxCounters;
 import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.model.MailboxMetaData;
 import org.apache.james.mailbox.model.MailboxPath;
+import org.apache.james.mailbox.model.MessageRange;
 import org.apache.james.mailbox.model.MessageResult;
 import org.apache.james.mailbox.model.ThreadId;
 import org.apache.james.mailbox.model.UidValidity;
@@ -100,6 +101,8 @@ import org.apache.james.webadmin.WebAdminUtils;
 import org.apache.james.webadmin.dto.WebAdminUserReindexingTaskAdditionalInformationDTO;
 import org.apache.james.webadmin.service.ClearMailboxContentTask;
 import org.apache.james.webadmin.service.ClearMailboxContentTaskAdditionalInformationDTO;
+import org.apache.james.webadmin.service.DeleteMessagesReferencedInMailboxTask;
+import org.apache.james.webadmin.service.DeleteMessagesReferencedInMailboxTaskAdditionalInformationDTO;
 import org.apache.james.webadmin.service.UserMailboxesService;
 import org.apache.james.webadmin.utils.JsonTransformer;
 import org.apache.lucene.store.ByteBuffersDirectory;
@@ -164,7 +167,8 @@ class UserMailboxesRoutesTest {
                     ImmutableSet.of(new UserMailboxesRoutes.UserReIndexingTaskRegistration(reIndexer))),
                 new TasksRoutes(taskManager, new JsonTransformer(),
                     DTOConverter.of(WebAdminUserReindexingTaskAdditionalInformationDTO.serializationModule(),
-                        ClearMailboxContentTaskAdditionalInformationDTO.SERIALIZATION_MODULE)))
+                        ClearMailboxContentTaskAdditionalInformationDTO.SERIALIZATION_MODULE,
+                        DeleteMessagesReferencedInMailboxTaskAdditionalInformationDTO.SERIALIZATION_MODULE)))
             .start();
 
         RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer)
@@ -2044,6 +2048,225 @@ class UserMailboxesRoutesTest {
                 assertThat(messageCaptor.getValue()).matches(message -> message.getMailboxId().equals(mailboxId)
                     && message.getUid().equals(createdMessage.getUid()));
             }
+        }
+    }
+
+    @Nested
+    class DeleteMessagesReferencedIn {
+        private static final String ARCHIVES = "Archives";
+        private static final String MESSAGE = "header: value\r\n\r\nbody";
+
+        private InMemoryMailboxManager mailboxManager;
+        private MailboxSession session;
+        private MailboxPath inbox;
+        private MailboxPath archives;
+
+        @BeforeEach
+        void setUp() throws Exception {
+            InMemoryIntegrationResources resources = InMemoryIntegrationResources.builder()
+                .preProvisionnedFakeAuthenticator()
+                .fakeAuthorizator()
+                .inVmEventBus()
+                .defaultAnnotationLimits()
+                .defaultMessageParser()
+                .listeningSearchIndex(Throwing.function(preInstanciationStage -> new LuceneMessageSearchIndex(
+                    preInstanciationStage.getMapperFactory(), new InMemoryId.Factory(), new ByteBuffersDirectory(),
+                    new InMemoryMessageId.Factory(),
+                    preInstanciationStage.getSessionProvider(), new DefaultTextExtractor())))
+                .noPreDeletionHooks()
+                .storeQuotaManager()
+                .build();
+
+            mailboxManager = resources.getMailboxManager();
+            createServer(mailboxManager, mailboxManager.getMapperFactory(), new InMemoryId.Factory(),
+                (ListeningMessageSearchIndex) resources.getSearchIndex());
+
+            session = mailboxManager.createSystemSession(USERNAME);
+            inbox = MailboxPath.inbox(USERNAME);
+            archives = MailboxPath.forUser(USERNAME, ARCHIVES);
+            mailboxManager.createMailbox(inbox, session);
+            mailboxManager.createMailbox(archives, session);
+        }
+
+        private MessageUid append(MailboxPath mailboxPath) throws MailboxException {
+            return mailboxManager.getMailbox(mailboxPath, session)
+                .appendMessage(MessageManager.AppendCommand.builder().build(MESSAGE), session)
+                .getId()
+                .getUid();
+        }
+
+        private List<MessageUid> uids(MailboxPath mailboxPath) throws MailboxException {
+            return Flux.from(mailboxManager.getMailbox(mailboxPath, session).listMessagesMetadata(MessageRange.all(), session))
+                .map(metaData -> metaData.getComposedMessageId().getUid())
+                .collectList()
+                .block();
+        }
+
+        private String awaitTask(String taskId) {
+            return given()
+                .basePath(TasksRoutes.BASE)
+            .when()
+                .get(taskId + "/await")
+            .then()
+                .extract()
+                .asString();
+        }
+
+        @Test
+        void shouldFailWhenReferenceMailboxIsMissing() {
+            when()
+                .post("INBOX")
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .body("type", Matchers.is("InvalidArgument"))
+                .body("message", Matchers.is("'deleteMessagesReferencedIn' query parameter is compulsory"));
+        }
+
+        @Test
+        void shouldFailWhenReferenceMailboxIsTheSame() {
+            given()
+                .queryParam("deleteMessagesReferencedIn", "INBOX")
+            .when()
+                .post("INBOX")
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .body("type", Matchers.is("InvalidArgument"));
+        }
+
+        @Test
+        void shouldFailWhenReferenceMailboxDoesNotExist() {
+            given()
+                .queryParam("deleteMessagesReferencedIn", "notFound")
+            .when()
+                .post("INBOX")
+            .then()
+                .statusCode(NOT_FOUND_404)
+                .body("type", Matchers.is(ERROR_TYPE_NOTFOUND));
+        }
+
+        @Test
+        void shouldFailWhenMailboxDoesNotExist() {
+            given()
+                .queryParam("deleteMessagesReferencedIn", ARCHIVES)
+            .when()
+                .post("notFound")
+            .then()
+                .statusCode(NOT_FOUND_404)
+                .body("type", Matchers.is(ERROR_TYPE_NOTFOUND));
+        }
+
+        @Test
+        void shouldFailWhenUserDoesNotExist() throws Exception {
+            when(usersRepository.contains(USERNAME)).thenReturn(false);
+
+            given()
+                .queryParam("deleteMessagesReferencedIn", ARCHIVES)
+            .when()
+                .post("INBOX")
+            .then()
+                .statusCode(NOT_FOUND_404)
+                .body("type", Matchers.is(ERROR_TYPE_NOTFOUND));
+        }
+
+        @Test
+        void shouldFailWhenInvalidReferenceMailboxName() {
+            given()
+                .queryParam("deleteMessagesReferencedIn", INVALID_MAILBOX_NAME)
+            .when()
+                .post("INBOX")
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .body("type", Matchers.is("InvalidArgument"));
+        }
+
+        @Test
+        void shouldCreateATask() {
+            given()
+                .queryParam("deleteMessagesReferencedIn", ARCHIVES)
+            .when()
+                .post("INBOX")
+            .then()
+                .statusCode(CREATED_201)
+                .body("taskId", Matchers.is(notNullValue()));
+        }
+
+        @Test
+        void taskShouldDeleteMessagesReferencedInTheReferenceMailbox() throws Exception {
+            MessageUid moved = append(inbox);
+            MessageUid notMoved = append(inbox);
+            // Partially applied move: the message is in both mailboxes
+            mailboxManager.copyMessages(MessageRange.one(moved), inbox, archives, session);
+            append(archives);
+
+            String taskId = given()
+                .queryParam("deleteMessagesReferencedIn", ARCHIVES)
+                .post("INBOX")
+                .jsonPath()
+                .get("taskId");
+            awaitTask(taskId);
+
+            assertThat(uids(inbox)).containsOnly(notMoved);
+            assertThat(uids(archives)).hasSize(2);
+        }
+
+        @Test
+        void taskShouldReportDetails() throws Exception {
+            MessageUid moved1 = append(inbox);
+            MessageUid moved2 = append(inbox);
+            append(inbox);
+            mailboxManager.copyMessages(MessageRange.range(moved1, moved2), inbox, archives, session);
+
+            String taskId = given()
+                .queryParam("deleteMessagesReferencedIn", ARCHIVES)
+                .post("INBOX")
+                .jsonPath()
+                .get("taskId");
+
+            given()
+                .basePath(TasksRoutes.BASE)
+            .when()
+                .get(taskId + "/await")
+            .then()
+                .body("status", Matchers.is("completed"))
+                .body("type", Matchers.is(DeleteMessagesReferencedInMailboxTask.TASK_TYPE.asString()))
+                .body("additionalInformation.username", Matchers.is(USERNAME.asString()))
+                .body("additionalInformation.mailboxName", Matchers.is("INBOX"))
+                .body("additionalInformation.referenceMailboxName", Matchers.is(ARCHIVES))
+                .body("additionalInformation.messagesSuccessCount", Matchers.is(2))
+                .body("additionalInformation.messagesFailCount", Matchers.is(0));
+        }
+
+        @Test
+        void taskShouldNotDeleteAnythingWhenNoCommonMessages() throws Exception {
+            MessageUid inboxMessage = append(inbox);
+            append(archives);
+
+            String taskId = given()
+                .queryParam("deleteMessagesReferencedIn", ARCHIVES)
+                .post("INBOX")
+                .jsonPath()
+                .get("taskId");
+            awaitTask(taskId);
+
+            assertThat(uids(inbox)).containsOnly(inboxMessage);
+            assertThat(uids(archives)).hasSize(1);
+        }
+
+        @Test
+        void taskShouldSucceedWhenEmptyMailboxes() {
+            String taskId = given()
+                .queryParam("deleteMessagesReferencedIn", ARCHIVES)
+                .post("INBOX")
+                .jsonPath()
+                .get("taskId");
+
+            given()
+                .basePath(TasksRoutes.BASE)
+            .when()
+                .get(taskId + "/await")
+            .then()
+                .body("status", Matchers.is("completed"))
+                .body("additionalInformation.messagesSuccessCount", Matchers.is(0));
         }
     }
 }

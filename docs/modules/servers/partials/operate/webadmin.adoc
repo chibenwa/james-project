@@ -1863,6 +1863,48 @@ the following `additionalInformation`:
 }
 ....
 
+=== Deleting messages of a mailbox referenced in another mailbox
+
+....
+curl -XPOST http://ip:port/users/{usernameToBeUsed}/mailboxes/{mailboxName}?deleteMessagesReferencedIn={referenceMailboxName}
+....
+
+Will schedule a task deleting the messages of ``mailboxName`` mailbox of ``usernameToBeUsed`` whose message id is also
+referenced in ``referenceMailboxName`` mailbox. Messages in ``referenceMailboxName`` are left untouched.
+
+This can for instance be used to clean up messages left in their original mailbox by moves that were only partially
+applied (the message being then present in both mailboxes).
+
+link:#_endpoints_returning_a_task[More details about endpoints returning
+a task].
+
+Resource name `usernameToBeUsed` should be an existing user.
+
+Resource name `mailboxName` and query parameter `deleteMessagesReferencedIn` should be existing mailboxes, should differ,
+should not be empty, nor contain `% *` characters, nor starting with `#`.
+
+Response codes:
+
+* 201: Success. Corresponding task id is returned.
+* 400: Invalid mailbox name, missing `deleteMessagesReferencedIn` query parameter, or reference mailbox being the
+mailbox messages are deleted from
+* 404: Invalid get on user mailboxes. The `username`, `mailboxName` or `deleteMessagesReferencedIn` mailbox does not exist
+
+The scheduled task will have the following type `DeleteMessagesReferencedInMailboxTask` and
+the following `additionalInformation`:
+
+....
+{
+    "mailboxName": "INBOX",
+    "referenceMailboxName": "Archives",
+    "messagesFailCount": 0,
+    "messagesSuccessCount": 10,
+    "timestamp": "2007-12-03T10:15:30Z",
+    "type": "DeleteMessagesReferencedInMailboxTask",
+    "username": "bob@domain.tld"
+}
+....
+
 === Running a filtering rule on a mailbox
 
 ....

@@ -34,6 +34,8 @@ import org.apache.james.webadmin.service.ClearMailboxContentTaskAdditionalInform
 import org.apache.james.webadmin.service.ClearMailboxContentTaskDTO;
 import org.apache.james.webadmin.service.CreateMissingParentsTask;
 import org.apache.james.webadmin.service.CreateMissingParentsTaskAdditionalInformationDTO;
+import org.apache.james.webadmin.service.DeleteMessagesReferencedInMailboxTaskAdditionalInformationDTO;
+import org.apache.james.webadmin.service.DeleteMessagesReferencedInMailboxTaskDTO;
 import org.apache.james.webadmin.service.EventDeadLettersRedeliverAllTaskDTO;
 import org.apache.james.webadmin.service.EventDeadLettersRedeliverGroupTaskDTO;
 import org.apache.james.webadmin.service.EventDeadLettersRedeliverOneTaskDTO;
@@ -84,6 +86,11 @@ public class WebadminMailboxTaskSerializationModule extends AbstractModule {
     @ProvidesIntoSet
     public TaskDTOModule<? extends Task, ? extends TaskDTO> clearMailboxContentTask(UserMailboxesService userMailboxesService) {
         return ClearMailboxContentTaskDTO.module(userMailboxesService);
+    }
+
+    @ProvidesIntoSet
+    public TaskDTOModule<? extends Task, ? extends TaskDTO> deleteMessagesReferencedInMailboxTask(UserMailboxesService userMailboxesService) {
+        return DeleteMessagesReferencedInMailboxTaskDTO.module(userMailboxesService);
     }
 
     @ProvidesIntoSet
@@ -166,6 +173,17 @@ public class WebadminMailboxTaskSerializationModule extends AbstractModule {
     @ProvidesIntoSet
     public AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends  AdditionalInformationDTO> webAdminClearMailboxContentAdditionalInformation() {
         return ClearMailboxContentTaskAdditionalInformationDTO.SERIALIZATION_MODULE;
+    }
+
+    @ProvidesIntoSet
+    public AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends  AdditionalInformationDTO> deleteMessagesReferencedInMailboxAdditionalInformation() {
+        return DeleteMessagesReferencedInMailboxTaskAdditionalInformationDTO.SERIALIZATION_MODULE;
+    }
+
+    @Named(DTOModuleInjections.WEBADMIN_DTO)
+    @ProvidesIntoSet
+    public AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends  AdditionalInformationDTO> webAdminDeleteMessagesReferencedInMailboxAdditionalInformation() {
+        return DeleteMessagesReferencedInMailboxTaskAdditionalInformationDTO.SERIALIZATION_MODULE;
     }
 
     @ProvidesIntoSet

@@ -86,6 +86,7 @@ import org.apache.james.webadmin.routes.MailQueueRoutes;
 import org.apache.james.webadmin.routes.MailRepositoriesRoutes;
 import org.apache.james.webadmin.routes.TasksRoutes;
 import org.apache.james.webadmin.service.ClearMailboxContentTask;
+import org.apache.james.webadmin.service.DeleteMessagesReferencedInMailboxTask;
 import org.apache.james.webadmin.vault.routes.DeletedMessagesVaultRoutes;
 import org.eclipse.jetty.http.HttpStatus;
 import org.hamcrest.Matchers;
@@ -719,6 +720,43 @@ class RabbitMQWebAdminServerTaskSerializationIntegrationTest {
             .body("additionalInformation.messagesFailCount", is(0))
             .body("additionalInformation.username", is(USERNAME))
             .body("additionalInformation.mailboxName", is(MailboxConstants.INBOX));
+    }
+
+    @Test
+    void deleteMessagesReferencedInShouldComplete(GuiceJamesServer server) throws Exception {
+        server.getProbe(DataProbeImpl.class).addUser(USERNAME, "secret");
+        mailboxProbe.createMailbox(MailboxConstants.USER_NAMESPACE, USERNAME, MailboxConstants.INBOX);
+        mailboxProbe.createMailbox(MailboxConstants.USER_NAMESPACE, USERNAME, "Archives");
+
+        ComposedMessageId composedMessageId = mailboxProbe.appendMessage(
+            USERNAME,
+            MailboxPath.inbox(Username.of(USERNAME)),
+            new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes()),
+            new Date(),
+            false,
+            new Flags());
+        server.getProbe(MailboxProbeImpl.class).copy(Username.of(USERNAME), MailboxPath.inbox(Username.of(USERNAME)),
+            MailboxPath.forUser(Username.of(USERNAME), "Archives"), composedMessageId.getUid());
+
+        String taskId = given()
+            .queryParam("deleteMessagesReferencedIn", "Archives")
+            .post("users/" + USERNAME + "/mailboxes/" + MailboxConstants.INBOX)
+            .jsonPath()
+            .getString("taskId");
+
+        with()
+            .basePath(TasksRoutes.BASE)
+        .when()
+            .get(taskId + "/await")
+            .then()
+            .body("status", is(TaskManager.Status.COMPLETED.getValue()))
+            .body("taskId", is(taskId))
+            .body("type", is(DeleteMessagesReferencedInMailboxTask.TASK_TYPE.asString()))
+            .body("additionalInformation.messagesSuccessCount", is(1))
+            .body("additionalInformation.messagesFailCount", is(0))
+            .body("additionalInformation.username", is(USERNAME))
+            .body("additionalInformation.mailboxName", is(MailboxConstants.INBOX))
+            .body("additionalInformation.referenceMailboxName", is("Archives"));
     }
 
     @Test

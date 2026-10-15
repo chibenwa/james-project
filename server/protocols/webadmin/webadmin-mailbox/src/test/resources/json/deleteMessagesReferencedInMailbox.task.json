@@ -1,0 +1,6 @@
+{
+  "mailboxName": "INBOX",
+  "referenceMailboxName": "Archives",
+  "type": "DeleteMessagesReferencedInMailboxTask",
+  "username": "bob@domain.tld"
+}
