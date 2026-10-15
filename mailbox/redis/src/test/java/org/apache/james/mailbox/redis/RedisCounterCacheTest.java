@@ -25,10 +25,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Duration;
 import java.util.Map;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.james.backends.redis.DockerRedis;
 import org.apache.james.backends.redis.RedisExtension;
+import org.apache.james.util.concurrency.ConcurrentTestRunner;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -314,6 +316,98 @@ class RedisCounterCacheTest {
 
             assertThat(testee.getOrCompute(KEY, FIELDS, () -> compute(VALUES), RedisCounterCacheTest.this::noFallback).block())
                 .isEqualTo(VALUES);
+        }
+    }
+
+    @Nested
+    class Concurrency {
+        private static final Map<String, Long> ZERO = ImmutableMap.of("a", 0L, "b", 0L);
+
+        @Test
+        void concurrentIncrementsShouldAllBeApplied() throws Exception {
+            testee.getOrCompute(KEY, FIELDS, () -> compute(ZERO), RedisCounterCacheTest.this::noFallback).block();
+
+            ConcurrentTestRunner.builder()
+                .reactorOperation((threadNumber, step) -> testee.incrementIfPresent(KEY, ImmutableMap.of("a", 1L, "b", 2L)))
+                .threadCount(10)
+                .operationCount(100)
+                .runSuccessfullyWithin(Duration.ofMinutes(1));
+
+            assertThat(testee.getOrCompute(KEY, FIELDS, () -> compute(VALUES), RedisCounterCacheTest.this::noFallback).block())
+                .isEqualTo(ImmutableMap.of("a", 1000L, "b", 2000L));
+        }
+
+        @Test
+        void concurrentIncrementsAndDecrementsShouldAllBeApplied() throws Exception {
+            testee.getOrCompute(KEY, FIELDS, () -> compute(ZERO), RedisCounterCacheTest.this::noFallback).block();
+
+            ConcurrentTestRunner.builder()
+                .reactorOperation((threadNumber, step) -> {
+                    long delta = threadNumber % 2 == 0 ? 1L : -1L;
+                    return testee.incrementIfPresent(KEY, ImmutableMap.of("a", delta, "b", delta));
+                })
+                .threadCount(10)
+                .operationCount(100)
+                .runSuccessfullyWithin(Duration.ofMinutes(1));
+
+            assertThat(testee.getOrCompute(KEY, FIELDS, () -> compute(VALUES), RedisCounterCacheTest.this::noFallback).block())
+                .isEqualTo(ZERO);
+        }
+
+        @Test
+        void concurrentIncrementsOnDistinctKeysShouldNotInterfere() throws Exception {
+            for (int i = 0; i < 10; i++) {
+                testee.getOrCompute(KEY + i, FIELDS, () -> compute(ZERO), RedisCounterCacheTest.this::noFallback).block();
+            }
+
+            ConcurrentTestRunner.builder()
+                .reactorOperation((threadNumber, step) -> testee.incrementIfPresent(KEY + threadNumber, ImmutableMap.of("a", 1L, "b", 1L)))
+                .threadCount(10)
+                .operationCount(100)
+                .runSuccessfullyWithin(Duration.ofMinutes(1));
+
+            for (int i = 0; i < 10; i++) {
+                assertThat(testee.getOrCompute(KEY + i, FIELDS, () -> compute(VALUES), RedisCounterCacheTest.this::noFallback).block())
+                    .isEqualTo(ImmutableMap.of("a", 100L, "b", 100L));
+            }
+        }
+
+        @Test
+        void concurrentReadsShouldReturnTheComputedValue() throws Exception {
+            ConcurrentLinkedQueue<Map<String, Long>> results = new ConcurrentLinkedQueue<>();
+
+            ConcurrentTestRunner.builder()
+                .reactorOperation((threadNumber, step) -> testee.getOrCompute(KEY, FIELDS,
+                        () -> compute(VALUES).delayElement(Duration.ofMillis(10)), RedisCounterCacheTest.this::noFallback)
+                    .doOnNext(results::add)
+                    .then())
+                .threadCount(10)
+                .operationCount(10)
+                .runSuccessfullyWithin(Duration.ofMinutes(1));
+
+            assertThat(results).hasSize(100).containsOnly(VALUES);
+            assertThat(computationCount.get()).isLessThan(10);
+        }
+
+        @Test
+        void concurrentWritesShouldNeverLeavePartialEntries() throws Exception {
+            ConcurrentTestRunner.builder()
+                .randomlyDistributedReactorOperations(
+                    (threadNumber, step) -> testee.incrementIfPresent(KEY, ImmutableMap.of("a", 1L, "b", 1L)),
+                    (threadNumber, step) -> testee.replace(KEY, VALUES),
+                    (threadNumber, step) -> testee.invalidate(KEY),
+                    (threadNumber, step) -> testee.getOrCompute(KEY, FIELDS, () -> compute(VALUES), RedisCounterCacheTest.this::noFallback).then())
+                .threadCount(10)
+                .operationCount(100)
+                .runSuccessfullyWithin(Duration.ofMinutes(1));
+
+            Map<String, String> stored = redis.hgetall(KEY);
+            boolean complete = stored.containsKey("a") && stored.containsKey("b");
+            boolean onlyGeneration = !stored.containsKey("a") && !stored.containsKey("b");
+            assertThat(complete || onlyGeneration)
+                .as("Entry %s should either be complete or invalidated", stored)
+                .isTrue();
+            assertThat(redis.ttl(KEY)).isPositive();
         }
     }
 }

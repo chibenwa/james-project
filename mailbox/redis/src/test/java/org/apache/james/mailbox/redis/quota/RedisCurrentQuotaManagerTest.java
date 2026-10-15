@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -42,6 +43,7 @@ import org.apache.james.mailbox.model.QuotaOperation;
 import org.apache.james.mailbox.model.QuotaRoot;
 import org.apache.james.mailbox.quota.CurrentQuotaManager;
 import org.apache.james.mailbox.redis.RedisTestFixture;
+import org.apache.james.util.concurrency.ConcurrentTestRunner;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -312,6 +314,20 @@ class RedisCurrentQuotaManagerTest {
 
         assertThat(testee.getCurrentQuotas(quotaRoot).block())
             .isEqualTo(currentQuotas(1, MESSAGE_SIZE));
+    }
+
+    @Test
+    void concurrentIncreasesShouldAllBeApplied() throws Exception {
+        testee.getCurrentQuotas(quotaRoot).block();
+
+        ConcurrentTestRunner.builder()
+            .reactorOperation((threadNumber, step) -> testee.increase(new QuotaOperation(quotaRoot, QuotaCountUsage.count(1), QuotaSizeUsage.size(10))))
+            .threadCount(10)
+            .operationCount(100)
+            .runSuccessfullyWithin(Duration.ofMinutes(1));
+
+        assertThat(testee.getCurrentQuotas(quotaRoot).block())
+            .isEqualTo(currentQuotas(1000, 10000));
     }
 
     @Nested

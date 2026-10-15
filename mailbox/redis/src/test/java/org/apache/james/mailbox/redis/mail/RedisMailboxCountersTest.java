@@ -22,6 +22,7 @@ package org.apache.james.mailbox.redis.mail;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
+import java.time.Duration;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -32,6 +33,7 @@ import org.apache.james.backends.redis.RedisExtension;
 import org.apache.james.core.Username;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageManager;
+import org.apache.james.mailbox.MessageUid;
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources;
 import org.apache.james.mailbox.model.Mailbox;
 import org.apache.james.mailbox.model.MailboxCounters;
@@ -41,6 +43,7 @@ import org.apache.james.mailbox.model.MessageRange;
 import org.apache.james.mailbox.redis.RedisTestFixture;
 import org.apache.james.mailbox.store.StoreMailboxManager;
 import org.apache.james.mailbox.store.mail.MailboxCountersStore;
+import org.apache.james.util.concurrency.ConcurrentTestRunner;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -304,6 +307,40 @@ class RedisMailboxCountersTest {
         RedisTestFixture.whileRedisIsPaused(dockerRedis, () ->
             assertThatCode(() -> testee.delete(inboxEntity.getMailboxId()).block())
                 .doesNotThrowAnyException());
+    }
+
+    @Test
+    void concurrentWritesShouldBeAccountedForWhenCached() throws Exception {
+        retrieve(inboxEntity);
+
+        ConcurrentTestRunner.builder()
+            .operation((threadNumber, step) -> appendMessage(threadNumber % 2 == 0 ? new Flags() : new Flags(Flags.Flag.SEEN)))
+            .threadCount(10)
+            .operationCount(10)
+            .runSuccessfullyWithin(Duration.ofMinutes(1));
+
+        assertThat(retrieve(inboxEntity)).isEqualTo(counters(inboxEntity, 100, 50));
+    }
+
+    @Test
+    void concurrentFlagUpdatesShouldBeAccountedForWhenCached() throws Exception {
+        for (int i = 0; i < 40; i++) {
+            appendMessage(i % 2 == 0 ? new Flags() : new Flags(Flags.Flag.SEEN));
+        }
+        retrieve(inboxEntity);
+
+        // Each thread updates its own messages: 4 threads mark 5 unseen messages as seen, 4 threads mark 5 seen messages as unseen
+        ConcurrentTestRunner.builder()
+            .operation((threadNumber, step) -> {
+                MessageUid uid = MessageUid.of(threadNumber * 10L + step * 2L + 1 + threadNumber % 2);
+                MessageManager.FlagsUpdateMode mode = threadNumber % 2 == 0 ? MessageManager.FlagsUpdateMode.ADD : MessageManager.FlagsUpdateMode.REMOVE;
+                inbox.setFlags(new Flags(Flags.Flag.SEEN), mode, MessageRange.one(uid), session);
+            })
+            .threadCount(4)
+            .operationCount(5)
+            .runSuccessfullyWithin(Duration.ofMinutes(1));
+
+        assertThat(retrieve(inboxEntity)).isEqualTo(counters(inboxEntity, 40, 20));
     }
 
     @Nested
