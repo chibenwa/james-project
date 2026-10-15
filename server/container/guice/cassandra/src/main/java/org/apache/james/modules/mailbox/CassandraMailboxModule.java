@@ -88,6 +88,7 @@ import org.apache.james.mailbox.cassandra.mail.CassandraMessageIdToImapUidDAO;
 import org.apache.james.mailbox.cassandra.mail.CassandraModSeqProvider;
 import org.apache.james.mailbox.cassandra.mail.CassandraUidProvider;
 import org.apache.james.mailbox.cassandra.mail.CassandraUserMailboxRightsDAO;
+import org.apache.james.mailbox.cassandra.mail.MailboxCountersWriteMode;
 import org.apache.james.mailbox.cassandra.mail.MessageBlobReferenceSource;
 import org.apache.james.mailbox.cassandra.mail.eventsourcing.acl.ACLModule;
 import org.apache.james.mailbox.cassandra.mail.task.CassandraMailboxCounterCorrector;
@@ -198,6 +199,7 @@ public class CassandraMailboxModule extends AbstractModule {
         bind(AttachmentMapperFactory.class).to(CassandraMailboxSessionMapperFactory.class);
         bind(MailboxSessionMapperFactory.class).to(CassandraMailboxSessionMapperFactory.class);
         bind(MailboxCountersStore.class).to(CassandraMailboxCounterDAO.class);
+        bind(MailboxCountersWriteMode.class).toInstance(MailboxCountersWriteMode.ENABLED);
         bind(SubscriptionMapperFactory.class).to(CassandraMailboxSessionMapperFactory.class);
 
         bind(ACLMapper.class).to(CassandraACLMapper.class);

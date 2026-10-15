@@ -45,6 +45,7 @@ import org.apache.james.mailbox.cassandra.mail.CassandraACLMapper;
 import org.apache.james.mailbox.cassandra.mail.CassandraMailboxCounterDAO;
 import org.apache.james.mailbox.cassandra.mail.CassandraModSeqProvider;
 import org.apache.james.mailbox.cassandra.mail.CassandraUidProvider;
+import org.apache.james.mailbox.cassandra.mail.MailboxCountersWriteMode;
 import org.apache.james.mailbox.cassandra.mail.eventsourcing.acl.ACLModule;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.store.BatchSizes;
@@ -91,6 +92,7 @@ public class GuiceUtils {
             binder -> binder.bind(AttachmentIdAssignationStrategy.class).to(AttachmentIdAssignationStrategy.Default.class),
             binder -> binder.bind(ModSeqProvider.class).to(CassandraModSeqProvider.class),
             binder -> binder.bind(MailboxCountersStore.class).to(CassandraMailboxCounterDAO.class),
+            binder -> binder.bind(MailboxCountersWriteMode.class).toInstance(MailboxCountersWriteMode.ENABLED),
             binder -> binder.bind(ACLMapper.class).to(CassandraACLMapper.class),
             binder -> binder.bind(BlobId.Factory.class).toInstance(new PlainBlobId.Factory()),
             binder -> binder.bind(BlobStore.class).toProvider(() -> CassandraBlobStoreFactory.forTesting(session, new RecordingMetricFactory()).passthrough()),

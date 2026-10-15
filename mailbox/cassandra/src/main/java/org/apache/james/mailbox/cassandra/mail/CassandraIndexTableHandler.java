@@ -52,18 +52,21 @@ public class CassandraIndexTableHandler {
     private final CassandraFirstUnseenDAO firstUnseenDAO;
     private final CassandraApplicableFlagDAO applicableFlagDAO;
     private final CassandraDeletedMessageDAO deletedMessageDAO;
+    private final MailboxCountersWriteMode countersWriteMode;
 
     @Inject
     public CassandraIndexTableHandler(CassandraMailboxRecentsDAO mailboxRecentDAO,
                                       CassandraMailboxCounterDAO mailboxCounterDAO,
                                       CassandraFirstUnseenDAO firstUnseenDAO,
                                       CassandraApplicableFlagDAO applicableFlagDAO,
-                                      CassandraDeletedMessageDAO deletedMessageDAO) {
+                                      CassandraDeletedMessageDAO deletedMessageDAO,
+                                      MailboxCountersWriteMode countersWriteMode) {
         this.mailboxRecentDAO = mailboxRecentDAO;
         this.mailboxCounterDAO = mailboxCounterDAO;
         this.firstUnseenDAO = firstUnseenDAO;
         this.applicableFlagDAO = applicableFlagDAO;
         this.deletedMessageDAO = deletedMessageDAO;
+        this.countersWriteMode = countersWriteMode;
     }
 
     public Mono<Void> updateIndexOnDelete(ComposedMessageIdWithMetaData composedMessageIdWithMetaData, CassandraId mailboxId) {
@@ -197,6 +200,9 @@ public class CassandraIndexTableHandler {
     }
 
     private Mono<Void> decrementCountersOnDelete(CassandraId mailboxId, Flags flags) {
+        if (countersWriteMode == MailboxCountersWriteMode.DISABLED) {
+            return Mono.empty();
+        }
         if (flags.contains(Flags.Flag.SEEN)) {
             return mailboxCounterDAO.decrementCount(mailboxId)
                 .onErrorResume(e -> {
@@ -218,6 +224,9 @@ public class CassandraIndexTableHandler {
     }
 
     private Mono<Void> decrementCountersOnDeleteFlags(CassandraId mailboxId, Collection<Flags> flags) {
+        if (countersWriteMode == MailboxCountersWriteMode.DISABLED) {
+            return Mono.empty();
+        }
         long unseenCount = flags.stream()
             .filter(flag -> !flag.contains(Flags.Flag.SEEN))
             .count();
@@ -235,6 +244,9 @@ public class CassandraIndexTableHandler {
     }
 
     private Mono<Void> incrementCountersOnSave(CassandraId mailboxId, Flags flags) {
+        if (countersWriteMode == MailboxCountersWriteMode.DISABLED) {
+            return Mono.empty();
+        }
         if (flags.contains(Flags.Flag.SEEN)) {
             return mailboxCounterDAO.incrementCount(mailboxId)
                 .onErrorResume(e -> {
@@ -250,6 +262,9 @@ public class CassandraIndexTableHandler {
     }
 
     private Mono<Void> incrementCountersOnSave(CassandraId mailboxId, Collection<Flags> flags) {
+        if (countersWriteMode == MailboxCountersWriteMode.DISABLED) {
+            return Mono.empty();
+        }
         long unseenCount = flags.stream()
             .filter(flag -> !flag.contains(Flags.Flag.SEEN))
             .count();
@@ -280,6 +295,9 @@ public class CassandraIndexTableHandler {
     }
 
     private Mono<Void> manageUnseenMessageCountsOnFlagsUpdate(CassandraId mailboxId,  List<UpdatedFlags> updatedFlags) {
+        if (countersWriteMode == MailboxCountersWriteMode.DISABLED) {
+            return Mono.empty();
+        }
         int sum = updatedFlags.stream()
             .mapToInt(flags -> {
                 if (flags.isModifiedToUnset(Flags.Flag.SEEN)) {

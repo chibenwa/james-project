@@ -47,6 +47,7 @@ import org.apache.james.mailbox.cassandra.mail.CassandraMessageMapper;
 import org.apache.james.mailbox.cassandra.mail.CassandraThreadDAO;
 import org.apache.james.mailbox.cassandra.mail.CassandraThreadLookupDAO;
 import org.apache.james.mailbox.cassandra.mail.CassandraUserMailboxRightsDAO;
+import org.apache.james.mailbox.cassandra.mail.MailboxCountersWriteMode;
 import org.apache.james.mailbox.cassandra.mail.task.RecomputeMailboxCountersService;
 import org.apache.james.mailbox.cassandra.user.CassandraSubscriptionMapper;
 import org.apache.james.mailbox.store.BatchSizes;
@@ -106,6 +107,7 @@ public class CassandraMailboxSessionMapperFactory extends MailboxSessionMapperFa
                                                 CassandraUserMailboxRightsDAO userMailboxRightsDAO,
                                                 RecomputeMailboxCountersService recomputeMailboxCountersService,
                                                 MailboxCountersStore mailboxCountersStore,
+                                                MailboxCountersWriteMode countersWriteMode,
                                                 CassandraConfiguration cassandraConfiguration,
                                                 BatchSizes batchSizes, AttachmentIdAssignationStrategy attachmentIdAssignationStrategy,
                                                 Clock clock) {
@@ -131,7 +133,8 @@ public class CassandraMailboxSessionMapperFactory extends MailboxSessionMapperFa
             mailboxCounterDAO,
             firstUnseenDAO,
             applicableFlagDAO,
-            deletedMessageDAO);
+            deletedMessageDAO,
+            countersWriteMode);
         this.cassandraMailboxMapper = new CassandraMailboxMapper(mailboxDAO, mailboxPathV3DAO, userMailboxRightsDAO, aclMapper, cassandraConfiguration);
         this.cassandraSubscriptionMapper = new CassandraSubscriptionMapper(session);
         this.cassandraAttachmentMapper = new CassandraAttachmentMapper(attachmentDAOV2, blobStore, attachmentIdAssignationStrategy);

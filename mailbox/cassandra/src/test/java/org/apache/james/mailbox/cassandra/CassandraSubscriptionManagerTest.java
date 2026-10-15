@@ -52,6 +52,7 @@ import org.apache.james.mailbox.cassandra.mail.CassandraThreadDAO;
 import org.apache.james.mailbox.cassandra.mail.CassandraThreadLookupDAO;
 import org.apache.james.mailbox.cassandra.mail.CassandraUidProvider;
 import org.apache.james.mailbox.cassandra.mail.CassandraUserMailboxRightsDAO;
+import org.apache.james.mailbox.cassandra.mail.MailboxCountersWriteMode;
 import org.apache.james.mailbox.cassandra.mail.task.RecomputeMailboxCountersService;
 import org.apache.james.mailbox.cassandra.modules.CassandraAnnotationDataDefinition;
 import org.apache.james.mailbox.cassandra.modules.CassandraMailboxDataDefinition;
@@ -134,6 +135,7 @@ class CassandraSubscriptionManagerTest implements SubscriptionManagerContract {
             userMailboxRightsDAO,
             recomputeMailboxCountersService,
             mailboxCounterDAO,
+            MailboxCountersWriteMode.ENABLED,
             CassandraConfiguration.DEFAULT_CONFIGURATION,
             BatchSizes.defaultValues(),
             attachmentIdAssignationStrategy,

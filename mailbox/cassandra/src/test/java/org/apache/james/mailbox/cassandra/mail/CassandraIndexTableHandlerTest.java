@@ -45,6 +45,7 @@ import org.apache.james.mailbox.cassandra.modules.CassandraMailboxRecentsDataDef
 import org.apache.james.mailbox.model.ComposedMessageId;
 import org.apache.james.mailbox.model.ComposedMessageIdWithMetaData;
 import org.apache.james.mailbox.model.Mailbox;
+import org.apache.james.mailbox.model.MailboxCounters;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.model.MessageRange;
 import org.apache.james.mailbox.model.ThreadId;
@@ -96,11 +97,87 @@ class CassandraIndexTableHandlerTest {
                                                 mailboxCounterDAO,
                                                 firstUnseenDAO,
                                                 applicableFlagDAO,
-                                                deletedMessageDAO);
+                                                deletedMessageDAO,
+                                                MailboxCountersWriteMode.ENABLED);
 
         mailbox = new Mailbox(MailboxPath.forUser(Username.of("user"), "name"),
             UID_VALIDITY,
             MAILBOX_ID);
+    }
+
+    @Nested
+    class CountersWritesDisabled {
+        private CassandraIndexTableHandler countersDisabledTestee;
+
+        @BeforeEach
+        void setUp() {
+            countersDisabledTestee = new CassandraIndexTableHandler(mailboxRecentsDAO,
+                mailboxCounterDAO,
+                firstUnseenDAO,
+                applicableFlagDAO,
+                deletedMessageDAO,
+                MailboxCountersWriteMode.DISABLED);
+        }
+
+        @Test
+        void updateIndexOnAddShouldNotUpdateCounters() {
+            MailboxMessage message = mock(MailboxMessage.class);
+            when(message.createFlags()).thenReturn(new Flags());
+            when(message.getUid()).thenReturn(MESSAGE_UID);
+
+            countersDisabledTestee.updateIndexOnAdd(message, MAILBOX_ID).block();
+
+            assertThat(mailboxCounterDAO.retrieveMailboxCounters(MAILBOX_ID).blockOptional()).isEmpty();
+        }
+
+        @Test
+        void updateIndexOnAddShouldStillUpdateOtherProjections() {
+            MailboxMessage message = mock(MailboxMessage.class);
+            when(message.createFlags()).thenReturn(new Flags());
+            when(message.getUid()).thenReturn(MESSAGE_UID);
+
+            countersDisabledTestee.updateIndexOnAdd(message, MAILBOX_ID).block();
+
+            assertThat(firstUnseenDAO.retrieveFirstUnread(MAILBOX_ID).block()).isEqualTo(MESSAGE_UID);
+        }
+
+        @Test
+        void updateIndexOnFlagsUpdateShouldNotUpdateCounters() {
+            countersDisabledTestee.updateIndexOnFlagsUpdate(MAILBOX_ID, UpdatedFlags.builder()
+                .uid(MESSAGE_UID)
+                .newFlags(new Flags())
+                .oldFlags(new Flags(Flags.Flag.SEEN))
+                .modSeq(ModSeq.of(1))
+                .build())
+                .block();
+
+            assertThat(mailboxCounterDAO.retrieveMailboxCounters(MAILBOX_ID).blockOptional()).isEmpty();
+        }
+
+        @Test
+        void updateIndexOnDeleteShouldNotUpdateCounters() {
+            mailboxCounterDAO.add(MailboxCounters.builder()
+                .mailboxId(MAILBOX_ID)
+                .count(3)
+                .unseen(2)
+                .build())
+                .block();
+
+            countersDisabledTestee.updateIndexOnDelete(new ComposedMessageIdWithMetaData(
+                    new ComposedMessageId(MAILBOX_ID, CASSANDRA_MESSAGE_ID, MESSAGE_UID),
+                    new Flags(),
+                    ModSeq.of(1),
+                    ThreadId.fromBaseMessageId(CASSANDRA_MESSAGE_ID)),
+                MAILBOX_ID)
+                .block();
+
+            assertThat(mailboxCounterDAO.retrieveMailboxCounters(MAILBOX_ID).block())
+                .isEqualTo(MailboxCounters.builder()
+                    .mailboxId(MAILBOX_ID)
+                    .count(3)
+                    .unseen(2)
+                    .build());
+        }
     }
 
     @Nested
