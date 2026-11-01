@@ -784,7 +784,9 @@ public class MailAddress implements java.io.Serializable {
         String result = resultSB.toString();
         if (unicode) {
             try {
-                result = IDN.toASCII(result, IDN.ALLOW_UNASSIGNED);
+                // Lower-case before IDNA, as Domain does when normalising: the lower-cased form, which is the one
+                // that gets stored, must be validated, otherwise an accepted address might not parse back
+                result = IDN.toASCII(result.toLowerCase(Locale.US), IDN.ALLOW_UNASSIGNED);
             } catch (IllegalArgumentException e) {
                 throw new AddressException("Domain invalid according to IDNA", address);
             }
