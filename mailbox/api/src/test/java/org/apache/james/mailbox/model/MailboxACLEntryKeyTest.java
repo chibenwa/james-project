@@ -21,11 +21,15 @@
 package org.apache.james.mailbox.model;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import org.apache.james.core.Username;
 import org.apache.james.mailbox.model.MailboxACL.EntryKey;
 import org.apache.james.mailbox.model.MailboxACL.NameType;
 import org.apache.james.mailbox.model.MailboxACL.SpecialName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class MailboxACLEntryKeyTest {
     private static final String GROUP_1 = "group1";
@@ -149,5 +153,54 @@ class MailboxACLEntryKeyTest {
     void testSerializeNegativeAuthenticated() {
         assertThat(new EntryKey(SpecialName.authenticated.toString(), NameType.special, true).serialize())
             .isEqualTo(MailboxACL.DEFAULT_NEGATIVE_MARKER + SpecialName.authenticated.toString());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"-bob@domain.tld", "$bob@domain.tld", "anyone", "owner", "authenticated", "-", "$"})
+    void createUserEntryKeyShouldRejectNamesThatSerializeCanNotRepresent(String name) {
+        assertThatThrownBy(() -> EntryKey.createUserEntryKey(Username.of(name)))
+            .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"$bob@domain.tld", "anyone", "owner", "authenticated", "$"})
+    void createNegativeUserEntryKeyShouldRejectNamesThatSerializeCanNotRepresent(String name) {
+        assertThatThrownBy(() -> EntryKey.createUserEntryKey(Username.of(name), MailboxACL.NEGATIVE_KEY))
+            .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"bob@domain.tld", "bob-@domain.tld", "b$ob@domain.tld", "anyone2"})
+    void userEntryKeyShouldSurviveSerialization(String name) {
+        EntryKey key = EntryKey.createUserEntryKey(Username.of(name));
+
+        assertThat(EntryKey.deserialize(key.serialize())).isEqualTo(key);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"-bob@domain.tld", "-", "bob@domain.tld"})
+    void negativeUserEntryKeyShouldSurviveSerialization(String name) {
+        EntryKey key = EntryKey.createUserEntryKey(Username.of(name), MailboxACL.NEGATIVE_KEY);
+
+        assertThat(EntryKey.deserialize(key.serialize())).isEqualTo(key);
+    }
+
+    @Test
+    void groupEntryKeyStartingWithDashShouldSurviveSerialization() {
+        EntryKey key = EntryKey.createGroupEntryKey("-group");
+
+        assertThat(EntryKey.deserialize(key.serialize())).isEqualTo(key);
+    }
+
+    @Test
+    void entryKeyShouldRejectEmptyName() {
+        assertThatThrownBy(() -> EntryKey.createGroupEntryKey(""))
+            .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void deserializeShouldRejectANegativeMarkerAlone() {
+        assertThatThrownBy(() -> EntryKey.deserialize("-"))
+            .isInstanceOf(IllegalStateException.class);
     }
 }
