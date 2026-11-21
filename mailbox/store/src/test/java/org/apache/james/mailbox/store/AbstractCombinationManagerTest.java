@@ -19,6 +19,7 @@
 
 package org.apache.james.mailbox.store;
 
+import static org.apache.james.mailbox.MessageManager.MailboxMetaData.RecentMode.IGNORE;
 import static org.apache.james.mailbox.MessageManager.MailboxMetaData.RecentMode.RESET;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -38,6 +39,7 @@ import org.apache.james.mailbox.MessageIdManager;
 import org.apache.james.mailbox.MessageManager;
 import org.apache.james.mailbox.MessageManager.FlagsUpdateMode;
 import org.apache.james.mailbox.MessageUid;
+import org.apache.james.mailbox.ModSeq;
 import org.apache.james.mailbox.fixture.MailboxFixture;
 import org.apache.james.mailbox.model.ComposedMessageId;
 import org.apache.james.mailbox.model.FetchGroup;
@@ -334,6 +336,58 @@ public abstract class AbstractCombinationManagerTest {
         messageIdManager.setInMailboxes(messageId, ImmutableList.of(mailbox1.getMailboxId(), mailbox2.getMailboxId()), session);
 
         assertThat(messageManager2.getMetaData(RESET, session, MessageManager.MailboxMetaData.FetchGroup.FIRST_UNSEEN).getHighestModSeq().asLong()).isNotNegative();
+    }
+
+    @Test
+    void deleteFromMessageManagerShouldRaiseHighestModSeq() throws Exception {
+        ComposedMessageId composedMessageId = messageManager1.appendMessage(MessageManager.AppendCommand.from(mailContent), session)
+            .getId();
+        ModSeq highestModSeqBeforeDeletion = highestModSeq(messageManager1);
+
+        messageManager1.delete(ImmutableList.of(composedMessageId.getUid()), session);
+
+        assertThat(highestModSeq(messageManager1)).isGreaterThan(highestModSeqBeforeDeletion);
+    }
+
+    @Test
+    void deleteFromMessageIdManagerShouldRaiseHighestModSeq() throws Exception {
+        MessageId messageId = messageManager1.appendMessage(MessageManager.AppendCommand.from(mailContent), session)
+            .getId().getMessageId();
+        ModSeq highestModSeqBeforeDeletion = highestModSeq(messageManager1);
+
+        messageIdManager.delete(messageId, ImmutableList.of(mailbox1.getMailboxId()), session);
+
+        assertThat(highestModSeq(messageManager1)).isGreaterThan(highestModSeqBeforeDeletion);
+    }
+
+    @Test
+    void deleteAllFromMessageIdManagerShouldRaiseHighestModSeqOfEachMailbox() throws Exception {
+        MessageId messageId = messageManager1.appendMessage(MessageManager.AppendCommand.from(mailContent), session)
+            .getId().getMessageId();
+        messageIdManager.setInMailboxes(messageId, ImmutableList.of(mailbox1.getMailboxId(), mailbox2.getMailboxId()), session);
+        ModSeq highestModSeqBeforeDeletion1 = highestModSeq(messageManager1);
+        ModSeq highestModSeqBeforeDeletion2 = highestModSeq(messageManager2);
+
+        messageIdManager.delete(messageId, session);
+
+        assertThat(highestModSeq(messageManager1)).isGreaterThan(highestModSeqBeforeDeletion1);
+        assertThat(highestModSeq(messageManager2)).isGreaterThan(highestModSeqBeforeDeletion2);
+    }
+
+    @Test
+    void setInMailboxesShouldRaiseHighestModSeqOfTheMailboxTheMessageIsRemovedFrom() throws Exception {
+        MessageId messageId = messageManager1.appendMessage(MessageManager.AppendCommand.from(mailContent), session)
+            .getId().getMessageId();
+        ModSeq highestModSeqBeforeMove = highestModSeq(messageManager1);
+
+        messageIdManager.setInMailboxes(messageId, ImmutableList.of(mailbox2.getMailboxId()), session);
+
+        assertThat(highestModSeq(messageManager1)).isGreaterThan(highestModSeqBeforeMove);
+    }
+
+    private ModSeq highestModSeq(MessageManager messageManager) throws Exception {
+        return messageManager.getMetaData(IGNORE, session, MessageManager.MailboxMetaData.FetchGroup.NO_UNSEEN)
+            .getHighestModSeq();
     }
 
     @Test

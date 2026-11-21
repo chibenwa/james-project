@@ -71,6 +71,7 @@ import org.apache.james.mailbox.store.mail.FetchGroupConverter;
 import org.apache.james.mailbox.store.mail.MailboxMapper;
 import org.apache.james.mailbox.store.mail.MessageIdMapper;
 import org.apache.james.mailbox.store.mail.MessageMapper;
+import org.apache.james.mailbox.store.mail.ModSeqProvider;
 import org.apache.james.mailbox.store.mail.model.FlagsFactory;
 import org.apache.james.mailbox.store.mail.model.FlagsFilter;
 import org.apache.james.mailbox.store.mail.model.MailboxMessage;
@@ -370,6 +371,7 @@ public class StoreMessageIdManager implements MessageIdManager {
                 .collect(ImmutableListMultimap.toImmutableListMultimap(
                     Message::getMessageId,
                     MailboxMessage::getMailboxId)))
+            .then(raiseHighestModSeq(actualDeletion.keySet(), mailboxSession))
             .then(
                 Flux.fromIterable(actualDeletion.asMap().entrySet())
                     .flatMap(metadataWithMailboxId -> mailboxMapper.findMailboxById(metadataWithMailboxId.getKey())
@@ -516,8 +518,22 @@ public class StoreMessageIdManager implements MessageIdManager {
             .collect(ImmutableList.toImmutableList());
 
         return Mono.from(messageIdMapper.deleteReactive(messageId, mailboxIds))
+            .then(raiseHighestModSeq(mailboxIds, mailboxSession))
             .thenMany(Flux.fromIterable(messages)
                 .map(message -> expungedEvent(message, mailboxSession, messageMoves)));
+    }
+
+    /**
+     * RFC 7162: expunging messages is a change of the mailbox, the HIGHESTMODSEQ of each mailbox
+     * messages are removed from has to grow.
+     */
+    private Mono<Void> raiseHighestModSeq(Collection<MailboxId> mailboxIds, MailboxSession mailboxSession) {
+        ModSeqProvider modSeqProvider = mailboxSessionMapperFactory.getModSeqProvider(mailboxSession);
+
+        return Flux.fromIterable(mailboxIds)
+            .distinct()
+            .flatMap(modSeqProvider::nextModSeqReactive, DEFAULT_CONCURRENCY)
+            .then();
     }
 
     private EventWithRegistrationKey expungedEvent(Pair<MailboxMessage, Mailbox> message, MailboxSession mailboxSession, MessageMovesWithMailbox messageMoves) {

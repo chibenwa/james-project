@@ -298,8 +298,19 @@ public class StoreMessageManager implements MessageManager {
         MessageMapper messageMapper = mapperFactory.getMessageMapper(session);
 
         return runPredeletionHooks(messageUids, session)
-            .then(messageMapper.executeReactive(messageMapper.deleteMessagesReactive(getMailboxEntity(), messageUids)));
+            .then(messageMapper.executeReactive(messageMapper.deleteMessagesReactive(getMailboxEntity(), messageUids)))
+            .flatMap(deletedMessages -> raiseHighestModSeq(deletedMessages, session).thenReturn(deletedMessages));
+    }
 
+    /**
+     * RFC 7162: expunging messages is a change of the mailbox, the HIGHESTMODSEQ has to grow even when the
+     * deleted messages were never flagged \Deleted (POP3 DELE, server side deletions...).
+     */
+    private Mono<ModSeq> raiseHighestModSeq(Map<MessageUid, MessageMetaData> deletedMessages, MailboxSession session) {
+        if (deletedMessages.isEmpty()) {
+            return Mono.empty();
+        }
+        return mapperFactory.getModSeqProvider(session).nextModSeqReactive(getMailboxEntity().getMailboxId());
     }
 
     private Mono<Void> dispatchExpungeEvent(MailboxSession mailboxSession, Map<MessageUid, MessageMetaData> deletedMessages) {
