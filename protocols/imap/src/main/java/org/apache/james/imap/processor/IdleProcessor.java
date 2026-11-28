@@ -94,11 +94,10 @@ public class IdleProcessor extends AbstractMailboxProcessor<IdleRequest> impleme
 
     private void idle(IdleRequest request, ImapSession session, Responder responder, CountDownLatch countDownLatch) {
         SelectedMailbox sm = session.getSelected();
-        if (sm != null) {
-            sm.registerIdle(new IdleMailboxListener(session, responder, countDownLatch));
-        }
-
         final AtomicBoolean idleActive = new AtomicBoolean(true);
+        if (sm != null) {
+            sm.registerIdle(new IdleMailboxListener(session, responder, countDownLatch, idleActive));
+        }
 
         session.pushLineHandler((session1, data) -> Mono.fromRunnable(() -> {
             String line;
@@ -108,6 +107,7 @@ public class IdleProcessor extends AbstractMailboxProcessor<IdleRequest> impleme
                 line = "";
             }
 
+            idleActive.set(false);
             if (sm != null) {
                 sm.unregisterIdle();
             }
@@ -125,7 +125,6 @@ public class IdleProcessor extends AbstractMailboxProcessor<IdleRequest> impleme
                 responder.flush();
             }
             session1.popLineHandler();
-            idleActive.set(false);
         }));
 
         // Check if we should send heartbeats
@@ -170,11 +169,13 @@ public class IdleProcessor extends AbstractMailboxProcessor<IdleRequest> impleme
         private final Responder responder;
         private final ImapSession session;
         private final CountDownLatch countDownLatch;
+        private final AtomicBoolean idleActive;
 
-        public IdleMailboxListener(ImapSession session, Responder responder, CountDownLatch countDownLatch) {
+        public IdleMailboxListener(ImapSession session, Responder responder, CountDownLatch countDownLatch, AtomicBoolean idleActive) {
             this.session = session;
             this.responder = session.threadSafe(responder);
             this.countDownLatch = countDownLatch;
+            this.idleActive = idleActive;
         }
 
         @Override
@@ -185,8 +186,15 @@ public class IdleProcessor extends AbstractMailboxProcessor<IdleRequest> impleme
         @Override
         public Publisher<Void> reactiveEvent(Event event) {
             return Mono.fromRunnable(Throwing.runnable(countDownLatch::await))
-                .then(Mono.defer(() -> unsolicitedResponses(session, responder, false)))
-                .then(Mono.fromRunnable(responder::flush));
+                // Serialised with DONE: once IDLE completed, the changes are left to the next command,
+                // which reports them without the MSNs shifting under it
+                .then(Mono.<Void>defer(() -> {
+                    if (!idleActive.get()) {
+                        return Mono.empty();
+                    }
+                    return unsolicitedResponses(session, responder, false)
+                        .then(Mono.fromRunnable(responder::flush));
+                }).subscribeOn(session.eventLoopScheduler()));
         }
 
         @Override
