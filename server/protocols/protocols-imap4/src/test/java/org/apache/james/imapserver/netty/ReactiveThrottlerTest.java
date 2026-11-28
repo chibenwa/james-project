@@ -25,9 +25,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.time.Duration;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.IntStream;
 
 import org.apache.james.imap.api.ImapMessage;
 import org.apache.james.metrics.api.Gauge;
@@ -42,6 +47,7 @@ import com.github.fge.lambdas.Throwing;
 
 import reactor.core.Disposable;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.Sinks;
 import reactor.core.scheduler.Schedulers;
 
 class ReactiveThrottlerTest {
@@ -483,5 +489,43 @@ class ReactiveThrottlerTest {
         Awaitility.await().untilAsserted(() -> assertThat(concurrentTasksCountSnapshots.size()).isEqualTo(8));
         assertThat(concurrentTasksCountSnapshots)
             .allSatisfy(i -> assertThat(i).isBetween(0, 2));
+    }
+
+    @Test
+    void queuedRequestShouldNotBeStrandedWhenTheRunningRequestCompletesConcurrently() {
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            long strandedCount = IntStream.range(0, 5000)
+                .boxed()
+                .filter(Throwing.predicate(any -> isQueuedRequestStranded(executor)).sneakyThrow())
+                .count();
+
+            assertThat(strandedCount).isZero();
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    private boolean isQueuedRequestStranded(ExecutorService executor) throws Exception {
+        // Given a throttler whose only slot is taken by request A
+        ReactiveThrottler testee = new ReactiveThrottler(new NoopGaugeRegistry(), 1, 1);
+        Sinks.One<Void> requestA = Sinks.one();
+        testee.throttle(requestA.asMono(), NO_IMAP_MESSAGE).subscribe();
+
+        // When A completes while request B arrives
+        CyclicBarrier barrier = new CyclicBarrier(2);
+        Future<?> completeA = executor.submit(Throwing.runnable(() -> {
+            barrier.await();
+            requestA.tryEmitEmpty();
+        }));
+        Future<?> submitB = executor.submit(Throwing.runnable(() -> {
+            barrier.await();
+            testee.throttle(Mono.empty(), NO_IMAP_MESSAGE).subscribe();
+        }));
+        completeA.get();
+        submitB.get();
+
+        // Then B either ran directly or was dequeued by A's completion
+        return testee.isQueueFull();
     }
 }
