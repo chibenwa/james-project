@@ -290,13 +290,9 @@ public class SelectedMailboxImpl implements SelectedMailbox, EventListener.React
     }
 
     @Override
-    public synchronized void resetEvents() {
-        sizeChanged.set(false);
-        flagUpdateUids.clear();
+    public synchronized void resetEvents(Collection<MessageUid> reportedFlagUpdateUids) {
+        flagUpdateUids.removeAll(reportedFlagUpdateUids);
         isDeletedByOtherSession.set(false);
-        long stamp = applicableFlagsLock.writeLock();
-        applicableFlags = applicableFlags.ackUpdates();
-        applicableFlagsLock.unlockWrite(stamp);
     }
 
     @Override
@@ -322,8 +318,8 @@ public class SelectedMailboxImpl implements SelectedMailbox, EventListener.React
     }
     
     @Override
-    public synchronized void resetExpungedUids() {
-        expungedUids.clear();
+    public synchronized void resetExpungedUids(Collection<MessageUid> reportedExpungedUids) {
+        expungedUids.removeAll(reportedExpungedUids);
     }
 
     /**
@@ -346,6 +342,11 @@ public class SelectedMailboxImpl implements SelectedMailbox, EventListener.React
     @Override
     public final boolean isSizeChanged() {
         return sizeChanged.get();
+    }
+
+    @Override
+    public final boolean getAndResetSizeChanged() {
+        return sizeChanged.getAndSet(false);
     }
 
     /**
