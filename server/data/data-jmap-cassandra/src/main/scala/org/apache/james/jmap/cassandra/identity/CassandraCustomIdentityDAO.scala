@@ -22,6 +22,7 @@ package org.apache.james.jmap.cassandra.identity
 import com.datastax.oss.driver.api.core.CqlSession
 import com.datastax.oss.driver.api.core.cql.{BoundStatement, PreparedStatement, Row}
 import com.datastax.oss.driver.api.core.data.UdtValue
+import com.datastax.oss.driver.api.querybuilder.QueryBuilder
 import com.datastax.oss.driver.api.querybuilder.QueryBuilder.{bindMarker, deleteFrom, insertInto, selectFrom}
 import com.google.inject.name.Named
 import jakarta.inject.Inject
@@ -58,6 +59,20 @@ case class CassandraCustomIdentityDAO @Inject()(session: CqlSession,
     .value(HTML_SIGNATURE, bindMarker(HTML_SIGNATURE))
     .value(MAY_DELETE, bindMarker(MAY_DELETE))
     .value(SORT_ORDER, bindMarker(SORT_ORDER))
+    .build())
+
+  val updateIfExistsStatement: PreparedStatement = session.prepare(QueryBuilder.update(TABLE_NAME)
+    .setColumn(NAME, bindMarker(NAME))
+    .setColumn(EMAIL, bindMarker(EMAIL))
+    .setColumn(REPLY_TO, bindMarker(REPLY_TO))
+    .setColumn(BCC, bindMarker(BCC))
+    .setColumn(TEXT_SIGNATURE, bindMarker(TEXT_SIGNATURE))
+    .setColumn(HTML_SIGNATURE, bindMarker(HTML_SIGNATURE))
+    .setColumn(MAY_DELETE, bindMarker(MAY_DELETE))
+    .setColumn(SORT_ORDER, bindMarker(SORT_ORDER))
+    .whereColumn(USER).isEqualTo(bindMarker(USER))
+    .whereColumn(ID).isEqualTo(bindMarker(ID))
+    .ifExists()
     .build())
 
   val selectAllStatement: PreparedStatement = session.prepare(selectFrom(TABLE_NAME)
@@ -106,7 +121,7 @@ case class CassandraCustomIdentityDAO @Inject()(session: CqlSession,
       .switchIfEmpty(Mono.error(() => IdentityNotFoundException(identityId)))
       .map(toIdentity)
       .map(identityUpdate.update(_))
-      .flatMap(updatedIdentity => insert(user, updatedIdentity)
+      .flatMap(updatedIdentity => updateIfExists(user, updatedIdentity)
         .flatMap(i => SMono.fromPublisher(eventBus.dispatch(CustomIdentityUpdated(Event.EventId.random(), user, i), AccountIdRegistrationKey(AccountId.fromUsername(user))))
           .map(_ => ())).asJava()))
 
@@ -134,10 +149,21 @@ case class CassandraCustomIdentityDAO @Inject()(session: CqlSession,
           .`then`(Mono.from(eventBus.dispatch(AllCustomIdentitiesDeleted(Event.EventId.random(), username, ids.toSet), AccountIdRegistrationKey(AccountId.fromUsername(username))))))
           .map(_ => ()))
 
-  private def insert(username: Username, identity: Identity): SMono[Identity] = {
+  private def insert(username: Username, identity: Identity): SMono[Identity] =
+    SMono.fromPublisher(executor.executeVoid(bindIdentity(insertStatement, username, identity))
+      .thenReturn(identity))
+
+  // A lightweight transaction: an identity destroyed concurrently is not recreated
+  private def updateIfExists(username: Username, identity: Identity): SMono[Identity] =
+    SMono.fromPublisher(executor.executeReturnApplied(bindIdentity(updateIfExistsStatement, username, identity)))
+      .filter(applied => applied)
+      .switchIfEmpty(SMono.error(IdentityNotFoundException(identity.id)))
+      .map(_ => identity)
+
+  private def bindIdentity(statement: PreparedStatement, username: Username, identity: Identity): BoundStatement = {
     val replyTo: java.util.Set[UdtValue] = toJavaSet(identity.replyTo.getOrElse(List()))
     val bcc: java.util.Set[UdtValue] = toJavaSet(identity.bcc.getOrElse(List()))
-    val insertIdentity: BoundStatement = insertStatement.bind()
+    statement.bind()
       .setString(USER, username.asString())
       .setUuid(ID, identity.id.id)
       .setString(NAME, identity.name.name)
@@ -148,9 +174,6 @@ case class CassandraCustomIdentityDAO @Inject()(session: CqlSession,
       .setInt(SORT_ORDER, identity.sortOrder)
       .setSet(REPLY_TO, replyTo, classOf[UdtValue])
       .setSet(BCC, bcc, classOf[UdtValue])
-
-    SMono.fromPublisher(executor.executeVoid(insertIdentity)
-      .thenReturn(identity))
   }
 
   private def toIdentity(row: Row): Identity =

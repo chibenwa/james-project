@@ -256,4 +256,19 @@ class IdentityRepositoryTest {
     assertThatThrownBy(() => SMono.fromPublisher(testee.update(BOB, identity.id, UPDATE_REQUEST)).block())
       .isInstanceOf(classOf[IdentityNotFoundException])
   }
+
+  @Test
+  def updateShouldNotRecreateAnIdentityDestroyedAfterItWasRead(): Unit = {
+    when(identityFactory.listIdentities(BOB)).thenReturn(SFlux.empty)
+    val customIdentity: Identity = SMono(customIdentityDAO.save(BOB, CREATION_REQUEST)).block()
+    // The custom identity is already read when the send-from check runs: destroy it there
+    val destroyThenAllowSendFrom: SMono[Boolean] = SMono.defer(() => SMono(testee.delete(BOB, Set(customIdentity.id))))
+      .`then`(SMono.just(true))
+    when(identityFactory.userCanSendFrom(BOB, BOB.asMailAddress())).thenReturn(destroyThenAllowSendFrom)
+
+    assertThatThrownBy(() => SMono(testee.update(BOB, customIdentity.id, UPDATE_REQUEST)).block())
+      .isInstanceOf(classOf[IdentityNotFoundException])
+    assertThat(SFlux(testee.list(BOB)).collectSeq().block().asJava)
+      .isEmpty()
+  }
 }

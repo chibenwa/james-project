@@ -290,6 +290,20 @@ trait CustomIdentityDAOContract {
   }
 
   @Test
+  def updateShouldNotRecreateADeletedIdentity(): Unit = {
+    val identity: Identity = SMono(testee().save(bob, CREATION_REQUEST))
+      .block()
+    SMono(testee().delete(bob, Set(identity.id))).block()
+
+    assertThatThrownBy(() => SMono(testee().update(bob, identity.id,
+      IdentityUpdateRequest(name = Some(IdentityNameUpdate(IdentityName("Bob (new name)"))))))
+      .block())
+      .isInstanceOf(classOf[IdentityNotFoundException])
+    assertThat(SFlux(testee().list(bob)).asJava().collectList().block())
+      .isEmpty()
+  }
+
+  @Test
   def upsertShouldUpdateExistsEntry(): Unit = {
     val identity: Identity = SMono(testee().save(bob, CREATION_REQUEST))
       .block()
