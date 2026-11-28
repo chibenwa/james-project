@@ -26,6 +26,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.util.Collection;
 import java.util.Date;
 import java.util.Optional;
 
@@ -44,6 +45,7 @@ import org.apache.james.mailbox.MessageManager;
 import org.apache.james.mailbox.MessageUid;
 import org.apache.james.mailbox.ModSeq;
 import org.apache.james.mailbox.events.MailboxEvents.Added;
+import org.apache.james.mailbox.events.MailboxEvents.Expunged;
 import org.apache.james.mailbox.events.MailboxEvents.FlagsUpdated;
 import org.apache.james.mailbox.events.MailboxEvents.MailboxAdded;
 import org.apache.james.mailbox.events.MailboxEvents.MailboxEvent;
@@ -88,6 +90,8 @@ class MailboxEventAnalyserTest {
         .build();
 
     private static final MessageUid MESSAGE_UID = MessageUid.of(1);
+    private static final String CUSTOM_FLAG = "custom";
+    private static final String OTHER_CUSTOM_FLAG = "other";
     private static final Username USER = Username.of("user");
     private static final MailboxSession MAILBOX_SESSION = MailboxSessionUtil.create(USER);
     private static final MailboxSession OTHER_MAILBOX_SESSION = MailboxSessionUtil.create(USER);
@@ -154,7 +158,7 @@ class MailboxEventAnalyserTest {
     @Test
     void testShouldNoSizeChangeAfterReset() throws Exception {
         testee.event(ADDED);
-        testee.resetEvents();
+        testee.getAndResetSizeChanged();
 
         assertThat(testee.isSizeChanged()).isFalse();
     }
@@ -253,5 +257,118 @@ class MailboxEventAnalyserTest {
 
         assertThat(testee.flagUpdateUids())
             .isEmpty();
+    }
+
+    @Test
+    void getAndResetSizeChangedShouldReturnThePendingSizeChange() throws Exception {
+        testee.event(ADDED);
+
+        assertThat(testee.getAndResetSizeChanged()).isTrue();
+    }
+
+    @Test
+    void sizeChangeDeliveredAfterGetAndResetShouldStayPending() throws Exception {
+        testee.event(ADDED);
+        testee.getAndResetSizeChanged();
+        testee.event(added(MessageUid.of(12), new Flags()));
+
+        assertThat(testee.isSizeChanged()).isTrue();
+    }
+
+    @Test
+    void resetExpungedUidsShouldForgetTheReportedUids() throws Exception {
+        testee.event(expunged(MESSAGE_UID));
+        testee.resetExpungedUids(testee.expungedUids());
+
+        assertThat(testee.expungedUids()).isEmpty();
+    }
+
+    @Test
+    void expungedUidDeliveredAfterTheCopyShouldStayPending() throws Exception {
+        MessageUid otherUid = MessageUid.of(2);
+        testee.event(expunged(MESSAGE_UID));
+        Collection<MessageUid> reportedExpungedUids = testee.expungedUids();
+        testee.event(expunged(otherUid));
+        testee.resetExpungedUids(reportedExpungedUids);
+
+        assertThat(testee.expungedUids()).containsExactly(otherUid);
+    }
+
+    @Test
+    void resetFlagUpdatesShouldForgetTheReportedUids() throws Exception {
+        testee.event(answered(UID));
+        testee.resetFlagUpdates(testee.flagUpdateUids());
+
+        assertThat(testee.flagUpdateUids()).isEmpty();
+    }
+
+    @Test
+    void flagUpdateDeliveredAfterTheCopyShouldStayPending() throws Exception {
+        MessageUid otherUid = MessageUid.of(901);
+        testee.event(answered(UID));
+        Collection<MessageUid> reportedFlagUpdateUids = testee.flagUpdateUids();
+        testee.event(answered(otherUid));
+        testee.resetFlagUpdates(reportedFlagUpdateUids);
+
+        assertThat(testee.flagUpdateUids()).containsExactly(otherUid);
+    }
+
+    @Test
+    void getAndResetNewApplicableFlagsShouldAcknowledgeTheNewFlags() throws Exception {
+        testee.event(added(MessageUid.of(12), new Flags(CUSTOM_FLAG)));
+
+        assertThat(testee.getAndResetNewApplicableFlags()).isTrue();
+        assertThat(testee.hasNewApplicableFlags()).isFalse();
+    }
+
+    @Test
+    void newApplicableFlagsShouldStayPendingWhenALaterEventBringsNoNewFlag() throws Exception {
+        testee.event(added(MessageUid.of(12), new Flags(CUSTOM_FLAG)));
+        testee.event(added(MessageUid.of(13), new Flags()));
+
+        assertThat(testee.hasNewApplicableFlags()).isTrue();
+    }
+
+    @Test
+    void newApplicableFlagsDeliveredAfterGetAndResetShouldStayPending() throws Exception {
+        testee.event(added(MessageUid.of(12), new Flags(CUSTOM_FLAG)));
+        testee.getAndResetNewApplicableFlags();
+        testee.event(added(MessageUid.of(13), new Flags(OTHER_CUSTOM_FLAG)));
+
+        assertThat(testee.hasNewApplicableFlags()).isTrue();
+    }
+
+    private Added added(MessageUid uid, Flags flags) {
+        return EventFactory.added()
+            .randomEventId()
+            .mailboxSession(OTHER_MAILBOX_SESSION)
+            .mailbox(DEFAULT_MAILBOX)
+            .addMetaData(new MessageMetaData(uid, ModSeq.first(), flags, 45, new Date(), Optional.empty(), new DefaultMessageId(), ThreadId.fromBaseMessageId(new DefaultMessageId())))
+            .isDelivery(!IS_DELIVERY)
+            .isAppended(!IS_APPENDED)
+            .build();
+    }
+
+    private Expunged expunged(MessageUid uid) {
+        return EventFactory.expunged()
+            .randomEventId()
+            .mailboxSession(OTHER_MAILBOX_SESSION)
+            .mailbox(DEFAULT_MAILBOX)
+            .addMetaData(new MessageMetaData(uid, ModSeq.first(), new Flags(), 45, new Date(), Optional.empty(), new DefaultMessageId(), ThreadId.fromBaseMessageId(new DefaultMessageId())))
+            .build();
+    }
+
+    private FlagsUpdated answered(MessageUid uid) {
+        return EventFactory.flagsUpdated()
+            .randomEventId()
+            .mailboxSession(OTHER_MAILBOX_SESSION)
+            .mailbox(DEFAULT_MAILBOX)
+            .updatedFlag(UpdatedFlags.builder()
+                .uid(uid)
+                .modSeq(ModSeq.first())
+                .oldFlags(new Flags())
+                .newFlags(new Flags(Flags.Flag.ANSWERED))
+                .build())
+            .build();
     }
 }

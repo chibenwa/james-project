@@ -119,7 +119,8 @@ public class SelectedMailboxImpl implements SelectedMailbox, EventListener.React
             updatedFlags.remove(Flag.RECENT);
 
             boolean applicableFlagsChanged = size < updatedFlags.getUserFlags().length;
-            return new ApplicableFlags(updatedFlags, applicableFlagsChanged);
+            // an update not acknowledged yet stays pending
+            return new ApplicableFlags(updatedFlags, updated || applicableFlagsChanged);
         }
     }
 
@@ -299,13 +300,9 @@ public class SelectedMailboxImpl implements SelectedMailbox, EventListener.React
     }
 
     @Override
-    public synchronized void resetEvents() {
-        sizeChanged.set(false);
-        flagUpdateUids.clear();
-        isDeletedByOtherSession.set(false);
-        long stamp = applicableFlagsLock.writeLock();
-        applicableFlags = applicableFlags.ackUpdates();
-        applicableFlagsLock.unlockWrite(stamp);
+    public synchronized void resetFlagUpdates(Collection<MessageUid> reportedFlagUpdateUids) {
+        // a flag update delivered since the copy stays pending for the next response
+        flagUpdateUids.removeAll(reportedFlagUpdateUids);
     }
 
     @Override
@@ -331,10 +328,11 @@ public class SelectedMailboxImpl implements SelectedMailbox, EventListener.React
     }
     
     @Override
-    public synchronized void resetExpungedUids() {
+    public synchronized void resetExpungedUids(Collection<MessageUid> reportedExpungedUids) {
         // The expunged messages are no longer \Recent: forget them before forgetting the expunged UIDs
         checkExpungedRecents();
-        expungedUids.clear();
+        // an Expunged delivered since the copy stays pending for the next response
+        expungedUids.removeAll(reportedExpungedUids);
     }
 
     /**
@@ -357,6 +355,11 @@ public class SelectedMailboxImpl implements SelectedMailbox, EventListener.React
     @Override
     public final boolean isSizeChanged() {
         return sizeChanged.get();
+    }
+
+    @Override
+    public boolean getAndResetSizeChanged() {
+        return sizeChanged.getAndSet(false);
     }
 
     /**
@@ -404,9 +407,19 @@ public class SelectedMailboxImpl implements SelectedMailbox, EventListener.React
     
     @Override
     public void resetNewApplicableFlags() {
+        getAndResetNewApplicableFlags();
+    }
+
+    @Override
+    public boolean getAndResetNewApplicableFlags() {
         long stamp = applicableFlagsLock.writeLock();
-        applicableFlags = applicableFlags.ackUpdates();
-        applicableFlagsLock.unlockWrite(stamp);
+        try {
+            boolean updated = applicableFlags.updated();
+            applicableFlags = applicableFlags.ackUpdates();
+            return updated;
+        } finally {
+            applicableFlagsLock.unlockWrite(stamp);
+        }
     }
 
     @Override

@@ -293,10 +293,9 @@ public class StoreProcessor extends AbstractMailboxProcessor<StoreRequest> {
         // As the STORE command is allowed to create a new "flag/keyword", we need to send a FLAGS and PERMANENTFLAGS response before the FETCH response
         // if some new flag/keyword was used
         // See IMAP-303
-        if (selected.hasNewApplicableFlags()) {
+        if (selected.getAndResetNewApplicableFlags()) {
             flags(responder, selected);
             permanentFlags(responder, mailbox.getPermanentFlags(mailboxSession), selected, mailboxSession);
-            selected.resetNewApplicableFlags();
         }
     }
 

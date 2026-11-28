@@ -205,7 +205,8 @@ public abstract class AbstractMailboxProcessor<R extends ImapRequest> extends Ab
 
     private Mono<Void> unsolicitedResponses(ImapSession session, ImapProcessor.Responder responder, SelectedMailbox selected, boolean omitExpunged, boolean useUid) {
         return Mono.fromRunnable(() -> {
-            boolean sizeChanged = selected.isSizeChanged();
+            // consumed when read: a message added afterwards is announced by the next response
+            boolean sizeChanged = selected.getAndResetSizeChanged();
             // New message response
             if (sizeChanged) {
                 addExistsResponses(selected, responder);
@@ -221,7 +222,7 @@ public abstract class AbstractMailboxProcessor<R extends ImapRequest> extends Ab
                         addExpungedResponses(selected, expungedUids, responder);
                     }
                     // Only reset the events if we send the EXPUNGE or VANISHED responses. See IMAP-286
-                    selected.resetExpungedUids();
+                    selected.resetExpungedUids(expungedUids);
                 }
 
             }
@@ -230,8 +231,7 @@ public abstract class AbstractMailboxProcessor<R extends ImapRequest> extends Ab
                 selected.resetRecentUidRemoved();
             }
         })
-            .then(addFlagsResponses(session, selected, responder, useUid))
-            .then(Mono.fromRunnable(selected::resetEvents));
+            .then(Mono.defer(() -> addFlagsResponses(session, selected, responder, useUid, selected.flagUpdateUids())));
     }
 
     private void addExpungedResponses(SelectedMailbox selected, Collection<MessageUid> expungedUids, ImapProcessor.Responder responder) {
@@ -254,11 +254,18 @@ public abstract class AbstractMailboxProcessor<R extends ImapRequest> extends Ab
         responder.respond(new VanishedResponse(uidRange, false));
     }
     
-    private Mono<Void> addFlagsResponses(ImapSession session, SelectedMailbox selected, ImapProcessor.Responder responder, boolean useUid) {
+    private Mono<Void> addFlagsResponses(ImapSession session, SelectedMailbox selected, ImapProcessor.Responder responder, boolean useUid,
+                                         Collection<MessageUid> flagUpdateUids) {
+        return addFlagsResponsesFor(session, selected, responder, useUid, flagUpdateUids)
+            // forget only the reported flag updates: the ones delivered meanwhile stay pending
+            .then(Mono.fromRunnable(() -> selected.resetFlagUpdates(flagUpdateUids)));
+    }
+
+    private Mono<Void> addFlagsResponsesFor(ImapSession session, SelectedMailbox selected, ImapProcessor.Responder responder, boolean useUid,
+                                            Collection<MessageUid> flagUpdateUids) {
         MessageManager messageManager = selected.getMessageManager();
         MailboxSession mailboxSession = session.getMailboxSession();
 
-        Collection<MessageUid> flagUpdateUids = selected.flagUpdateUids();
         if (!flagUpdateUids.isEmpty()) {
 
             return Mono.fromRunnable(() -> addApplicableFlagResponse(session, selected, responder, useUid))
@@ -283,10 +290,9 @@ public abstract class AbstractMailboxProcessor<R extends ImapRequest> extends Ab
         // Check if we need to send a FLAGS and PERMANENTFLAGS response before the FETCH response
         // This is the case if some new flag/keyword was used
         // See IMAP-303
-        if (selected.hasNewApplicableFlags()) {
+        if (selected.getAndResetNewApplicableFlags()) {
             flags(responder, selected);
             permanentFlags(responder, messageManager.getPermanentFlags(mailboxSession), selected, mailboxSession);
-            selected.resetNewApplicableFlags();
         }
     }
     
