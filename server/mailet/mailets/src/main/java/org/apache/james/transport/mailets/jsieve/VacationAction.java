@@ -101,9 +101,18 @@ public class VacationAction implements MailAction {
                 && !isMailingList(mail)
                 && !automaticallySentMailDetector.isAutomaticallySent(mail)
                 && !isNoReplySender(mail)
-                && !alreadyAnswered(mail, actionVacation, context)) {
+                && !alreadyAnswered(mail, actionVacation, context)
+                && registerNotification(mail, actionVacation, context)) {
+            sendVacationNotificationOrUnregister(mail, actionVacation, context);
+        }
+    }
+
+    private void sendVacationNotificationOrUnregister(Mail mail, ActionVacation actionVacation, ActionContext context) throws MessagingException {
+        try {
             sendVacationNotification(mail, actionVacation, context);
-            registerNotification(mail, actionVacation, context);
+        } catch (MessagingException | RuntimeException e) {
+            unregisterNotification(mail, actionVacation, context);
+            throw e;
         }
     }
 
@@ -220,12 +229,30 @@ public class VacationAction implements MailAction {
         return alreadyAnswered;
     }
 
-    private void registerNotification(Mail mail, ActionVacation actionVacation, ActionContext context) {
+    // Registering before replying, atomically, lets only one of the mails processed at once answer the sender.
+    // Not knowing whether it registered must not prevent the reply.
+    private boolean registerNotification(Mail mail, ActionVacation actionVacation, ActionContext context) {
         ZonedDateTime expiryDate = context.getScriptInterpretationDate()
             .plusDays(Math.min(actionVacation.getDuration(), MAXIMUM_DAYS_BETWEEN_REPLIES));
-        Mono.defer(() -> notificationRegistry.register(accountId(actionVacation, context), recipientId(mail), Optional.of(expiryDate)))
+        boolean registered = Mono.defer(() -> notificationRegistry.registerIfAbsent(accountId(actionVacation, context), recipientId(mail), Optional.of(expiryDate)))
             .onErrorResume(e -> {
-                LOGGER.error("Cannot record that the vacation of {} answered {}",
+                LOGGER.error("Cannot record that the vacation of {} answered {}, replying anyway",
+                    context.getRecipient().asString(), mail.getMaybeSender().asString(), e);
+                return Mono.just(true);
+            })
+            .blockOptional()
+            .orElse(true);
+        if (!registered) {
+            LOGGER.debug("{} is being answered by the vacation of {}", mail.getMaybeSender().asString(), context.getRecipient().asString());
+        }
+        return registered;
+    }
+
+    // So that a later mail from that sender gets the reply this one could not send
+    private void unregisterNotification(Mail mail, ActionVacation actionVacation, ActionContext context) {
+        Mono.defer(() -> notificationRegistry.unregister(accountId(actionVacation, context), recipientId(mail)))
+            .onErrorResume(e -> {
+                LOGGER.error("Cannot forget that the vacation of {} answered {}",
                     context.getRecipient().asString(), mail.getMaybeSender().asString(), e);
                 return Mono.empty();
             })

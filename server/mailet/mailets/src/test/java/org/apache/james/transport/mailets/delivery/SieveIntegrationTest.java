@@ -1543,6 +1543,48 @@ class SieveIntegrationTest {
         assertThat(fakeMailContext.getSentMails()).hasSize(1);
     }
 
+    @Test
+    void vacationShouldNotReplyWhenAConcurrentMailRegisteredTheNotification() throws Exception {
+        testee = sieveWithRegistry(concurrentlyRegisteredRegistry());
+        prepareTestUsingScript("org/apache/james/transport/mailets/delivery/vacationReasonAndFileInto.script");
+
+        FakeMail mail = createMail();
+        testee.service(mail);
+
+        assertThatAttribute(mail.getAttribute(ATTRIBUTE_NAME)).isEqualTo(ATTRIBUTE_SELECTED_MAILBOX);
+        assertThat(fakeMailContext.getSentMails()).isEmpty();
+    }
+
+    // Not registered when looked up, registered by another mail when registering
+    private NotificationRegistry concurrentlyRegisteredRegistry() {
+        return new NotificationRegistry() {
+            @Override
+            public Mono<Void> register(AccountId accountId, RecipientId recipientId, Optional<ZonedDateTime> expiryDate) {
+                return Mono.empty();
+            }
+
+            @Override
+            public Mono<Boolean> registerIfAbsent(AccountId accountId, RecipientId recipientId, Optional<ZonedDateTime> expiryDate) {
+                return Mono.just(false);
+            }
+
+            @Override
+            public Mono<Boolean> isRegistered(AccountId accountId, RecipientId recipientId) {
+                return Mono.just(false);
+            }
+
+            @Override
+            public Mono<Void> unregister(AccountId accountId, RecipientId recipientId) {
+                return Mono.empty();
+            }
+
+            @Override
+            public Mono<Void> flush(AccountId accountId) {
+                return Mono.empty();
+            }
+        };
+    }
+
     private Sieve sieveWithRegistry(NotificationRegistry registry) throws MessagingException {
         Sieve sieve = new Sieve(usersRepository, resourceLocator, registry, new AutomaticallySentMailDetectorImpl());
         sieve.init(FakeMailetConfig.builder().mailetName("Sieve").mailetContext(fakeMailContext).build());
@@ -1566,6 +1608,11 @@ class SieveIntegrationTest {
             }
 
             @Override
+            public Mono<Void> unregister(AccountId accountId, RecipientId recipientId) {
+                return Mono.empty();
+            }
+
+            @Override
             public Mono<Void> flush(AccountId accountId) {
                 return Mono.empty();
             }
@@ -1582,6 +1629,11 @@ class SieveIntegrationTest {
             @Override
             public Mono<Boolean> isRegistered(AccountId accountId, RecipientId recipientId) {
                 return isRegistered;
+            }
+
+            @Override
+            public Mono<Void> unregister(AccountId accountId, RecipientId recipientId) {
+                return Mono.empty();
             }
 
             @Override

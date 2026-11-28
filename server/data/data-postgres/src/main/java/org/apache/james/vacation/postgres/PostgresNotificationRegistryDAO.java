@@ -29,14 +29,19 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Optional;
 
+import org.apache.james.backends.postgres.PostgresCommons;
 import org.apache.james.backends.postgres.utils.PostgresExecutor;
 import org.apache.james.util.date.ZonedDateTimeProvider;
 import org.apache.james.vacation.api.AccountId;
 import org.apache.james.vacation.api.RecipientId;
+import org.jooq.Field;
 
 import reactor.core.publisher.Mono;
 
 public class PostgresNotificationRegistryDAO {
+    // Qualified, so that ON CONFLICT DO UPDATE reads the existing row rather than the excluded one
+    private static final Field<LocalDateTime> STORED_EXPIRY_DATE = PostgresCommons.tableField(TABLE_NAME, EXPIRY_DATE);
+
     private final PostgresExecutor postgresExecutor;
     private final ZonedDateTimeProvider zonedDateTimeProvider;
 
@@ -47,8 +52,7 @@ public class PostgresNotificationRegistryDAO {
     }
 
     public Mono<Void> register(AccountId accountId, RecipientId recipientId, Optional<ZonedDateTime> expiryDate) {
-        LocalDateTime utcExpiryDate = expiryDate.map(zonedDateTime -> zonedDateTime.withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime())
-            .orElse(null);
+        LocalDateTime utcExpiryDate = toUTC(expiryDate);
 
         return deleteExpired(accountId)
             .then(postgresExecutor.executeVoid(dsl -> Mono.from(dsl.insertInto(TABLE_NAME)
@@ -60,9 +64,41 @@ public class PostgresNotificationRegistryDAO {
                 .set(EXPIRY_DATE, utcExpiryDate))));
     }
 
+    // Only an expired registration is replaced, within the insert, so that concurrent callers cannot both register
+    public Mono<Boolean> registerIfAbsent(AccountId accountId, RecipientId recipientId, Optional<ZonedDateTime> expiryDate) {
+        LocalDateTime utcExpiryDate = toUTC(expiryDate);
+        LocalDateTime currentUTCTime = currentUTCTime();
+
+        return deleteExpired(accountId)
+            .then(postgresExecutor.executeReturnAffectedRowsCount(dsl -> Mono.from(dsl.insertInto(TABLE_NAME)
+                .set(ACCOUNT_ID, accountId.getIdentifier())
+                .set(RECIPIENT_ID, recipientId.getAsString())
+                .set(EXPIRY_DATE, utcExpiryDate)
+                .onConflict(ACCOUNT_ID, RECIPIENT_ID)
+                .doUpdate()
+                .set(EXPIRY_DATE, utcExpiryDate)
+                .where(STORED_EXPIRY_DATE.lt(currentUTCTime)))))
+            .map(affectedRows -> affectedRows > 0);
+    }
+
+    public Mono<Void> unregister(AccountId accountId, RecipientId recipientId) {
+        return postgresExecutor.executeVoid(dsl -> Mono.from(dsl.deleteFrom(TABLE_NAME)
+            .where(ACCOUNT_ID.eq(accountId.getIdentifier()),
+                RECIPIENT_ID.eq(recipientId.getAsString()))));
+    }
+
+    private LocalDateTime toUTC(Optional<ZonedDateTime> date) {
+        return date.map(zonedDateTime -> zonedDateTime.withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime())
+            .orElse(null);
+    }
+
+    private LocalDateTime currentUTCTime() {
+        return zonedDateTimeProvider.get().withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
+    }
+
     // Nothing else removes them: without this, every sender ever answered would stay until a flush
     private Mono<Void> deleteExpired(AccountId accountId) {
-        LocalDateTime currentUTCTime = zonedDateTimeProvider.get().withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
+        LocalDateTime currentUTCTime = currentUTCTime();
 
         return postgresExecutor.executeVoid(dsl -> Mono.from(dsl.deleteFrom(TABLE_NAME)
             .where(ACCOUNT_ID.eq(accountId.getIdentifier()),
@@ -70,7 +106,7 @@ public class PostgresNotificationRegistryDAO {
     }
 
     public Mono<Boolean> isRegistered(AccountId accountId, RecipientId recipientId) {
-        LocalDateTime currentUTCTime = zonedDateTimeProvider.get().withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
+        LocalDateTime currentUTCTime = currentUTCTime();
 
         return postgresExecutor.executeExists(dsl -> dsl.selectOne()
             .from(TABLE_NAME)

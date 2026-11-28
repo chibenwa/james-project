@@ -22,6 +22,7 @@ package org.apache.james.vacation.memory;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import jakarta.inject.Inject;
 
@@ -79,6 +80,26 @@ public class MemoryNotificationRegistry implements NotificationRegistry {
     }
 
     @Override
+    public Mono<Boolean> registerIfAbsent(AccountId accountId, RecipientId recipientId, Optional<ZonedDateTime> expiryDate) {
+        return Mono.fromCallable(() -> registerIfAbsent(new Registration(accountId, recipientId), expiryDate, zonedDateTimeProvider.get()));
+    }
+
+    private boolean registerIfAbsent(Registration registration, Optional<ZonedDateTime> expiryDate, ZonedDateTime currentTime) {
+        if (isExpired(currentTime, expiryDate)) {
+            return false;
+        }
+        AtomicBoolean registered = new AtomicBoolean(false);
+        registrations.asMap().compute(registration, (key, existingEnd) -> {
+            if (existingEnd != null && !isExpired(currentTime, existingEnd)) {
+                return existingEnd;
+            }
+            registered.set(true);
+            return expiryDate;
+        });
+        return registered.get();
+    }
+
+    @Override
     public Mono<Boolean> isRegistered(AccountId accountId, RecipientId recipientId) {
         return Mono.just(Optional.ofNullable(registrations.getIfPresent(new Registration(accountId, recipientId)))
             .filter(registrationEnd -> !isExpired(zonedDateTimeProvider.get(), registrationEnd))
@@ -87,6 +108,11 @@ public class MemoryNotificationRegistry implements NotificationRegistry {
 
     private boolean isExpired(ZonedDateTime currentTime, Optional<ZonedDateTime> registrationEnd) {
         return registrationEnd.map(end -> !currentTime.isBefore(end)).orElse(false);
+    }
+
+    @Override
+    public Mono<Void> unregister(AccountId accountId, RecipientId recipientId) {
+        return Mono.fromRunnable(() -> registrations.invalidate(new Registration(accountId, recipientId)));
     }
 
     @VisibleForTesting

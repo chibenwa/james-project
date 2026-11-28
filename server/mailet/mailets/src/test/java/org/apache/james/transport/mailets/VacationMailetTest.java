@@ -23,6 +23,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -95,6 +96,7 @@ public class VacationMailetTest {
         zonedDateTimeProvider = mock(ZonedDateTimeProvider.class);
         automaticallySentMailDetector = mock(AutomaticallySentMailDetector.class);
         testee = new VacationMailet(vacationService, zonedDateTimeProvider, automaticallySentMailDetector, mimeMessageBodyGenerator);
+        when(vacationService.registerNotificationIfAbsent(any(), any(), any())).thenReturn(Mono.just(true));
         mailetContext = mock(MailetContext.class);
         testee.init(FakeMailetConfig.builder()
                 .mailetName("vacation")
@@ -127,7 +129,7 @@ public class VacationMailetTest {
         verify(mailetContext).sendMail(eq(MailAddress.nullSender()), eq(ImmutableList.of(originalSender)), any());
         verify(vacationService).retrieveVacation(AccountId.fromString(USERNAME));
         verify(vacationService).isNotificationRegistered(ACCOUNT_ID, recipientId);
-        verify(vacationService).registerNotification(ACCOUNT_ID, recipientId, Optional.of(DATE_TIME_2018));
+        verify(vacationService).registerNotificationIfAbsent(ACCOUNT_ID, recipientId, Optional.of(DATE_TIME_2018));
         verifyNoMoreInteractions(mailetContext, vacationService);
     }
 
@@ -151,7 +153,7 @@ public class VacationMailetTest {
         verify(mailetContext).sendMail(eq(originalRecipient), eq(ImmutableList.of(originalSender)), any());
         verify(vacationService).retrieveVacation(AccountId.fromString(USERNAME));
         verify(vacationService).isNotificationRegistered(ACCOUNT_ID, recipientId);
-        verify(vacationService).registerNotification(ACCOUNT_ID, recipientId, Optional.of(DATE_TIME_2018));
+        verify(vacationService).registerNotificationIfAbsent(ACCOUNT_ID, recipientId, Optional.of(DATE_TIME_2018));
         verifyNoMoreInteractions(mailetContext, vacationService);
     }
 
@@ -263,7 +265,7 @@ public class VacationMailetTest {
         when(zonedDateTimeProvider.get()).thenReturn(DATE_TIME_2017);
         RecipientId recipientId = RecipientId.fromMailAddress(originalSender);
         when(vacationService.isNotificationRegistered(ACCOUNT_ID, recipientId)).thenReturn(Mono.just(false));
-        when(vacationService.registerNotification(ACCOUNT_ID, recipientId, Optional.of(DATE_TIME_2018))).thenThrow(new RuntimeException());
+        when(vacationService.registerNotificationIfAbsent(ACCOUNT_ID, recipientId, Optional.of(DATE_TIME_2018))).thenThrow(new RuntimeException());
 
         testee.service(mail);
 
@@ -316,8 +318,8 @@ public class VacationMailetTest {
             .thenReturn(Mono.just(false));
         when(vacationService.isNotificationRegistered(secondAccountId, RecipientId.fromMailAddress(originalSender)))
             .thenReturn(Mono.just(false));
-        when(vacationService.registerNotification(any(), any(), any()))
-            .thenReturn(Mono.empty());
+        when(vacationService.registerNotificationIfAbsent(any(), any(), any()))
+            .thenReturn(Mono.just(true));
 
         testee.service(mail);
 
@@ -404,6 +406,48 @@ public class VacationMailetTest {
 
         verify(mailetContext).sendMail(eq(MailAddress.nullSender()), eq(ImmutableList.of(originalSender)), any());
         verifyNoMoreInteractions(mailetContext);
+    }
+
+    @Test
+    public void activateVacationShouldNotSendNotificationWhenAConcurrentMailRegisteredIt() throws Exception {
+        when(vacationService.retrieveVacation(AccountId.fromString(USERNAME)))
+            .thenReturn(Mono.just(VACATION));
+        when(zonedDateTimeProvider.get()).thenReturn(DATE_TIME_2017);
+        when(automaticallySentMailDetector.isAutomaticallySent(mail)).thenReturn(false);
+        when(vacationService.isNotificationRegistered(ACCOUNT_ID, recipientId)).thenReturn(Mono.just(false));
+        when(vacationService.registerNotificationIfAbsent(ACCOUNT_ID, recipientId, Optional.of(DATE_TIME_2018))).thenReturn(Mono.just(false));
+
+        testee.service(mail);
+
+        verifyNoMoreInteractions(mailetContext);
+    }
+
+    @Test
+    public void activateVacationShouldUnregisterTheNotificationWhenSendFails() throws Exception {
+        when(vacationService.retrieveVacation(AccountId.fromString(USERNAME)))
+            .thenReturn(Mono.just(VACATION));
+        when(zonedDateTimeProvider.get()).thenReturn(DATE_TIME_2017);
+        when(automaticallySentMailDetector.isAutomaticallySent(mail)).thenReturn(false);
+        when(vacationService.isNotificationRegistered(ACCOUNT_ID, recipientId)).thenReturn(Mono.just(false));
+        when(vacationService.unregisterNotification(ACCOUNT_ID, recipientId)).thenReturn(Mono.empty());
+        doThrow(new MessagingException()).when(mailetContext).sendMail(eq(MailAddress.nullSender()), eq(ImmutableList.of(originalSender)), any());
+
+        testee.service(mail);
+
+        verify(vacationService).unregisterNotification(ACCOUNT_ID, recipientId);
+    }
+
+    @Test
+    public void activateVacationShouldNotUnregisterTheNotificationWhenSendSucceeds() throws Exception {
+        when(vacationService.retrieveVacation(AccountId.fromString(USERNAME)))
+            .thenReturn(Mono.just(VACATION));
+        when(zonedDateTimeProvider.get()).thenReturn(DATE_TIME_2017);
+        when(automaticallySentMailDetector.isAutomaticallySent(mail)).thenReturn(false);
+        when(vacationService.isNotificationRegistered(ACCOUNT_ID, recipientId)).thenReturn(Mono.just(false));
+
+        testee.service(mail);
+
+        verify(vacationService, never()).unregisterNotification(any(), any());
     }
 
 }

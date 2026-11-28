@@ -59,8 +59,23 @@ public class PostgresNotificationRegistry implements NotificationRegistry {
     }
 
     @Override
+    public Mono<Boolean> registerIfAbsent(AccountId accountId, RecipientId recipientId, Optional<ZonedDateTime> expiryDate) {
+        if (isValid(expiryDate)) {
+            return notificationRegistryDAO(accountId).registerIfAbsent(accountId, recipientId, expiryDate);
+        } else {
+            LOGGER.warn("Invalid vacation notification expiry date for {} {} : {}", accountId, recipientId, expiryDate);
+            return Mono.just(false);
+        }
+    }
+
+    @Override
     public Mono<Boolean> isRegistered(AccountId accountId, RecipientId recipientId) {
         return notificationRegistryDAO(accountId).isRegistered(accountId, recipientId);
+    }
+
+    @Override
+    public Mono<Void> unregister(AccountId accountId, RecipientId recipientId) {
+        return notificationRegistryDAO(accountId).unregister(accountId, recipientId);
     }
 
     @Override

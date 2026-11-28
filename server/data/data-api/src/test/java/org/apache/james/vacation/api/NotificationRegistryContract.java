@@ -36,6 +36,10 @@ import org.junit.jupiter.api.Test;
 
 import com.github.fge.lambdas.Throwing;
 
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
+
 public interface NotificationRegistryContract {
     ZonedDateTime ZONED_DATE_TIME = ZonedDateTime.parse("2016-04-03T02:01:01+07:00[Asia/Vientiane]");
     ZonedDateTime ZONED_DATE_TIME_PLUS_4_SECONDS = ZonedDateTime.parse("2016-04-03T02:01:05+07:00[Asia/Vientiane]");
@@ -177,5 +181,101 @@ public interface NotificationRegistryContract {
         notificationRegistry().flush(upperCaseAccount).block();
 
         assertThat(notificationRegistry().isRegistered(ACCOUNT_ID, recipientId()).block()).isFalse();
+    }
+
+    @Test
+    default void registerIfAbsentShouldRegister() {
+        when(zonedDateTimeProvider.get()).thenReturn(ZONED_DATE_TIME);
+        assertThat(notificationRegistry().registerIfAbsent(ACCOUNT_ID, recipientId(), Optional.empty()).block()).isTrue();
+
+        assertThat(notificationRegistry().isRegistered(ACCOUNT_ID, recipientId()).block()).isTrue();
+    }
+
+    @Test
+    default void registerIfAbsentShouldReturnFalseWhenAlreadyRegistered() {
+        when(zonedDateTimeProvider.get()).thenReturn(ZONED_DATE_TIME);
+        notificationRegistry().register(ACCOUNT_ID, recipientId(), Optional.empty()).block();
+
+        assertThat(notificationRegistry().registerIfAbsent(ACCOUNT_ID, recipientId(), Optional.empty()).block()).isFalse();
+    }
+
+    @Test
+    default void registerIfAbsentShouldReturnFalseWhenCalledTwice() {
+        when(zonedDateTimeProvider.get()).thenReturn(ZONED_DATE_TIME);
+        notificationRegistry().registerIfAbsent(ACCOUNT_ID, recipientId(), Optional.of(ZONED_DATE_TIME_PLUS_4_SECONDS)).block();
+
+        assertThat(notificationRegistry().registerIfAbsent(ACCOUNT_ID, recipientId(), Optional.of(ZONED_DATE_TIME_PLUS_4_SECONDS)).block()).isFalse();
+    }
+
+    @Test
+    default void registerIfAbsentShouldRegisterAgainAfterExpiracyDate() {
+        when(zonedDateTimeProvider.get()).thenReturn(ZONED_DATE_TIME);
+        notificationRegistry().registerIfAbsent(ACCOUNT_ID, recipientId(), Optional.of(ZONED_DATE_TIME_PLUS_4_SECONDS)).block();
+
+        when(zonedDateTimeProvider.get()).thenReturn(ZONED_DATE_TIME_PLUS_8_SECONDS);
+
+        await().atMost(20, TimeUnit.SECONDS)
+            .until(() -> notificationRegistry().registerIfAbsent(ACCOUNT_ID, recipientId(), Optional.of(ZONED_DATE_TIME_PLUS_8_SECONDS.plusDays(1))).block());
+        assertThat(notificationRegistry().isRegistered(ACCOUNT_ID, recipientId()).block()).isTrue();
+    }
+
+    @Test
+    default void registerIfAbsentShouldNotRegisterWhenExpiryDateIsPast() {
+        when(zonedDateTimeProvider.get()).thenReturn(ZONED_DATE_TIME_PLUS_4_SECONDS);
+
+        assertThat(notificationRegistry().registerIfAbsent(ACCOUNT_ID, recipientId(), Optional.of(ZONED_DATE_TIME)).block()).isFalse();
+        assertThat(notificationRegistry().isRegistered(ACCOUNT_ID, recipientId()).block()).isFalse();
+    }
+
+    @Test
+    default void registerIfAbsentShouldRegisterOnlyOnceWhenConcurrent() {
+        when(zonedDateTimeProvider.get()).thenReturn(ZONED_DATE_TIME);
+        long registrations = Flux.range(0, 10)
+            .flatMap(i -> Mono.defer(() -> notificationRegistry().registerIfAbsent(ACCOUNT_ID, recipientId(), Optional.empty()))
+                .subscribeOn(Schedulers.parallel()))
+            .filter(registered -> registered)
+            .count()
+            .block();
+
+        assertThat(registrations).isEqualTo(1);
+    }
+
+    @Test
+    default void unregisterShouldWork() {
+        when(zonedDateTimeProvider.get()).thenReturn(ZONED_DATE_TIME);
+        notificationRegistry().register(ACCOUNT_ID, recipientId(), Optional.empty()).block();
+
+        notificationRegistry().unregister(ACCOUNT_ID, recipientId()).block();
+
+        assertThat(notificationRegistry().isRegistered(ACCOUNT_ID, recipientId()).block()).isFalse();
+    }
+
+    @Test
+    default void unregisterShouldBeIdempotent() {
+        when(zonedDateTimeProvider.get()).thenReturn(ZONED_DATE_TIME);
+        notificationRegistry().unregister(ACCOUNT_ID, recipientId()).block();
+
+        assertThat(notificationRegistry().isRegistered(ACCOUNT_ID, recipientId()).block()).isFalse();
+    }
+
+    @Test
+    default void registerIfAbsentShouldRegisterAgainAfterUnregister() {
+        when(zonedDateTimeProvider.get()).thenReturn(ZONED_DATE_TIME);
+        notificationRegistry().registerIfAbsent(ACCOUNT_ID, recipientId(), Optional.empty()).block();
+        notificationRegistry().unregister(ACCOUNT_ID, recipientId()).block();
+
+        assertThat(notificationRegistry().registerIfAbsent(ACCOUNT_ID, recipientId(), Optional.empty()).block()).isTrue();
+    }
+
+    @Test
+    default void unregisterShouldNotAffectOtherAccounts() {
+        when(zonedDateTimeProvider.get()).thenReturn(ZONED_DATE_TIME);
+        AccountId otherAccount = AccountId.fromString("other");
+        notificationRegistry().register(ACCOUNT_ID, recipientId(), Optional.empty()).block();
+        notificationRegistry().register(otherAccount, recipientId(), Optional.empty()).block();
+
+        notificationRegistry().unregister(otherAccount, recipientId()).block();
+
+        assertThat(notificationRegistry().isRegistered(ACCOUNT_ID, recipientId()).block()).isTrue();
     }
 }

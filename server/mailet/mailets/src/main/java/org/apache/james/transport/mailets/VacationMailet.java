@@ -211,17 +211,49 @@ public class VacationMailet extends GenericMailet {
                 .vacation(vacationInformation.vacation)
                 .build(mimeMessageBodyGenerator);
 
-            getMailetContext().sendMail(getSender(vacationInformation.recipient),
-                vacationReply.getRecipients(),
-                vacationReply.getMimeMessage());
-
-            vacationService.registerNotification(vacationInformation.accountId(),
-                vacationInformation.replyRecipient(),
-                vacationInformation.vacation().getToDate())
-                .block();
+            if (registerNotification(vacationInformation)) {
+                sendReply(vacationInformation, vacationReply);
+            }
         } catch (MessagingException e) {
             LOGGER.warn("Failed to send JMAP vacation notification from {} to {}", vacationInformation.recipient(), vacationInformation.replyRecipient().getAsString(), e);
         }
+    }
+
+    // Registering before replying, atomically, lets only one of the mails processed at once answer the sender.
+    // Not knowing whether it registered must not prevent the reply.
+    private boolean registerNotification(VacationInformation vacationInformation) {
+        return Mono.defer(() -> vacationService.registerNotificationIfAbsent(vacationInformation.accountId(),
+                vacationInformation.replyRecipient(),
+                vacationInformation.vacation().getToDate()))
+            .onErrorResume(e -> {
+                LOGGER.warn("Cannot record that the vacation of {} answered {}, replying anyway",
+                    vacationInformation.recipient(), vacationInformation.replyRecipient().getAsString(), e);
+                return Mono.just(true);
+            })
+            .blockOptional()
+            .orElse(true);
+    }
+
+    private void sendReply(VacationInformation vacationInformation, VacationReply vacationReply) throws MessagingException {
+        try {
+            getMailetContext().sendMail(getSender(vacationInformation.recipient),
+                vacationReply.getRecipients(),
+                vacationReply.getMimeMessage());
+        } catch (MessagingException e) {
+            unregisterNotification(vacationInformation);
+            throw e;
+        }
+    }
+
+    // So that a later mail from that sender gets the reply this one could not send
+    private void unregisterNotification(VacationInformation vacationInformation) {
+        Mono.defer(() -> vacationService.unregisterNotification(vacationInformation.accountId(), vacationInformation.replyRecipient()))
+            .onErrorResume(e -> {
+                LOGGER.warn("Cannot forget that the vacation of {} answered {}",
+                    vacationInformation.recipient(), vacationInformation.replyRecipient().getAsString(), e);
+                return Mono.empty();
+            })
+            .block();
     }
 
     private MailAddress getSender(MailAddress recipient) {

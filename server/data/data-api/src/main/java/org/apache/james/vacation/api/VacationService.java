@@ -32,7 +32,15 @@ public interface VacationService {
 
     Mono<Void> registerNotification(AccountId accountId, RecipientId recipientId, Optional<ZonedDateTime> expiryDate);
 
+    /**
+     * @return true when this call registered the notification, false when it was already registered
+     * @see NotificationRegistry#registerIfAbsent(AccountId, RecipientId, Optional)
+     */
+    Mono<Boolean> registerNotificationIfAbsent(AccountId accountId, RecipientId recipientId, Optional<ZonedDateTime> expiryDate);
+
     Mono<Boolean> isNotificationRegistered(AccountId accountId, RecipientId recipientId);
+
+    Mono<Void> unregisterNotification(AccountId accountId, RecipientId recipientId);
 
     Mono<Void> flushNotifications(AccountId accountId);
 

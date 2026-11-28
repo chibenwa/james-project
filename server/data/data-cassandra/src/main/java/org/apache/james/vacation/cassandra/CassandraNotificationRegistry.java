@@ -60,6 +60,17 @@ public class CassandraNotificationRegistry implements NotificationRegistry {
         }
     }
 
+    @Override
+    public Mono<Boolean> registerIfAbsent(AccountId accountId, RecipientId recipientId, Optional<ZonedDateTime> expiryDate) {
+        Optional<Integer> waitDelay = evaluateWaitDelay(expiryDate);
+        if (isValid(waitDelay)) {
+            return cassandraNotificationRegistryDAO.registerIfAbsent(accountId, recipientId, waitDelay);
+        } else {
+            LOGGER.warn("Invalid wait delay for {} {} : {}", accountId, recipientId, waitDelay);
+            return Mono.just(false);
+        }
+    }
+
     private Optional<Integer> evaluateWaitDelay(Optional<ZonedDateTime> expiryDate) {
         return expiryDate.map(expiry -> zonedDateTimeProvider.get().until(expiry, ChronoUnit.SECONDS))
             .flatMap(longValue -> {
@@ -73,6 +84,11 @@ public class CassandraNotificationRegistry implements NotificationRegistry {
     @Override
     public Mono<Boolean> isRegistered(AccountId accountId, RecipientId recipientId) {
         return cassandraNotificationRegistryDAO.isRegistered(accountId, recipientId);
+    }
+
+    @Override
+    public Mono<Void> unregister(AccountId accountId, RecipientId recipientId) {
+        return cassandraNotificationRegistryDAO.unregister(accountId, recipientId);
     }
 
     @Override

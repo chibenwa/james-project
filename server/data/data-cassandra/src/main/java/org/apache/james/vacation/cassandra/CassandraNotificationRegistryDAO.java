@@ -37,6 +37,7 @@ import org.apache.james.vacation.cassandra.tables.CassandraNotificationTable;
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.config.DriverExecutionProfile;
+import com.datastax.oss.driver.api.core.cql.BoundStatement;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 import com.datastax.oss.driver.api.querybuilder.insert.RegularInsert;
 
@@ -45,10 +46,15 @@ import reactor.core.publisher.Mono;
 public class CassandraNotificationRegistryDAO {
 
     public static final String TTL = "TTL";
+    private static final int MAXIMUM_TTL = 630720000; // Maximum value for Cassandra's TTL
+
     private final CassandraAsyncExecutor cassandraAsyncExecutor;
     private final PreparedStatement registerStatement;
     private final PreparedStatement registerWithTTLStatement;
+    private final PreparedStatement registerIfAbsentStatement;
+    private final PreparedStatement registerIfAbsentWithTTLStatement;
     private final PreparedStatement isRegisteredStatement;
+    private final PreparedStatement unregisterStatement;
     private final PreparedStatement flushStatement;
     private final DriverExecutionProfile readProfile;
     private final DriverExecutionProfile writeProfile;
@@ -61,10 +67,20 @@ public class CassandraNotificationRegistryDAO {
 
         this.registerWithTTLStatement = session.prepare(createInsert().usingTtl(bindMarker(TTL)).build());
 
+        this.registerIfAbsentStatement = session.prepare(createInsert().ifNotExists().build());
+
+        this.registerIfAbsentWithTTLStatement = session.prepare(createInsert().ifNotExists().usingTtl(bindMarker(TTL)).build());
+
         this.isRegisteredStatement = session.prepare(selectFrom(CassandraNotificationTable.TABLE_NAME)
             .all()
             .whereColumn(CassandraNotificationTable.ACCOUNT_ID).isEqualTo(bindMarker(CassandraNotificationTable.ACCOUNT_ID))
             .whereColumn(CassandraNotificationTable.RECIPIENT_ID).isEqualTo(bindMarker(CassandraNotificationTable.RECIPIENT_ID))
+            .build());
+
+        this.unregisterStatement = session.prepare(deleteFrom(CassandraNotificationTable.TABLE_NAME)
+            .whereColumn(CassandraNotificationTable.ACCOUNT_ID).isEqualTo(bindMarker(CassandraNotificationTable.ACCOUNT_ID))
+            .whereColumn(CassandraNotificationTable.RECIPIENT_ID).isEqualTo(bindMarker(CassandraNotificationTable.RECIPIENT_ID))
+            .ifExists()
             .build());
 
         this.flushStatement = session.prepare(deleteFrom(CassandraNotificationTable.TABLE_NAME)
@@ -82,9 +98,28 @@ public class CassandraNotificationRegistryDAO {
 
     public Mono<Void> register(AccountId accountId, RecipientId recipientId, Optional<Integer> ttl) {
         return cassandraAsyncExecutor.executeVoid(
-            ttl.filter(value -> value <= 630720000) // Maximum value for Cassandra's TTL
-                .map(value -> registerWithTTLStatement.bind().setInt(TTL, value))
-                .orElse(registerStatement.bind())
+            bindRegistration(registerStatement, registerWithTTLStatement, accountId, recipientId, ttl));
+    }
+
+    // A lightweight transaction, so that concurrent callers cannot both register the same recipient
+    public Mono<Boolean> registerIfAbsent(AccountId accountId, RecipientId recipientId, Optional<Integer> ttl) {
+        return cassandraAsyncExecutor.executeReturnApplied(
+            bindRegistration(registerIfAbsentStatement, registerIfAbsentWithTTLStatement, accountId, recipientId, ttl));
+    }
+
+    private BoundStatement bindRegistration(PreparedStatement statement, PreparedStatement statementWithTTL,
+                                            AccountId accountId, RecipientId recipientId, Optional<Integer> ttl) {
+        return ttl.filter(value -> value <= MAXIMUM_TTL)
+            .map(value -> statementWithTTL.bind().setInt(TTL, value))
+            .orElseGet(statement::bind)
+            .setString(CassandraNotificationTable.ACCOUNT_ID, accountId.getIdentifier())
+            .setString(CassandraNotificationTable.RECIPIENT_ID, recipientId.getAsString())
+            .setExecutionProfile(writeProfile);
+    }
+
+    public Mono<Void> unregister(AccountId accountId, RecipientId recipientId) {
+        return cassandraAsyncExecutor.executeVoid(
+            unregisterStatement.bind()
                 .setString(CassandraNotificationTable.ACCOUNT_ID, accountId.getIdentifier())
                 .setString(CassandraNotificationTable.RECIPIENT_ID, recipientId.getAsString())
                 .setExecutionProfile(writeProfile));
