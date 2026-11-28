@@ -84,9 +84,9 @@ class GroupRegistration implements Registration {
     private final Group group;
     private final ListenerExecutor listenerExecutor;
     private final RabbitMQEventBus.Configurations configurations;
-    private Optional<Disposable> receiverSubscriber;
+    private volatile Optional<Disposable> receiverSubscriber;
     private final ReceiverProvider receiverProvider;
-    private Scheduler scheduler;
+    private volatile Scheduler scheduler;
 
     GroupRegistration(NamingStrategy namingStrategy, ReactorRabbitMQChannelPool channelPool, Sender sender, ReceiverProvider receiverProvider, EventSerializer eventSerializer,
                       EventListener.ReactiveEventListener listener, Group group, EventDeadLetters eventDeadLetters, Runnable unregisterGroup,
@@ -106,7 +106,7 @@ class GroupRegistration implements Registration {
         this.group = group;
     }
 
-    GroupRegistration start() {
+    synchronized GroupRegistration start() {
         scheduler = Schedulers.newBoundedElastic(configurations.eventBusConfiguration().maxConcurrency(), ReactorUtils.DEFAULT_BOUNDED_ELASTIC_QUEUESIZE, "group-handler");
         receiverSubscriber = Optional
             .of(createGroupWorkQueue()
@@ -117,7 +117,7 @@ class GroupRegistration implements Registration {
         return this;
     }
 
-    void restart() {
+    synchronized void restart() {
         Optional<Disposable> previousSubscriber = this.receiverSubscriber;
         receiverSubscriber = Optional.of(consumeWorkQueue());
         previousSubscriber
@@ -207,11 +207,13 @@ class GroupRegistration implements Registration {
 
     @Override
     public Mono<Void> unregister() {
-        return Mono.fromRunnable(() -> {
-            receiverSubscriber.filter(Predicate.not(Disposable::isDisposed))
-                .ifPresent(Disposable::dispose);
-            unregisterGroup.run();
-            scheduler.dispose();
-        });
+        return Mono.fromRunnable(this::stop);
+    }
+
+    private synchronized void stop() {
+        receiverSubscriber.filter(Predicate.not(Disposable::isDisposed))
+            .ifPresent(Disposable::dispose);
+        unregisterGroup.run();
+        scheduler.dispose();
     }
 }

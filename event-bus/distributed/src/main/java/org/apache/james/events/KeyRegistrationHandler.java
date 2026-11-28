@@ -71,10 +71,10 @@ class KeyRegistrationHandler {
     private final ListenerExecutor listenerExecutor;
     private final RabbitMQEventBus.Configurations configurations;
     private final ReceiverProvider receiverProvider;
-    private Optional<Disposable> receiverSubscriber;
+    private volatile Optional<Disposable> receiverSubscriber;
     private final MetricFactory metricFactory;
-    private Scheduler scheduler;
-    private Disposable newSubscription;
+    private volatile Scheduler scheduler;
+    private volatile Disposable newSubscription;
 
     KeyRegistrationHandler(NamingStrategy namingStrategy, EventBusId eventBusId, EventSerializer eventSerializer,
                            Sender sender, ReceiverProvider receiverProvider,
@@ -94,7 +94,7 @@ class KeyRegistrationHandler {
         this.configurations = configurations;
     }
 
-    void start() {
+    synchronized void start() {
         scheduler = Schedulers.newBoundedElastic(EventBus.DEFAULT_MAX_CONCURRENCY, ReactorUtils.DEFAULT_BOUNDED_ELASTIC_QUEUESIZE, "keys-handler");
         declareQueue();
 
@@ -108,12 +108,18 @@ class KeyRegistrationHandler {
         receiverSubscriber = Optional.of(newSubscription);
     }
 
-    void restart() {
+    synchronized void restart() {
         Optional<Disposable> previousReceiverSubscriber = receiverSubscriber;
         receiverSubscriber = Optional.of(newSubscription);
         previousReceiverSubscriber
             .filter(Predicate.not(Disposable::isDisposed))
             .ifPresent(Disposable::dispose);
+    }
+
+    private synchronized void disposeConsumer() {
+        receiverSubscriber.filter(Predicate.not(Disposable::isDisposed))
+            .ifPresent(Disposable::dispose);
+        Optional.ofNullable(scheduler).ifPresent(Scheduler::dispose);
     }
 
     void declareQueue() {
@@ -136,9 +142,7 @@ class KeyRegistrationHandler {
     }
 
     void stop() {
-        receiverSubscriber.filter(Predicate.not(Disposable::isDisposed))
-                .ifPresent(Disposable::dispose);
-        Optional.ofNullable(scheduler).ifPresent(Scheduler::dispose);
+        disposeConsumer();
         // Best effort and bounded: stopping must not wait minutes on an unavailable broker
         sender.delete(QueueSpecification.queue(registrationQueue.asString()))
             .timeout(STOP_QUEUE_DELETION_TIMEOUT)

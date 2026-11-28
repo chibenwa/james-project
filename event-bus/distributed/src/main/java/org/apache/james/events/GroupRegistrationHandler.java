@@ -78,7 +78,7 @@ public class GroupRegistrationHandler {
     private final ListenerExecutor listenerExecutor;
     private final GroupRegistration.WorkQueueName queueName;
     private final Scheduler scheduler;
-    private Optional<Disposable> consumer;
+    private volatile Optional<Disposable> consumer;
 
     GroupRegistrationHandler(NamingStrategy namingStrategy, EventSerializer eventSerializer, ReactorRabbitMQChannelPool channelPool,
                              Sender sender, ReceiverProvider receiverProvider, EventDeadLetters eventDeadLetters,
@@ -102,7 +102,7 @@ public class GroupRegistrationHandler {
             .orElseThrow(() -> new GroupRegistrationNotFound(group));
     }
 
-    public void start() {
+    public synchronized void start() {
         channelPool.createWorkQueue(
             QueueSpecification.queue(queueName.asString())
                 .durable(evaluateDurable(DURABLE, configurations.rabbitMQConfiguration().isQuorumQueuesUsed()))
@@ -156,13 +156,13 @@ public class GroupRegistrationHandler {
             .events());
     }
 
-    void stop() {
+    synchronized void stop() {
         groupRegistrations.values().forEach(groupRegistration -> Mono.from(groupRegistration.unregister()).block());
         consumer.ifPresent(Disposable::dispose);
         Optional.ofNullable(scheduler).ifPresent(Scheduler::dispose);
     }
 
-    void restart() {
+    synchronized void restart() {
         Optional<Disposable> previousConsumer = consumer;
         consumer = Optional.of(consumeWorkQueue());
         previousConsumer

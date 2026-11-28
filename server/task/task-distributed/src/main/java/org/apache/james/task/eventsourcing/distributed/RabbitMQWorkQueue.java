@@ -91,8 +91,8 @@ public class RabbitMQWorkQueue implements WorkQueue {
     private final Sender sender;
     private final ReceiverProvider receiverProvider;
     private final CancelRequestQueueName cancelRequestQueueName;
-    private Disposable receiverHandle;
-    private Disposable cancelRequestListenerHandle;
+    private volatile Disposable receiverHandle;
+    private volatile Disposable cancelRequestListenerHandle;
 
     public RabbitMQWorkQueue(TaskManagerWorker worker, Sender sender,
                              ReceiverProvider receiverProvider, JsonTaskSerializer taskSerializer,
@@ -108,7 +108,7 @@ public class RabbitMQWorkQueue implements WorkQueue {
     }
 
     @Override
-    public void start() {
+    public synchronized void start() {
         startWorkqueue();
         listenToCancelRequests();
     }
@@ -153,7 +153,7 @@ public class RabbitMQWorkQueue implements WorkQueue {
     }
 
     @Override
-    public void restart() {
+    public synchronized void restart() {
         closeRabbitResources();
         start();
     }
@@ -302,7 +302,7 @@ public class RabbitMQWorkQueue implements WorkQueue {
         closeRabbitResources();
     }
 
-    private void closeRabbitResources() {
+    private synchronized void closeRabbitResources() {
         Optional.ofNullable(receiverHandle).ifPresent(Disposable::dispose);
         Optional.ofNullable(cancelRequestListenerHandle).ifPresent(Disposable::dispose);
     }

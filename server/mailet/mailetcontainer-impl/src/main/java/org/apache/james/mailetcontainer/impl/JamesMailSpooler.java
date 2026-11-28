@@ -281,8 +281,10 @@ public class JamesMailSpooler implements Disposable, Configurable, MailSpoolerMB
     private final MailQueueFactory<?> queueFactory;
 
     private Configuration configuration;
-    private Optional<Runner> runner;
+    private volatile Optional<Runner> runner = Optional.empty();
     private MailQueue queue;
+    // Guarded by this: once disposed, a late restart must not start a runner nobody would stop
+    private boolean disposed = false;
 
     @Inject
     public JamesMailSpooler(MetricFactory metricFactory, GaugeRegistry gaugeRegistry, MailProcessor mailProcessor, MailRepositoryStore mailRepositoryStore, MailQueueFactory<?> queueFactory) {
@@ -293,10 +295,22 @@ public class JamesMailSpooler implements Disposable, Configurable, MailSpoolerMB
         this.queueFactory = queueFactory;
     }
 
-    public void restart() {
+    /**
+     * Concurrent restarts (health checks, RabbitMQ reconnection) are serialised: each one disposes the runner the
+     * other installed, so that no runner is left orphan, consuming the spool and surviving {@link #dispose()}.
+     */
+    public synchronized void restart() {
+        if (disposed) {
+            LOGGER.info("Spooler is disposed, ignoring restart");
+            return;
+        }
         Optional<Runner> previous = runner;
-        runner = Optional.of(new Runner(metricFactory, gaugeRegistry, mailProcessor, errorRepository(), queue, configuration));
+        runner = Optional.of(newRunner());
         previous.ifPresent(Runner::dispose);
+    }
+
+    private Runner newRunner() {
+        return new Runner(metricFactory, gaugeRegistry, mailProcessor, errorRepository(), queue, configuration);
     }
 
     @Override
@@ -312,13 +326,12 @@ public class JamesMailSpooler implements Disposable, Configurable, MailSpoolerMB
      * Initializes the spool manager.
      */
     @PostConstruct
-    public void init() {
+    public synchronized void init() {
         if (configuration.isEnabled()) {
             LOGGER.info("init...");
             LOGGER.info("Concurrency level is {}", configuration.getConcurrencyLevel());
             queue = queueFactory.createQueue(MailQueueFactory.SPOOL, MailQueueFactory.prefetchCount(configuration.getConcurrencyLevel()));
-            runner = Optional.of(new Runner(metricFactory, gaugeRegistry,
-                mailProcessor, errorRepository(), queue, configuration));
+            runner = Optional.of(newRunner());
             LOGGER.info("Spooler started");
         } else {
             LOGGER.info("Spooler had been deactivated. To enable it set 'threads' count to a value greater than zero");
@@ -344,7 +357,8 @@ public class JamesMailSpooler implements Disposable, Configurable, MailSpoolerMB
      */
     @PreDestroy
     @Override
-    public void dispose() {
+    public synchronized void dispose() {
+        disposed = true;
         runner.ifPresent(Runner::dispose);
     }
 
