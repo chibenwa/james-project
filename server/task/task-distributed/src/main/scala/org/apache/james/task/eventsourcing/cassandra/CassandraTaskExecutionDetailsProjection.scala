@@ -21,7 +21,7 @@ package org.apache.james.task.eventsourcing.cassandra
 
 import jakarta.inject.Inject
 import org.apache.james.task.eventsourcing.TaskExecutionDetailsProjection
-import org.apache.james.task.{TaskExecutionDetails, TaskId}
+import org.apache.james.task.{TaskExecutionDetails, TaskId, TaskManager}
 import org.reactivestreams.Publisher
 
 import java.time.Instant
@@ -46,6 +46,12 @@ class CassandraTaskExecutionDetailsProjection @Inject()(cassandraTaskExecutionDe
   override def listReactive(): Publisher[TaskExecutionDetails] = cassandraTaskExecutionDetailsProjectionDAO.listDetails()
 
   override def updateReactive(details: TaskExecutionDetails): Publisher[Void] = cassandraTaskExecutionDetailsProjectionDAO.saveDetails(details)
+
+  // Conditional updates are lightweight transactions: the creation is one too, as mixing them with plain writes is unsafe
+  override def createReactive(details: TaskExecutionDetails): Publisher[Void] = cassandraTaskExecutionDetailsProjectionDAO.createDetails(details)
+
+  override def updateReactiveIfStatus(expectedStatus: TaskManager.Status, details: TaskExecutionDetails): Publisher[java.lang.Boolean] =
+    cassandraTaskExecutionDetailsProjectionDAO.saveDetailsIfStatus(expectedStatus, details)
 
   override def listDetailsByBeforeDate(beforeDate: Instant): Publisher[TaskExecutionDetails] = cassandraTaskExecutionDetailsProjectionDAO.listDetailsByBeforeDate(beforeDate)
 

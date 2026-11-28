@@ -18,20 +18,32 @@
   * ***************************************************************/
 package org.apache.james.task.eventsourcing
 
-import java.util.concurrent.ConcurrentHashMap
-import org.apache.james.eventsourcing.ReactiveSubscriber
-import org.apache.james.task.{Hostname, TaskExecutionDetails, TaskId}
-import org.reactivestreams.Publisher
-import reactor.core.scala.publisher.{SFlux, SMono}
-
 import java.time.Instant
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
+
+import org.apache.james.eventsourcing.ReactiveSubscriber
+import org.apache.james.task.{Hostname, TaskExecutionDetails, TaskId, TaskManager}
+import org.reactivestreams.Publisher
+import reactor.core.publisher.Mono
+import reactor.core.scala.publisher.{SFlux, SMono}
+import reactor.util.retry.Retry
+
 import scala.compat.java8.OptionConverters._
 import scala.jdk.CollectionConverters._
 
+object TaskExecutionDetailsProjection {
+  val MAX_CONCURRENT_UPDATE_RETRIES: Int = 10
+
+  class ConcurrentUpdateException(taskId: TaskId) extends RuntimeException(s"Task execution details of ${taskId.asString()} were concurrently updated")
+}
+
 trait TaskExecutionDetailsProjection {
+  import TaskExecutionDetailsProjection._
+
   def asSubscriber(hostname: Hostname): ReactiveSubscriber = event => event.event match {
     case created: Created =>
-      updateReactive(TaskExecutionDetails.from(created.task, created.aggregateId.taskId, created.hostname))
+      createReactive(TaskExecutionDetails.from(created.task, created.aggregateId.taskId, created.hostname))
     case cancelRequested: CancelRequested =>
       updateReactive(cancelRequested.aggregateId.taskId)(_.cancelRequested(hostname))
     case started: Started =>
@@ -46,10 +58,22 @@ trait TaskExecutionDetailsProjection {
       updateReactive(updated.aggregateId.taskId)(_.updateInformation(updated.additionalInformation))
   }
 
+  // Load, update then save only if the status did not change meanwhile, otherwise retry on fresh details:
+  // a blind save of stale details would revert a concurrent status transition (eg COMPLETED back to IN_PROGRESS)
   private def updateReactive(taskId: TaskId)(updater: TaskExecutionDetails => TaskExecutionDetails): Publisher[Void] =
-    SMono.fromPublisher(loadReactive(taskId))
-      .map(updater)
-      .flatMap(taskExecutionDetails => SMono.fromPublisher(updateReactive(taskExecutionDetails)))
+    Mono.defer(() => Mono.from(loadReactive(taskId)))
+      .flatMap(current => saveIfStatusUnchanged(current, updater(current)))
+      .retryWhen(Retry.max(MAX_CONCURRENT_UPDATE_RETRIES)
+        .filter(_.isInstanceOf[ConcurrentUpdateException]))
+      .`then`()
+
+  private def saveIfStatusUnchanged(current: TaskExecutionDetails, updated: TaskExecutionDetails): Mono[Void] =
+    if (updated eq current) {
+      Mono.empty()
+    } else {
+      Mono.from(updateReactiveIfStatus(current.getStatus, updated))
+        .flatMap(applied => if (applied) Mono.empty[Void]() else Mono.error[Void](new ConcurrentUpdateException(current.getTaskId)))
+    }
 
   def load(taskId: TaskId): Option[TaskExecutionDetails]
   def list: List[TaskExecutionDetails]
@@ -62,6 +86,15 @@ trait TaskExecutionDetailsProjection {
   def listDetailsByBeforeDate(beforeDate: Instant): Publisher[TaskExecutionDetails]
 
   def updateReactive(details: TaskExecutionDetails): Publisher[Void]
+
+  def createReactive(details: TaskExecutionDetails): Publisher[Void] = updateReactive(details)
+
+  /**
+   * Atomically saves the details only if the stored status of the task is the expected one.
+   *
+   * @return true if the details were saved, false if the task is absent or its status changed
+   */
+  def updateReactiveIfStatus(expectedStatus: TaskManager.Status, details: TaskExecutionDetails): Publisher[java.lang.Boolean]
 
   def remove(taskExecutionDetails: TaskExecutionDetails) : Publisher[Void]
 }
@@ -81,6 +114,17 @@ class MemoryTaskExecutionDetailsProjection() extends TaskExecutionDetailsProject
   override def listReactive(): Publisher[TaskExecutionDetails] = SFlux.fromIterable(this.details.values().asScala)
 
   override def updateReactive(details: TaskExecutionDetails): Publisher[Void] = SMono.fromCallable(() => this.details.put(details.taskId, details)).`then`(SMono.empty)
+
+  override def updateReactiveIfStatus(expectedStatus: TaskManager.Status, updatedDetails: TaskExecutionDetails): Publisher[java.lang.Boolean] =
+    SMono.fromCallable(() => {
+      val applied = new AtomicBoolean(false)
+      this.details.computeIfPresent(updatedDetails.taskId, (_, current) => {
+        val hasExpectedStatus = current.getStatus == expectedStatus
+        applied.set(hasExpectedStatus)
+        if (hasExpectedStatus) updatedDetails else current
+      })
+      java.lang.Boolean.valueOf(applied.get())
+    })
 
   override def listDetailsByBeforeDate(beforeDate: Instant): Publisher[TaskExecutionDetails] = SFlux.fromIterable(this.details.values().asScala)
     .filter(taskExecutionDetails => taskExecutionDetails.getSubmittedDate.toInstant.isBefore(beforeDate))

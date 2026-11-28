@@ -19,9 +19,9 @@
 package org.apache.james.task.eventsourcing.cassandra
 
 import com.datastax.oss.driver.api.core.CqlSession
-import com.datastax.oss.driver.api.core.cql.{BoundStatement, Row}
+import com.datastax.oss.driver.api.core.cql.{BoundStatement, PreparedStatement, Row}
 import com.datastax.oss.driver.api.core.data.UdtValue
-import com.datastax.oss.driver.api.querybuilder.QueryBuilder.{bindMarker, deleteFrom, insertInto, selectFrom}
+import com.datastax.oss.driver.api.querybuilder.QueryBuilder.{bindMarker, deleteFrom, insertInto, selectFrom, update}
 import org.apache.james.backends.cassandra.init.{CassandraTypesProvider, CassandraZonedDateTimeDataDefinition}
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor
 import org.apache.james.server.task.json.JsonTaskAdditionalInformationSerializer
@@ -36,11 +36,15 @@ import java.util.Optional
 import jakarta.inject.Inject
 import scala.compat.java8.OptionConverters._
 
+object CassandraTaskExecutionDetailsProjectionDAO {
+  private val EXPECTED_STATUS = "expectedStatus"
+}
+
 class CassandraTaskExecutionDetailsProjectionDAO @Inject()(session: CqlSession, typesProvider: CassandraTypesProvider, jsonTaskAdditionalInformationSerializer: JsonTaskAdditionalInformationSerializer) {
   private val cassandraAsyncExecutor = new CassandraAsyncExecutor(session)
   private val dateType = typesProvider.getDefinedUserType(CassandraZonedDateTimeDataDefinition.ZONED_DATE_TIME)
 
-  private val insertStatement = session.prepare(insertInto(TABLE_NAME)
+  private val insertInitialValues = insertInto(TABLE_NAME)
     .value(TASK_ID, bindMarker(TASK_ID))
     .value(TYPE, bindMarker(TYPE))
     .value(STATUS, bindMarker(STATUS))
@@ -53,6 +57,25 @@ class CassandraTaskExecutionDetailsProjectionDAO @Inject()(session: CqlSession, 
     .value(CANCEL_REQUESTED_NODE, bindMarker(CANCEL_REQUESTED_NODE))
     .value(FAILED_DATE, bindMarker(FAILED_DATE))
     .value(ADDITIONAL_INFORMATION, bindMarker(ADDITIONAL_INFORMATION))
+
+  private val insertStatement = session.prepare(insertInitialValues.build())
+
+  private val insertIfNotExistsStatement = session.prepare(insertInitialValues.ifNotExists().build())
+
+  private val updateIfStatusStatement = session.prepare(update(TABLE_NAME)
+    .setColumn(TYPE, bindMarker(TYPE))
+    .setColumn(STATUS, bindMarker(STATUS))
+    .setColumn(SUBMITTED_DATE, bindMarker(SUBMITTED_DATE))
+    .setColumn(SUBMITTED_NODE, bindMarker(SUBMITTED_NODE))
+    .setColumn(STARTED_DATE, bindMarker(STARTED_DATE))
+    .setColumn(RAN_NODE, bindMarker(RAN_NODE))
+    .setColumn(COMPLETED_DATE, bindMarker(COMPLETED_DATE))
+    .setColumn(CANCELED_DATE, bindMarker(CANCELED_DATE))
+    .setColumn(CANCEL_REQUESTED_NODE, bindMarker(CANCEL_REQUESTED_NODE))
+    .setColumn(FAILED_DATE, bindMarker(FAILED_DATE))
+    .setColumn(ADDITIONAL_INFORMATION, bindMarker(ADDITIONAL_INFORMATION))
+    .whereColumn(TASK_ID).isEqualTo(bindMarker(TASK_ID))
+    .ifColumn(STATUS).isEqualTo(bindMarker(CassandraTaskExecutionDetailsProjectionDAO.EXPECTED_STATUS))
     .build())
 
   private val selectStatement = session.prepare(selectFrom(TABLE_NAME)
@@ -68,9 +91,28 @@ class CassandraTaskExecutionDetailsProjectionDAO @Inject()(session: CqlSession, 
     .build())
 
   def saveDetails(details: TaskExecutionDetails): Mono[Void] =
+    bindDetails(insertStatement, details)
+      .flatMap(statement => cassandraAsyncExecutor.executeVoid(statement))
+
+  /**
+   * Lightweight transaction: only one of the concurrent initial insertions is applied.
+   */
+  def createDetails(details: TaskExecutionDetails): Mono[Void] =
+    bindDetails(insertIfNotExistsStatement, details)
+      .flatMap(statement => cassandraAsyncExecutor.executeVoid(statement))
+
+  /**
+   * Lightweight transaction: the details are saved only if the stored status is the expected one.
+   */
+  def saveDetailsIfStatus(expectedStatus: TaskManager.Status, details: TaskExecutionDetails): Mono[java.lang.Boolean] =
+    bindDetails(updateIfStatusStatement, details)
+      .map(statement => statement.setString(CassandraTaskExecutionDetailsProjectionDAO.EXPECTED_STATUS, expectedStatus.getValue))
+      .flatMap(statement => cassandraAsyncExecutor.executeReturnApplied(statement))
+
+  private def bindDetails(preparedStatement: PreparedStatement, details: TaskExecutionDetails): Mono[BoundStatement] =
     Mono.from(serializeAdditionalInformation(details)
-      .flatMap(serializeAdditionalInformation => {
-    val boundStatement =  insertStatement.bind()
+      .map(serializeAdditionalInformation => {
+    val boundStatement = preparedStatement.bind()
       .setUuid(TASK_ID, details.getTaskId.getValue)
       .setString(TYPE, details.getType.asString())
       .setString(STATUS, details.getStatus.getValue)
@@ -87,11 +129,9 @@ class CassandraTaskExecutionDetailsProjectionDAO @Inject()(session: CqlSession, 
       (statement: BoundStatement) => bindOptionalStringValue(statement, ADDITIONAL_INFORMATION, serializeAdditionalInformation),
     )
 
-    val fullyBoundStatement = bindOptionalFieldOperations.foldLeft(boundStatement)((statement, bindFieldOperation) => {
+    bindOptionalFieldOperations.foldLeft(boundStatement)((statement, bindFieldOperation) => {
       bindFieldOperation(statement)
     })
-
-    SMono(cassandraAsyncExecutor.executeVoid(fullyBoundStatement))
   }))
 
   private def bindOptionalStringValue(statement: BoundStatement, fieldName: String, fieldValue: Optional[String]) =

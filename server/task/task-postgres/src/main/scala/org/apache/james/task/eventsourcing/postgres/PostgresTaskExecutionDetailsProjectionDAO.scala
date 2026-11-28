@@ -51,6 +51,18 @@ class PostgresTaskExecutionDetailsProjectionDAO @Inject()(postgresExecutor: Post
         Mono.from(insertStatement)
       })))
 
+  /**
+   * The row is updated only if its status is the expected one, which the update re-checks after any concurrent update.
+   */
+  def saveDetailsIfStatus(expectedStatus: TaskManager.Status, details: TaskExecutionDetails): Mono[java.lang.Boolean] =
+    serializeAdditionalInformation(details)
+      .flatMap(serializedAdditionalInformation => postgresExecutor.executeReturnAffectedRowsCount(dsl =>
+        Mono.from(dsl.update(TABLE_NAME)
+          .set(toInsertValues(details, serializedAdditionalInformation))
+          .where(TASK_ID.eq(details.getTaskId.getValue))
+          .and(STATUS.eq(expectedStatus.getValue)))))
+      .map(updatedRowCount => java.lang.Boolean.valueOf(updatedRowCount > 0))
+
   private def toInsertValues(details: TaskExecutionDetails, serializedAdditionalInformation: Optional[String]): ImmutableMap[Any, Any] = {
     val builder: ImmutableMap.Builder[Any, Any] = ImmutableMap.builder()
     builder.put(TYPE, details.getType.asString())

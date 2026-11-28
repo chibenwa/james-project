@@ -23,7 +23,7 @@ import java.time.Instant
 
 import jakarta.inject.Inject
 import org.apache.james.task.eventsourcing.TaskExecutionDetailsProjection
-import org.apache.james.task.{TaskExecutionDetails, TaskId}
+import org.apache.james.task.{TaskExecutionDetails, TaskId, TaskManager}
 import org.reactivestreams.Publisher
 
 import scala.compat.java8.OptionConverters._
@@ -47,6 +47,9 @@ class PostgresTaskExecutionDetailsProjection @Inject()(taskExecutionDetailsProje
   override def listReactive(): Publisher[TaskExecutionDetails] = taskExecutionDetailsProjectionDAO.listDetails()
 
   override def updateReactive(details: TaskExecutionDetails): Publisher[Void] = taskExecutionDetailsProjectionDAO.saveDetails(details)
+
+  override def updateReactiveIfStatus(expectedStatus: TaskManager.Status, details: TaskExecutionDetails): Publisher[java.lang.Boolean] =
+    taskExecutionDetailsProjectionDAO.saveDetailsIfStatus(expectedStatus, details)
 
   override def listDetailsByBeforeDate(beforeDate: Instant): Publisher[TaskExecutionDetails] = taskExecutionDetailsProjectionDAO.listDetailsByBeforeDate(beforeDate)
 
