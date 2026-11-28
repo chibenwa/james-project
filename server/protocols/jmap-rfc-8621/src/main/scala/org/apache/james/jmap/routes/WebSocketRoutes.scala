@@ -62,8 +62,16 @@ object WebSocketRoutes {
 }
 
 case class ClientContext(outbound: Sinks.Many[OutboundMessage], pushRegistration: AtomicReference[Registration], session: MailboxSession,
-                         closeSignal: Sinks.Empty[Void] = Sinks.empty[Void]()) {
-  def withRegistration(registration: Registration): Unit = withRegistration(Some(registration))
+                         closeSignal: Sinks.Empty[Void] = Sinks.empty[Void](),
+                         cleaned: AtomicBoolean = new AtomicBoolean(false)) {
+  def withRegistration(registration: Registration): Unit = {
+    swapRegistration(Some(registration))
+    // A registration completing once the context is cleaned would never be unregistered.
+    // Checked after the swap: either clean() sees this registration, or this sees the cleaned flag.
+    if (cleaned.get()) {
+      swapRegistration(None)
+    }
+  }
 
   // Completing the push sink leaves the socket open: the client only reconnects once it is closed
   def close(): Unit = {
@@ -71,12 +79,18 @@ case class ClientContext(outbound: Sinks.Many[OutboundMessage], pushRegistration
     closeSignal.tryEmitEmpty()
   }
 
-  def clean(): Unit ={
-    withRegistration(None)
+  // The connection ended: registrations completing from now on are unregistered at once
+  def clean(): Unit = {
+    cleaned.set(true)
+    disablePush()
+  }
+
+  def disablePush(): Unit = {
+    swapRegistration(None)
     outbound.emitComplete(FAIL_FAST)
   }
 
-  def withRegistration(registration: Option[Registration]): Unit = Option(pushRegistration.getAndSet(registration.orNull))
+  private def swapRegistration(registration: Option[Registration]): Unit = Option(pushRegistration.getAndSet(registration.orNull))
     .foreach(oldRegistration => SMono(oldRegistration.unregister())
       .subscribeOn(Schedulers.boundedElastic())
       .subscribe())
@@ -176,7 +190,7 @@ class WebSocketRoutes @Inject() (@Named(InjectionKeys.RFC_8621) val authenticato
                 keys.asJavaCollection)))
               .doOnNext(newRegistration => clientContext.withRegistration(newRegistration))
               .`then`(sendPushStateIfRequested(pushEnable, clientContext))
-          case WebSocketPushDisable => SMono.fromCallable(() => clientContext.clean())
+          case WebSocketPushDisable => SMono.fromCallable(() => clientContext.disablePush())
           .`then`(SMono.empty)
       })
 

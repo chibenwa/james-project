@@ -28,6 +28,7 @@ import static org.apache.james.events.RabbitMQEventBus.EVENT_BUS_ID;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -150,30 +151,70 @@ class KeyRegistrationHandler {
     }
 
     Mono<Registration> register(EventListener.ReactiveEventListener listener, RegistrationKey key) {
-        LocalListenerRegistry.LocalRegistration registration = localListenerRegistry.addListener(key, listener);
-
-        return registerIfNeeded(key, registration)
-            .thenReturn(new KeyRegistration(() -> {
-                if (registration.unregister().lastListenerRemoved()) {
-                    return Mono.from(metricFactory.decoratePublisherWithTimerMetric("rabbit-unregister", registrationBinder.unbind(key)
-                        .timeout(TOPOLOGY_CHANGES_TIMEOUT)
-                        .retryWhen(configurations.retryBackoff().asReactorRetry().scheduler(Schedulers.boundedElastic()))))
-                        // Unbind is potentially blocking
-                        .subscribeOn(Schedulers.boundedElastic());
+        return Mono.defer(() -> {
+            LocalListenerRegistry.LocalRegistration registration = localListenerRegistry.addListener(key, listener);
+            // Either the caller gets the registration, or the registration is aborted: never both, never none
+            AtomicBoolean settled = new AtomicBoolean(false);
+            Runnable abortIfUnsettled = () -> {
+                if (settled.compareAndSet(false, true)) {
+                    // Cancelled or failed before the caller got the registration: nobody else can remove the listener
+                    abortRegistration(key, registration);
                 }
-                return Mono.empty();
-            }));
+            };
+
+            return registerIfNeeded(key, registration)
+                .thenReturn((Registration) new KeyRegistration(() -> unregister(key, registration)))
+                .doOnNext(any -> settled.set(true))
+                .doOnError(e -> abortIfUnsettled.run())
+                .doOnCancel(abortIfUnsettled);
+        });
+    }
+
+    private Mono<Void> unregister(RegistrationKey key, LocalListenerRegistry.LocalRegistration registration) {
+        if (registration.unregister().lastListenerRemoved()) {
+            return unbind(key);
+        }
+        return Mono.empty();
+    }
+
+    private void abortRegistration(RegistrationKey key, LocalListenerRegistry.LocalRegistration registration) {
+        boolean lastListenerRemoved = registration.unregister().lastListenerRemoved();
+        if (lastListenerRemoved) {
+            // The cancelled bind may still have reached the broker
+            unbind(key)
+                .doOnError(e -> LOGGER.warn("Could not unbind key {} after an aborted registration", key.asString(), e))
+                .onErrorResume(e -> Mono.empty())
+                .subscribe();
+        } else if (registration.isFirstListener()) {
+            // Listeners registered meanwhile relied on the aborted bind
+            bind(key)
+                .doOnError(e -> LOGGER.error("Could not bind key {} after an aborted registration", key.asString(), e))
+                .onErrorResume(e -> Mono.empty())
+                .subscribe();
+        }
     }
 
     private Mono<Void> registerIfNeeded(RegistrationKey key, LocalListenerRegistry.LocalRegistration registration) {
         if (registration.isFirstListener()) {
-            return registrationBinder.bind(key)
-                // Bind is potentially blocking
-                .subscribeOn(Schedulers.boundedElastic())
-                .timeout(TOPOLOGY_CHANGES_TIMEOUT)
-                .retryWhen(configurations.retryBackoff().asReactorRetry().scheduler(Schedulers.boundedElastic()));
+            return bind(key);
         }
         return Mono.empty();
+    }
+
+    private Mono<Void> bind(RegistrationKey key) {
+        return registrationBinder.bind(key)
+            // Bind is potentially blocking
+            .subscribeOn(Schedulers.boundedElastic())
+            .timeout(TOPOLOGY_CHANGES_TIMEOUT)
+            .retryWhen(configurations.retryBackoff().asReactorRetry().scheduler(Schedulers.boundedElastic()));
+    }
+
+    private Mono<Void> unbind(RegistrationKey key) {
+        return Mono.from(metricFactory.decoratePublisherWithTimerMetric("rabbit-unregister", registrationBinder.unbind(key)
+                .timeout(TOPOLOGY_CHANGES_TIMEOUT)
+                .retryWhen(configurations.retryBackoff().asReactorRetry().scheduler(Schedulers.boundedElastic()))))
+            // Unbind is potentially blocking
+            .subscribeOn(Schedulers.boundedElastic());
     }
 
     private Mono<Void> handleDelivery(Delivery delivery) {
