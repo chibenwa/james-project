@@ -24,15 +24,21 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
+import java.util.Objects;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 import org.apache.james.events.EventListener;
 import org.apache.james.imap.api.message.response.ImapResponseMessage;
@@ -42,21 +48,44 @@ import org.apache.james.imap.api.process.ImapProcessor;
 import org.apache.james.imap.api.process.SelectedMailbox;
 import org.apache.james.imap.encode.FakeImapSession;
 import org.apache.james.imap.message.request.IdleRequest;
+import org.apache.james.imap.message.response.ExpungeResponse;
 import org.apache.james.imap.message.response.UnpooledStatusResponseFactory;
 import org.apache.james.mailbox.MailboxManager;
+import org.apache.james.mailbox.MessageUid;
+import org.apache.james.mailbox.NullableMessageSequenceNumber;
+import org.apache.james.mailbox.events.MailboxEvents.Expunged;
 import org.apache.james.metrics.tests.RecordingMetricFactory;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Scheduler;
+import reactor.core.scheduler.Schedulers;
 
 class IdleProcessorLifecycleTest {
+    private static final MessageUid EXPUNGED_UID = MessageUid.of(3);
 
     private static class TrackingImapSession extends FakeImapSession {
         final Deque<ImapLineHandler> handlers = new ArrayDeque<>();
         final AtomicInteger popCount = new AtomicInteger();
+        final Queue<Runnable> eventLoopTasks = new ConcurrentLinkedQueue<>();
         boolean triggerCallbackDuringPush = false;
         Consumer<FakeImapSession> onPush;
+
+        @Override
+        public Scheduler eventLoopScheduler() {
+            return Schedulers.fromExecutor(eventLoopTasks::add);
+        }
+
+        void runEventLoopTasks() {
+            Stream.generate(eventLoopTasks::poll)
+                .takeWhile(Objects::nonNull)
+                .forEach(Runnable::run);
+        }
+
+        void done() {
+            Mono.from(handlers.peek().onLine(this, "DONE\r\n".getBytes(StandardCharsets.US_ASCII))).block();
+        }
 
         @Override
         public ImapProcessor.Responder threadSafe(ImapProcessor.Responder responder) {
@@ -286,5 +315,56 @@ class IdleProcessorLifecycleTest {
         StatusResponse statusResponse = (StatusResponse) responder.getResponses().get(0);
         assertThat(statusResponse.getServerResponseType())
             .isEqualTo(StatusResponse.Type.NO);
+    }
+
+    @Test
+    void expungeNotifiedBeforeDoneShouldNotBeSentAfterTheTaggedOk() {
+        TrackingImapSession session = new TrackingImapSession();
+        SelectedMailbox selectedMailbox = mock(SelectedMailbox.class);
+        RecordingResponder responder = new RecordingResponder();
+        EventListener.ReactiveEventListener listener = idleWithPendingExpunge(session, selectedMailbox, responder);
+
+        Mono.from(listener.reactiveEvent(mock(Expunged.class))).subscribe();
+        session.done();
+        session.runEventLoopTasks();
+
+        assertThat(responder.getResponses()).noneMatch(ExpungeResponse.class::isInstance);
+        assertThat(responder.getResponses()).last().isInstanceOf(StatusResponse.class);
+        verify(selectedMailbox, never()).remove(any());
+    }
+
+    @Test
+    void expungePushedBeforeDoneShouldBeSentBeforeTheTaggedOk() {
+        TrackingImapSession session = new TrackingImapSession();
+        SelectedMailbox selectedMailbox = mock(SelectedMailbox.class);
+        RecordingResponder responder = new RecordingResponder();
+        EventListener.ReactiveEventListener listener = idleWithPendingExpunge(session, selectedMailbox, responder);
+
+        Mono.from(listener.reactiveEvent(mock(Expunged.class))).subscribe();
+        session.runEventLoopTasks();
+        session.done();
+
+        List<ImapResponseMessage> responses = responder.getResponses();
+        assertThat(responses.get(responses.size() - 2)).isInstanceOf(ExpungeResponse.class);
+        assertThat(responses).last().isInstanceOf(StatusResponse.class);
+        verify(selectedMailbox).remove(EXPUNGED_UID);
+    }
+
+    private EventListener.ReactiveEventListener idleWithPendingExpunge(TrackingImapSession session, SelectedMailbox selectedMailbox,
+                                                                       RecordingResponder responder) {
+        IdleProcessor testee = new IdleProcessor(
+            mock(MailboxManager.class),
+            new UnpooledStatusResponseFactory(),
+            new RecordingMetricFactory());
+        session.selected(selectedMailbox).block();
+        testee.processRequestReactive(new IdleRequest(TAG), session, responder).block();
+
+        ArgumentCaptor<EventListener.ReactiveEventListener> captor =
+            ArgumentCaptor.forClass(EventListener.ReactiveEventListener.class);
+        verify(selectedMailbox).registerIdle(captor.capture());
+        // Another session expunged the message: the selected mailbox recorded it, the listener is notified
+        when(selectedMailbox.expungedUids()).thenReturn(List.of(EXPUNGED_UID));
+        when(selectedMailbox.remove(EXPUNGED_UID)).thenReturn(NullableMessageSequenceNumber.of(3));
+        return captor.getValue();
     }
 }

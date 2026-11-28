@@ -54,6 +54,8 @@ import io.netty.handler.codec.compression.ZlibWrapper;
 import io.netty.handler.ssl.SslHandler;
 import reactor.core.Disposable;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Scheduler;
+import reactor.core.scheduler.Schedulers;
 
 public class NettyImapSession implements ImapSession, NettyConstants {
     private final Map<String, Object> attributesByKey = new HashMap<>();
@@ -105,6 +107,11 @@ public class NettyImapSession implements ImapSession, NettyConstants {
 
             channel.config().setAutoRead(autoRead);
         });
+    }
+
+    @Override
+    public Scheduler eventLoopScheduler() {
+        return Schedulers.fromExecutor(channel.eventLoop());
     }
 
     @Override
