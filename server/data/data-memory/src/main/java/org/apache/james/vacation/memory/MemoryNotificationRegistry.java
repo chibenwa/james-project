@@ -71,16 +71,35 @@ public class MemoryNotificationRegistry implements NotificationRegistry {
     }
 
     @Override
+    public Mono<Boolean> registerIfAbsent(AccountId accountId, RecipientId recipientId, Optional<ZonedDateTime> expiryDate) {
+        return Mono.fromCallable(() -> {
+            synchronized (registrations) {
+                if (isRegisteredNow(accountId, recipientId)) {
+                    return false;
+                }
+                registrations.get(accountId).removeIf(entry -> entry.getRecipientId().equals(recipientId));
+                registrations.put(accountId, new Entry(recipientId, expiryDate));
+                return true;
+            }
+        });
+    }
+
+    @Override
     public Mono<Boolean> isRegistered(AccountId accountId, RecipientId recipientId) {
+        return Mono.just(isRegisteredNow(accountId, recipientId));
+    }
+
+    private boolean isRegisteredNow(AccountId accountId, RecipientId recipientId) {
         ZonedDateTime currentTime = zonedDateTimeProvider.get();
-        return Mono.just(
-            registrations.get(accountId)
+        synchronized (registrations) {
+            return registrations.get(accountId)
                 .stream()
                 .filter(entry -> entry.getRecipientId().equals(recipientId))
                 .map(Entry::getExpiryDate)
                 .findAny()
                 .filter(optional -> optional.map(registrationEnd -> isStrictlyBefore(currentTime, registrationEnd)).orElse(true))
-                .isPresent());
+                .isPresent();
+        }
     }
 
     private boolean isStrictlyBefore(ZonedDateTime currentTime, ZonedDateTime registrationEnd) {

@@ -20,12 +20,12 @@
 package org.apache.james.vacation.memory;
 
 import org.apache.james.core.MailAddress;
+import org.apache.james.vacation.api.AtomicNotificationRegistryContract;
 import org.apache.james.vacation.api.NotificationRegistry;
-import org.apache.james.vacation.api.NotificationRegistryContract;
 import org.apache.james.vacation.api.RecipientId;
 import org.junit.jupiter.api.BeforeEach;
 
-class MemoryNotificationRegistryTest implements NotificationRegistryContract {
+class MemoryNotificationRegistryTest implements AtomicNotificationRegistryContract {
     NotificationRegistry notificationRegistry;
     RecipientId recipientId;
 

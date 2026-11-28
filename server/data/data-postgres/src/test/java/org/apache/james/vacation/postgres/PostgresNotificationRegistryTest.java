@@ -22,13 +22,13 @@ package org.apache.james.vacation.postgres;
 import org.apache.james.backends.postgres.PostgresDataDefinition;
 import org.apache.james.backends.postgres.PostgresExtension;
 import org.apache.james.core.MailAddress;
+import org.apache.james.vacation.api.AtomicNotificationRegistryContract;
 import org.apache.james.vacation.api.NotificationRegistry;
-import org.apache.james.vacation.api.NotificationRegistryContract;
 import org.apache.james.vacation.api.RecipientId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-class PostgresNotificationRegistryTest implements NotificationRegistryContract {
+class PostgresNotificationRegistryTest implements AtomicNotificationRegistryContract {
     @RegisterExtension
     static PostgresExtension postgresExtension = PostgresExtension.withoutRowLevelSecurity(PostgresDataDefinition.aggregateModules(PostgresVacationDataDefinition.MODULE));
 
