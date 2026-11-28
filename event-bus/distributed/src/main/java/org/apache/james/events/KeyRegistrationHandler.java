@@ -158,6 +158,8 @@ class KeyRegistrationHandler {
                     return Mono.from(metricFactory.decoratePublisherWithTimerMetric("rabbit-unregister", registrationBinder.unbind(key)
                         .timeout(TOPOLOGY_CHANGES_TIMEOUT)
                         .retryWhen(configurations.retryBackoff().asReactorRetry().scheduler(Schedulers.boundedElastic()))))
+                        // A listener registered meanwhile may have bound the key before this unbind reached the broker
+                        .then(Mono.defer(() -> rebindIfListened(key)))
                         // Unbind is potentially blocking
                         .subscribeOn(Schedulers.boundedElastic());
                 }
@@ -167,13 +169,24 @@ class KeyRegistrationHandler {
 
     private Mono<Void> registerIfNeeded(RegistrationKey key, LocalListenerRegistry.LocalRegistration registration) {
         if (registration.isFirstListener()) {
-            return registrationBinder.bind(key)
-                // Bind is potentially blocking
-                .subscribeOn(Schedulers.boundedElastic())
-                .timeout(TOPOLOGY_CHANGES_TIMEOUT)
-                .retryWhen(configurations.retryBackoff().asReactorRetry().scheduler(Schedulers.boundedElastic()));
+            return bind(key);
         }
         return Mono.empty();
+    }
+
+    private Mono<Void> rebindIfListened(RegistrationKey key) {
+        if (localListenerRegistry.getLocalListeners(key).isEmpty()) {
+            return Mono.empty();
+        }
+        return bind(key);
+    }
+
+    private Mono<Void> bind(RegistrationKey key) {
+        return registrationBinder.bind(key)
+            // Bind is potentially blocking
+            .subscribeOn(Schedulers.boundedElastic())
+            .timeout(TOPOLOGY_CHANGES_TIMEOUT)
+            .retryWhen(configurations.retryBackoff().asReactorRetry().scheduler(Schedulers.boundedElastic()));
     }
 
     private Mono<Void> handleDelivery(Delivery delivery) {
